@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: little-ai-scientists-v4
+    runtime: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: DEEPSEEK_BASE_URL
+        value: https://api.deepseek.com
+      - key: DEEPSEEK_MODEL
+        value: deepseek-flash
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: TOKEN_SECRET
+        generateValue: true

@@ -1,0 +1,112 @@
+{
+  "title": "小小AI科学家——面向8—11岁学生的人工智能科普与探究实践课程",
+  "version": "3.0",
+  "status": "离线交互教学原型；设计阶段AI辅助已披露；学生端实时AI未接入；真实学生试用待实施",
+  "files": [
+    {
+      "path": "AI技术与治理/04_AI系统架构与功能说明.md",
+      "type": "md",
+      "size_bytes": 5923
+    },
+    {
+      "path": "AI技术与治理/05_儿童隐私与AI风险控制.md",
+      "type": "md",
+      "size_bytes": 2698
+    },
+    {
+      "path": "AI技术与治理/12_AI协同设计记录与提示词.md",
+      "type": "md",
+      "size_bytes": 4807
+    },
+    {
+      "path": "README_使用说明.md",
+      "type": "md",
+      "size_bytes": 2707
+    },
+    {
+      "path": "作品清单.json",
+      "type": "json",
+      "size_bytes": 2819
+    },
+    {
+      "path": "参考资料/09_参考资料与引用说明.md",
+      "type": "md",
+      "size_bytes": 3270
+    },
+    {
+      "path": "在线课程/index.html",
+      "type": "html",
+      "size_bytes": 33226
+    },
+    {
+      "path": "学生资源/07_学生探究任务单.md",
+      "type": "md",
+      "size_bytes": 2352
+    },
+    {
+      "path": "学生资源/小小AI科学家_学生探究任务单_可打印版.docx",
+      "type": "docx",
+      "size_bytes": 39217
+    },
+    {
+      "path": "提交前检查/14_正式参赛提交验收清单.md",
+      "type": "md",
+      "size_bytes": 2295
+    },
+    {
+      "path": "教学实施/03_教师实施手册.md",
+      "type": "md",
+      "size_bytes": 4594
+    },
+    {
+      "path": "架构图/课程总体架构.mmd",
+      "type": "mmd",
+      "size_bytes": 727
+    },
+    {
+      "path": "架构图/课程总体架构图.png",
+      "type": "png",
+      "size_bytes": 172541
+    },
+    {
+      "path": "评价与试用/06_学习评价与试用验证方案.md",
+      "type": "md",
+      "size_bytes": 4240
+    },
+    {
+      "path": "评价与试用/08_测评题与参考答案.md",
+      "type": "md",
+      "size_bytes": 2123
+    },
+    {
+      "path": "评价与试用/13_试用实施与数据记录空表.md",
+      "type": "md",
+      "size_bytes": 1866
+    },
+    {
+      "path": "课程方案/01_参赛作品总览.md",
+      "type": "md",
+      "size_bytes": 6343
+    },
+    {
+      "path": "课程方案/02_课程设计方案.md",
+      "type": "md",
+      "size_bytes": 7461
+    },
+    {
+      "path": "课程方案/10_评审展示与答辩提纲.md",
+      "type": "md",
+      "size_bytes": 2638
+    },
+    {
+      "path": "课程方案/11_课程标准映射与成果证据矩阵.md",
+      "type": "md",
+      "size_bytes": 4304
+    },
+    {
+      "path": "课程方案/小小AI科学家_正式参赛作品说明书_V3.0.docx",
+      "type": "docx",
+      "size_bytes": 43849
+    }
+  ]
+}

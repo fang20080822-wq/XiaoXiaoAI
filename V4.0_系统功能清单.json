@@ -1,0 +1,31 @@
+{
+  "project": "小小AI科学家",
+  "version": "4.0.0",
+  "model_provider": "DeepSeek",
+  "default_model": "deepseek-flash",
+  "backend": "Node.js 20+ / Express",
+  "features": [
+    "学生端真实AI导师",
+    "教师端匿名作品AI评价建议",
+    "在线/离线明确区分",
+    "五单元课程网站",
+    "基础安全控制"
+  ],
+  "not_implemented": [
+    "学生账号与班级持久化",
+    "数据库",
+    "家长授权工作流",
+    "专业内容审核服务",
+    "联网事实核查",
+    "图片/文件多模态"
+  ],
+  "files": [
+    "server.js",
+    "package.json",
+    "public/index.html",
+    ".env.example",
+    "Dockerfile",
+    "render.yaml",
+    "部署与配置/README_V4.0_从零部署.md"
+  ]
+}
