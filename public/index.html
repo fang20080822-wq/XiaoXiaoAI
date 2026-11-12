@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="小小AI科学家：面向青少年的人工智能科普探究课程">
+<title>小小AI科学家 V4.0｜真实AI科学导师</title>
+<style>
+:root{--ink:#17324d;--blue:#2463eb;--bg:#f3f7fb;--muted:#60758a;--line:#dce6f0}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 system-ui,"Microsoft YaHei",sans-serif}
+header{background:linear-gradient(120deg,#153b70,#2879c7);color:white;padding:28px max(18px,calc((100% - 1100px)/2))}
+header h1{font-size:clamp(28px,4vw,42px);margin:10px 0 4px}header p{margin:4px 0;color:#e8f3ff}
+.tag,.pill{display:inline-block;border-radius:20px;padding:3px 11px;font-size:12px;background:#ffffff22;color:inherit;border:1px solid #ffffff55}
+nav{position:sticky;top:0;z-index:5;display:flex;gap:7px;overflow:auto;padding:10px max(12px,calc((100% - 1100px)/2));background:white;border-bottom:1px solid var(--line)}
+button{border:0;border-radius:10px;padding:10px 14px;background:#edf3fa;color:#244766;font-weight:650;cursor:pointer;white-space:nowrap}
+button.active,button.primary{background:var(--blue);color:white}main{max-width:1100px;margin:22px auto;padding:0 16px}.panel{display:none}.panel.active{display:block}
+.card,.hero{background:white;border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:15px;box-shadow:0 5px 18px #17324d0a}
+.hero{display:grid;grid-template-columns:1.5fr 1fr;gap:18px;align-items:center;background:linear-gradient(120deg,#eaf5ff,#fff)}
+.art{background:linear-gradient(135deg,#b9e2ff,#e7f4ff);border-radius:14px;padding:25px;text-align:center;font-size:58px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.unit{background:#fff;border:1px solid var(--line);border-radius:13px;padding:15px}
+label{display:block;margin:9px 0 4px;font-weight:600}input,textarea,select{font:inherit;padding:10px;border:1px solid #cbd8e5;border-radius:9px;max-width:100%;width:100%;background:white;color:var(--ink)}textarea{min-height:100px;resize:vertical}
+.chatlog{height:300px;overflow:auto;background:#f5f8fc;border-radius:12px;padding:12px;margin:12px 0}.bubble{padding:10px 13px;border-radius:12px;margin:8px 0;max-width:92%;white-space:pre-wrap;overflow-wrap:anywhere}.bot{background:#e4f1ff}.user{background:#dff5e9;margin-left:auto}
+.notice{padding:11px 13px;border-radius:10px;background:#fff7df;border:1px solid #f1dda1;color:#775313;font-size:13px}.ok{background:#eaf7ef;color:#17623f}.muted,small{color:var(--muted)}footer{text-align:center;color:var(--muted);padding:24px;font-size:13px}
+@media(max-width:700px){.hero{grid-template-columns:1fr}.art{font-size:44px}}
+</style></head>
+<body>
+<header><span class="tag">面向青少年 · STEM科学探究 · V4.0</span><h1>🔬 小小AI科学家</h1><p>提出问题、动手探究、记录证据，让好奇心成为科学发现的起点。</p><p>真实AI科学导师 · 学生学习空间 · 教师评价工具</p></header>
+<nav id="nav">
+<button class="active" data-tab="home">课程首页</button><button data-tab="learn">探究课程</button><button data-tab="lab">科学实验室</button><button data-tab="assistant">AI科学导师</button><button data-tab="quiz">知识挑战</button><button data-tab="teacher">教师工作台</button>
+</nav>
+<main>
+<section id="home" class="panel active">
+<div class="hero"><div><span class="pill">好奇心驱动学习</span><span class="pill">AI辅助探究</span><h2>像科学家一样思考！</h2><p>从生活中的小问题出发，学习观察、提出假设、设计实验、收集证据并解释结果。AI导师会启发思考，而不是替你完成探索。</p><button class="primary" onclick="tab('learn')">开始探究课程 →</button></div><div class="art">🧪 🔭 🤖</div></div>
+<div class="card"><h3>学习进度</h3><div id="progressText" class="muted">完成任意一个探究任务，记录你的科学发现。</div></div>
+<div class="grid"><div class="unit"><h3>🔍 观察与提问</h3><p>发现现象，提出值得研究的问题。</p></div><div class="unit"><h3>🧠 假设与推理</h3><p>用已有知识解释，并提出可检验的猜想。</p></div><div class="unit"><h3>🧫 实验与证据</h3><p>公平地开展实验，记录数据与现象。</p></div></div>
+</section>
+<section id="learn" class="panel"><div class="card"><h2>探究课程</h2><p class="muted">选择一个主题，按科学探究步骤完成学习。</p><div class="grid">
+<div class="unit"><h3>🌱 植物怎样喝水？</h3><p>观察植物吸水现象，了解茎的运输作用。</p><button onclick="selectTopic('植物怎样吸收和运输水分？')">开始学习</button></div>
+<div class="unit"><h3>🌈 彩虹如何形成？</h3><p>探索光的折射、反射与色散。</p><button onclick="selectTopic('彩虹是怎样形成的？')">开始学习</button></div>
+<div class="unit"><h3>🧲 磁铁的秘密</h3><p>比较不同材料与磁铁的相互作用。</p><button onclick="selectTopic('哪些材料会被磁铁吸引？')">开始学习</button></div>
+</div></div><div class="card"><h3>科学探究六步骤</h3><ol><li>观察现象</li><li>提出问题</li><li>形成假设</li><li>设计公平实验</li><li>记录数据与证据</li><li>解释结果并反思</li></ol></div></section>
+<section id="lab" class="panel"><div class="card"><h2>科学实验室 · 我的探究记录</h2><label>实验主题</label><input id="topic" placeholder="例如：不同颜色的纸吸热一样快吗？"><label>我的假设</label><textarea id="hypothesis" placeholder="我认为……因为……"></textarea><label>实验步骤与观察记录</label><textarea id="observations" placeholder="我准备……我观察到……"></textarea><label>结论与新问题</label><textarea id="conclusion" placeholder="证据说明……我还想知道……"></textarea><button class="primary" onclick="saveLab()">保存本次记录</button><span id="saved" class="muted"></span></div></section>
+<section id="assistant" class="panel"><div class="card"><h2>🤖 真实AI科学导师</h2><p class="muted">向AI提出科学问题。导师会用启发式问题帮助你思考。</p><div id="mode" class="notice">正在检查AI服务状态……</div><div id="chatlog" class="chatlog"><div class="bubble bot">你好，小小科学家！你最近观察到了什么有趣的现象？我们一起用科学方法寻找答案吧！</div></div><label>你的问题</label><textarea id="question" maxlength="1200" placeholder="例如：为什么有些物体会浮在水面上？"></textarea><button class="primary" id="sendBtn" onclick="ask()">发送问题</button><button onclick="clearChat()">清空对话</button></div></section>
+<section id="quiz" class="panel"><div class="card"><h2>知识挑战</h2><p>做完题目后点击提交，检验你的科学思维。</p><div id="questions"></div><button class="primary" onclick="grade()">提交答案</button><h3 id="score"></h3></div></section>
+<section id="teacher" class="panel"><div class="card"><h2>教师工作台</h2><p class="muted">教师可使用管理员密码登录并提交学生探究作品，获取AI辅助评价。</p><label>管理员密码</label><input id="adminPassword" type="password" placeholder="输入部署时设置的 ADMIN_PASSWORD"><button class="primary" onclick="teacherLogin()">教师登录</button><div id="teacherPanel" hidden><label>学生探究作品</label><textarea id="studentWork" placeholder="粘贴学生的探究记录……"></textarea><label>评价维度</label><select id="rubric"><option>科学问题、假设、实验设计、证据与表达</option><option>科学思维与探究过程</option><option>课程目标达成情况</option></select><button class="primary" onclick="evaluateWork()">生成评价建议</button><pre id="evaluation" style="white-space:pre-wrap"></pre></div><p id="loginMsg" class="muted"></p></div></section>
+</main><footer>小小AI科学家 V4.0 · AI用于启发和辅助学习，实验请在教师或家长指导下安全开展。</footer>
+<script>
+const $=id=>document.getElementById(id);
+function tab(id){document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));window.scrollTo({top:0,behavior:'smooth'})}
+document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
+function selectTopic(t){$('topic').value=t;tab('lab')}
+function saveLab(){const data={topic:$('topic').value,hypothesis:$('hypothesis').value,observations:$('observations').value,conclusion:$('conclusion').value,savedAt:new Date().toISOString()};if(!data.topic||!data.hypothesis){alert('请至少填写实验主题和假设。');return}localStorage.setItem('scienceLab',JSON.stringify(data));$('saved').textContent=' 已保存在本设备中。';$('progressText').textContent='已完成一份探究记录：'+data.topic}
+const questions=[['科学实验中，为什么通常一次只改变一个条件？',['为了让实验更公平，判断变量的影响','为了让实验更快结束','为了减少观察次数'],0,'控制其他条件，才能判断改变的因素是否造成结果差异。'],['下面哪一项属于实验证据？',['我觉得应该是这样','测量三次并记录每次水温','朋友说他见过'],1,'可观察、可测量并如实记录的数据属于证据。'],['如果结果不支持原来的假设，应该怎么办？',['修改或重新检验假设','删掉不符合预期的数据','宣布实验失败'],0,'科学探究需要尊重证据，依据结果修正解释。']];
+$('questions').innerHTML=questions.map((q,i)=>'<div class="unit"><b>'+ (i+1)+'. '+q[0]+'</b>'+q[1].map((a,j)=>'<label><input style="width:auto" type="radio" name="q'+i+'" value="'+j+'"> '+a+'</label>').join('')+'<p class="muted" id="ex'+i+'"></p></div>').join('');
+function grade(){let n=0;questions.forEach((q,i)=>{const v=document.querySelector('input[name=q'+i+']:checked');if(v&&+v.value===q[2])n++;$('ex'+i).textContent='解析：'+q[3]});$('score').textContent='你的得分：'+n+'/'+questions.length+'。继续保持探索精神！'}
+let history=[];
+function bubble(t,who){const d=document.createElement('div');d.className='bubble '+who;d.textContent=t;$('chatlog').appendChild(d);$('chatlog').scrollTop=$('chatlog').scrollHeight}
+async function health(){try{const r=await fetch('/api/health');const d=await r.json();$('mode').textContent=d.aiConfigured?'AI服务已配置，可以尝试向真实AI导师提问。':'AI服务尚未配置，请检查服务器端 DeepSeek API Key。';$('mode').className='notice '+(d.aiConfigured?'ok':'')}catch(e){$('mode').textContent='暂时无法连接服务，请稍后刷新。'}}
+health();
+async function ask(){const q=$('question').value.trim();if(!q)return;if(q.length>1200){alert('问题不能超过1200字');return}bubble(q,'user');$('question').value='';$('sendBtn').disabled=true;$('sendBtn').textContent='AI思考中…';try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:q,topic:'青少年科学探究',history:history.slice(-6)})});const d=await r.json();if(!r.ok)throw new Error(d.error||'服务暂不可用');bubble(d.answer+(d.mode==='offline'?'（离线规则演示，并非真实AI回答）':''),'bot');history.push({role:'user',content:q},{role:'assistant',content:d.answer});history=history.slice(-8)}catch(e){bubble('暂时无法获得AI回答：'+e.message,'bot')}finally{$('sendBtn').disabled=false;$('sendBtn').textContent='发送问题'}}
+function clearChat(){history=[];$('chatlog').innerHTML='<div class="bubble bot">对话已清空。你有什么新的科学问题？</div>'}
+let teacherToken=null;
+async function teacherLogin(){ $('loginMsg').textContent='正在验证…';try{const r=await fetch('/api/teacher/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('adminPassword').value})});const d=await r.json();if(!r.ok)throw new Error(d.error||'登录失败');teacherToken=d.token;$('teacherPanel').hidden=false;$('loginMsg').textContent='登录成功。'}catch(e){$('loginMsg').textContent=e.message}}
+async function evaluateWork(){const work=$('studentWork').value.trim();if(!work){alert('请先填写学生作品');return} $('evaluation').textContent='正在生成评价…';try{const r=await fetch('/api/teacher/evaluate',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+teacherToken},body:JSON.stringify({work,rubric:$('rubric').value})});const d=await r.json();if(!r.ok)throw new Error(d.error||'评价失败');$('evaluation').textContent=d.answer+(d.mode==='offline'?'（离线规则演示，非真实AI评价）':'')}catch(e){$('evaluation').textContent='无法生成评价：'+e.message}}
+</script></body></html>
