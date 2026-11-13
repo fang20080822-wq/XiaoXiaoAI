@@ -224,12 +224,12 @@ textarea{min-height:105px;resize:vertical}
   <div class="pageintro"><div class="kicker">TEACHER WORKSPACE</div><h1>教师工作台</h1><p>教师可登录并提交已匿名化的学生探究作品，获取AI辅助评价建议。</p></div>
   <div class="card">
     <h2>教师身份验证</h2><label for="adminPassword">管理员密码</label><input id="adminPassword" type="password" autocomplete="current-password" placeholder="输入部署时设置的教师专用密码">
-    <button class="btn primary" style="margin-top:13px" onclick="teacherLogin()">安全登录</button><p id="loginMsg" class="muted" role="status" aria-live="polite"></p>
+    <div class="actions" style="margin-top:13px"><button class="btn primary" onclick="teacherLogin()">安全登录</button><button id="teacherLogout" class="btn outline hidden" onclick="teacherLogout()">退出教师工作台</button></div><p id="loginMsg" class="muted" role="status" aria-live="polite"></p>
     <div id="teacherPanel" class="hidden">
       <hr style="border:0;border-top:1px solid var(--line);margin:22px 0">
       <h3>学生探究作品评价</h3><label for="studentWork">学生作品（请先去除个人身份信息）</label><textarea id="studentWork" maxlength="6000" placeholder="粘贴匿名化的学生探究记录……"></textarea>
       <label for="rubric">评价维度</label><select id="rubric"><option>科学问题、假设、实验设计、证据与表达</option><option>科学思维与探究过程</option><option>课程目标达成情况</option></select>
-      <button class="btn primary" style="margin-top:14px" onclick="evaluateWork()">生成评价建议</button><div id="evaluation" class="result" style="margin-top:14px" aria-live="polite"></div>
+      <div class="actions" style="margin-top:14px"><button class="btn primary" id="evaluateBtn" onclick="evaluateWork()">生成评价建议</button><button class="btn outline" onclick="exportEvaluation()">导出评价建议</button></div><div id="evaluation" class="result" style="margin-top:14px" aria-live="polite"></div>
     </div>
   </div>
   <div class="notice">AI评价仅提供形成性反馈建议，不能代替教师专业判断。不要提交学生姓名、联系方式、学校班级等可识别信息。</div>
@@ -331,18 +331,33 @@ async function ask(){
 $('question').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();ask()}});
 function clearChat(){history=[];$('chatlog').innerHTML='<div class="bubble bot">对话已清空。你有什么新的科学问题？</div>';$('question').value=''}
 let teacherToken=null;
+function teacherLogout(){teacherToken=null;$('teacherPanel').classList.add('hidden');$('teacherLogout').classList.add('hidden');$('adminPassword').value='';$('studentWork').value='';$('evaluation').textContent='';$('loginMsg').textContent='已安全退出教师工作台。'}
 async function teacherLogin(){
   $('loginMsg').textContent='正在验证身份…';
-  try{const r=await fetch('/api/teacher/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('adminPassword').value})});const d=await r.json();if(!r.ok)throw new Error(d.error||'登录失败');teacherToken=d.token;$('teacherPanel').classList.remove('hidden');$('loginMsg').textContent='✓ 登录成功。教师会话有效期为2小时。'}
-  catch(e){$('loginMsg').textContent=e.message}
+  try{
+    const r=await fetch('/api/teacher/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('adminPassword').value})});
+    const d=await r.json();if(!r.ok)throw new Error(d.error||'登录失败');
+    teacherToken=d.token;$('teacherPanel').classList.remove('hidden');$('teacherLogout').classList.remove('hidden');$('adminPassword').value='';$('loginMsg').textContent='✓ 登录成功。教师会话有效期为2小时；关闭页面或退出后需重新登录。'
+  }catch(e){$('loginMsg').textContent=e.message}
 }
 async function evaluateWork(){
   const work=$('studentWork').value.trim();if(!work){$('evaluation').textContent='请先填写已匿名化的学生作品。';return}
-  $('evaluation').textContent='正在生成评价建议…';
-  try{const r=await fetch('/api/teacher/evaluate',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+teacherToken},body:JSON.stringify({work,rubric:$('rubric').value})});const d=await r.json();if(!r.ok)throw new Error(d.error||'评价失败');$('evaluation').textContent=d.answer+(d.mode==='offline'?'\n\n（离线规则提示，非真实AI评价）':'')}
-  catch(e){$('evaluation').textContent='无法生成评价：'+e.message}
+  if(!teacherToken){$('evaluation').textContent='教师会话已失效，请重新登录。';return}
+  $('evaluateBtn').disabled=true;$('evaluateBtn').textContent='正在评价…';$('evaluation').textContent='正在依据所选维度生成形成性反馈，请稍候…';
+  try{
+    const r=await fetch('/api/teacher/evaluate',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+teacherToken},body:JSON.stringify({work,rubric:$('rubric').value})});
+    const d=await r.json();if(r.status===401){teacherLogout();throw new Error('教师登录已过期，请重新登录。')}
+    if(!r.ok)throw new Error(d.error||'评价失败');
+    $('evaluation').textContent=d.answer+(d.mode==='offline'?'\n\n（离线规则提示，非真实AI评价）':'\n\n（AI辅助建议，请教师结合教学目标独立判断）')
+  }catch(e){$('evaluation').textContent='无法生成评价：'+e.message}
+  finally{$('evaluateBtn').disabled=false;$('evaluateBtn').textContent='生成评价建议'}
 }
-renderSaved();updateProgress();
+function exportEvaluation(){
+  const text=$('evaluation').textContent.trim();if(!text){$('evaluation').textContent='请先生成评价建议，再导出。';return}
+  const blob=new Blob(['小小AI科学家｜教师形成性评价建议\n\n'+text+'\n\n说明：AI建议仅供教师参考，不代替教师专业判断。'],{type:'text/plain;charset=utf-8'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='教师评价建议.txt';a.click();URL.revokeObjectURL(url)
+}
+renderSaved();updateProgress();renderQuiz();
 </script>
 </body>
 </html>
