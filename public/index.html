@@ -1,65 +1,363 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="小小AI科学家：面向青少年的人工智能科普探究课程">
-<title>小小AI科学家 V4.0｜真实AI科学导师</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101a3a">
+<meta name="description" content="小小AI科学家：面向青少年的AI科学探究平台，让好奇心成为科学发现的起点。">
+<title>小小AI科学家 V5.0｜AI科学探究平台</title>
 <style>
-:root{--ink:#17324d;--blue:#2463eb;--bg:#f3f7fb;--muted:#60758a;--line:#dce6f0}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 system-ui,"Microsoft YaHei",sans-serif}
-header{background:linear-gradient(120deg,#153b70,#2879c7);color:white;padding:28px max(18px,calc((100% - 1100px)/2))}
-header h1{font-size:clamp(28px,4vw,42px);margin:10px 0 4px}header p{margin:4px 0;color:#e8f3ff}
-.tag,.pill{display:inline-block;border-radius:20px;padding:3px 11px;font-size:12px;background:#ffffff22;color:inherit;border:1px solid #ffffff55}
-nav{position:sticky;top:0;z-index:5;display:flex;gap:7px;overflow:auto;padding:10px max(12px,calc((100% - 1100px)/2));background:white;border-bottom:1px solid var(--line)}
-button{border:0;border-radius:10px;padding:10px 14px;background:#edf3fa;color:#244766;font-weight:650;cursor:pointer;white-space:nowrap}
-button.active,button.primary{background:var(--blue);color:white}main{max-width:1100px;margin:22px auto;padding:0 16px}.panel{display:none}.panel.active{display:block}
-.card,.hero{background:white;border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:15px;box-shadow:0 5px 18px #17324d0a}
-.hero{display:grid;grid-template-columns:1.5fr 1fr;gap:18px;align-items:center;background:linear-gradient(120deg,#eaf5ff,#fff)}
-.art{background:linear-gradient(135deg,#b9e2ff,#e7f4ff);border-radius:14px;padding:25px;text-align:center;font-size:58px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
-.unit{background:#fff;border:1px solid var(--line);border-radius:13px;padding:15px}
-label{display:block;margin:9px 0 4px;font-weight:600}input,textarea,select{font:inherit;padding:10px;border:1px solid #cbd8e5;border-radius:9px;max-width:100%;width:100%;background:white;color:var(--ink)}textarea{min-height:100px;resize:vertical}
-.chatlog{height:300px;overflow:auto;background:#f5f8fc;border-radius:12px;padding:12px;margin:12px 0}.bubble{padding:10px 13px;border-radius:12px;margin:8px 0;max-width:92%;white-space:pre-wrap;overflow-wrap:anywhere}.bot{background:#e4f1ff}.user{background:#dff5e9;margin-left:auto}
-.notice{padding:11px 13px;border-radius:10px;background:#fff7df;border:1px solid #f1dda1;color:#775313;font-size:13px}.ok{background:#eaf7ef;color:#17623f}.muted,small{color:var(--muted)}footer{text-align:center;color:var(--muted);padding:24px;font-size:13px}
-@media(max-width:700px){.hero{grid-template-columns:1fr}.art{font-size:44px}}
-</style></head>
+:root{--navy:#101a3a;--navy2:#172653;--blue:#3978f6;--cyan:#65d5ff;--violet:#8665f6;--ink:#17233d;--muted:#71809a;--bg:#f5f7fc;--line:#e4e9f3;--surface:#fff;--green:#14845d;--shadow:0 18px 48px rgba(27,43,84,.09);--radius:22px}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #8cb7ff;outline-offset:3px}
+a{color:inherit;text-decoration:none}
+.topline{height:4px;background:linear-gradient(90deg,#3978f6,#65d5ff,#8665f6)}
+.sitehead{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.88);backdrop-filter:blur(18px);border-bottom:1px solid rgba(224,231,243,.9)}
+.headinner{max-width:1180px;margin:auto;padding:0 24px;min-height:76px;display:flex;align-items:center;gap:28px}
+.brand{display:flex;align-items:center;gap:11px;min-width:max-content}
+.brandmark{width:42px;height:42px;border-radius:14px;background:linear-gradient(145deg,#3978f6,#8665f6);display:grid;place-items:center;color:white;font-size:22px;box-shadow:0 8px 20px #5879e944}
+.brandname{font-weight:850;letter-spacing:.2px;font-size:17px;line-height:1.25}.brandname small{display:block;font-size:10px;letter-spacing:1.5px;color:#8290aa;font-weight:750;margin-top:3px}
+.nav{display:flex;align-items:center;gap:5px;flex:1;overflow:auto;scrollbar-width:none}.nav::-webkit-scrollbar{display:none}
+.nav button{border:0;background:transparent;color:#687792;padding:10px 13px;border-radius:11px;font-size:13px;font-weight:700;white-space:nowrap;transition:.2s}
+.nav button:hover{background:#f0f4ff;color:#315fc5}.nav button.active{background:#edf2ff;color:#315fc5}
+.headright{display:flex;align-items:center;gap:10px}
+.status{display:flex;align-items:center;gap:7px;font-size:11px;color:#71809a;white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%;background:#aab4c5}.dot.live{background:#19b77a;box-shadow:0 0 0 4px #19b77a1b}
+main{max-width:1180px;margin:0 auto;padding:34px 24px 72px}
+.panel{display:none;animation:rise .32s ease}.panel.active{display:block}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.hero{position:relative;overflow:hidden;isolation:isolate;border-radius:30px;padding:clamp(32px,6vw,70px);background:radial-gradient(circle at 78% 22%,#5365d8 0,transparent 28%),radial-gradient(circle at 100% 100%,#6c4fce 0,transparent 34%),linear-gradient(120deg,#101a3a 0%,#1b3267 58%,#263d82 100%);color:white;box-shadow:0 28px 70px #1726532b}
+.hero:before{content:"";position:absolute;z-index:-1;width:480px;height:480px;border:1px solid #ffffff18;border-radius:50%;right:-100px;top:-220px;box-shadow:0 0 0 45px #ffffff08,0 0 0 90px #ffffff05}
+.hero:after{content:"";position:absolute;z-index:-1;width:360px;height:360px;border-radius:50%;right:12%;bottom:-280px;background:#58baff24;filter:blur(5px)}
+.hero-grid{display:grid;grid-template-columns:1.12fr .88fr;align-items:center;gap:30px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;border:1px solid #ffffff35;background:#ffffff12;border-radius:99px;padding:7px 12px;color:#d8e8ff;font-size:11px;font-weight:750;letter-spacing:1.2px}
+.eyebrow i{width:7px;height:7px;background:#69e0bd;border-radius:50%;box-shadow:0 0 12px #69e0bd}
+.hero h1{font-size:clamp(36px,5.5vw,64px);line-height:1.12;letter-spacing:-1.8px;margin:23px 0 16px;font-weight:900}
+.hero h1 em{font-style:normal;background:linear-gradient(90deg,#8ddcff,#b4a4ff);background-clip:text;-webkit-background-clip:text;color:transparent}
+.hero-copy{max-width:580px;color:#d2def6;font-size:16px;line-height:1.9;margin:0 0 26px}
+.actions{display:flex;flex-wrap:wrap;gap:11px}
+.btn{border:1px solid transparent;border-radius:13px;padding:12px 18px;font-size:13px;font-weight:800;transition:transform .18s,box-shadow .18s,background .18s;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn:hover{transform:translateY(-2px)}
+.btn.primary{background:linear-gradient(110deg,#4388ff,#7968f6);color:#fff;box-shadow:0 10px 24px #4779f655}
+.btn.primary:hover{box-shadow:0 14px 30px #4779f677}
+.btn.ghost{background:#ffffff12;color:#fff;border-color:#ffffff3a}
+.btn.soft{background:#eef3ff;color:#315fc5}.btn.outline{background:#fff;border-color:var(--line);color:#455571}.btn.danger{background:#fff0f0;color:#b13d4b}.btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.hero-art{min-height:300px;position:relative;display:grid;place-items:center}
+.orbit{width:min(100%,330px);aspect-ratio:1;border:1px solid #ffffff2b;border-radius:50%;display:grid;place-items:center;position:relative;background:radial-gradient(circle,#8a9fff21,transparent 62%)}
+.orbit:before,.orbit:after{content:"";position:absolute;inset:12%;border:1px solid #ffffff26;border-radius:50%;transform:rotate(35deg) scaleX(1.35)}
+.orbit:after{transform:rotate(-42deg) scaleX(1.35)}
+.core{width:142px;height:142px;border-radius:40px;display:grid;place-items:center;font-size:67px;background:linear-gradient(145deg,#ffffff2d,#ffffff0c);border:1px solid #ffffff48;box-shadow:0 18px 70px #050c2866,inset 0 1px #ffffff4c;backdrop-filter:blur(12px)}
+.float{position:absolute;padding:10px 13px;border:1px solid #ffffff3a;background:#ffffff16;backdrop-filter:blur(12px);border-radius:13px;color:#e6edff;font-size:11px;font-weight:750;box-shadow:0 10px 30px #050c2833}
+.f1{top:12%;left:0}.f2{right:-2%;top:27%}.f3{bottom:13%;left:4%}
+.hero-foot{display:flex;gap:28px;flex-wrap:wrap;margin-top:38px;padding-top:22px;border-top:1px solid #ffffff26;color:#c6d5f2;font-size:12px}
+.hero-foot b{color:white;font-size:15px;margin-right:5px}
+.sectionhead{display:flex;align-items:end;justify-content:space-between;gap:18px;margin:42px 0 17px}
+.kicker{font-size:10px;letter-spacing:1.8px;color:#6485d8;font-weight:900;text-transform:uppercase}
+.sectionhead h2{font-size:25px;letter-spacing:-.5px;margin:5px 0 0}.sectionhead p{margin:0;color:var(--muted);font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}
+.feature,.card,.unit{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 6px 22px #1b2c5008}
+.feature{padding:22px;transition:.22s}.feature:hover,.unit:hover{transform:translateY(-3px);box-shadow:var(--shadow);border-color:#cbd8f5}
+.feature-icon{width:46px;height:46px;display:grid;place-items:center;border-radius:15px;background:linear-gradient(145deg,#edf4ff,#f0edff);font-size:22px;margin-bottom:16px}
+.feature h3{margin:0 0 7px;font-size:16px}.feature p{margin:0;color:var(--muted);font-size:12px;line-height:1.8}
+.card{padding:24px;margin-bottom:16px}.card h2,.card h3{margin-top:0}.card h2{font-size:24px;letter-spacing:-.4px}.card h3{font-size:17px}
+.muted,small{color:var(--muted)}.muted{font-size:13px}
+.pill{display:inline-flex;align-items:center;padding:5px 10px;border-radius:99px;background:#edf3ff;color:#4266b6;font-size:11px;font-weight:750;margin:2px}
+.course{padding:0;overflow:hidden;transition:.2s}.course:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+.course-top{padding:22px;background:linear-gradient(135deg,#eaf3ff,#f1edff);font-size:38px}.course-body{padding:18px}.course-body h3{margin:0 0 7px}.course-body p{font-size:12px;color:var(--muted);min-height:42px}.course-meta{display:flex;justify-content:space-between;color:#8490a7;font-size:11px;margin:13px 0}
+.steps{display:grid;grid-template-columns:repeat(6,1fr);gap:9px}.step{padding:15px 11px;border:1px solid var(--line);border-radius:15px;background:#fff}.step b{display:block;color:#6685d4;font-size:11px}.step strong{display:block;font-size:12px;margin:7px 0 3px}.step span{display:block;color:var(--muted);font-size:10px}
+.progressbox{display:flex;align-items:center;gap:16px;padding:18px 20px;background:#fff;border:1px solid var(--line);border-radius:18px}.progress-icon{width:42px;height:42px;border-radius:13px;background:#edf3ff;display:grid;place-items:center;font-size:20px}.progress-info{flex:1}.progress-info b{font-size:13px}.progress-track{height:7px;background:#edf0f6;border-radius:99px;overflow:hidden;margin-top:7px}.progress-fill{height:100%;width:0;background:linear-gradient(90deg,#3978f6,#8665f6);border-radius:99px;transition:width .3s}
+.pageintro{padding:28px 30px;border-radius:23px;background:linear-gradient(120deg,#eaf2ff,#f3efff);border:1px solid #e2e8fa;margin-bottom:18px}.pageintro h1{margin:5px 0 8px;font-size:30px}.pageintro p{margin:0;color:#667590;font-size:13px}
+.unit{padding:19px;transition:.2s}.unit h3{margin:0 0 8px}.unit p{color:var(--muted);font-size:12px}.unit button{margin-top:6px}
+label{display:block;margin:13px 0 6px;font-size:12px;font-weight:800;color:#43516d}
+input,textarea,select{display:block;width:100%;padding:12px 13px;border:1px solid #dce3ef;border-radius:12px;background:#fff;color:var(--ink);transition:border .2s,box-shadow .2s}
+input:focus,textarea:focus,select:focus{outline:none;border-color:#82a4f7;box-shadow:0 0 0 4px #6c91f51a}
+textarea{min-height:105px;resize:vertical}
+.chatlog{height:360px;overflow:auto;background:linear-gradient(180deg,#f6f8fd,#f0f4fb);border:1px solid #e6ebf4;border-radius:16px;padding:16px;margin:16px 0;scroll-behavior:smooth}
+.bubble{padding:12px 15px;border-radius:15px;margin:9px 0;max-width:88%;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.8}
+.bubble.bot{background:#fff;border:1px solid #e6ebf4;color:#394966;border-top-left-radius:5px}
+.bubble.user{background:linear-gradient(110deg,#3978f6,#7667ec);color:#fff;margin-left:auto;border-top-right-radius:5px}
+.chattools{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.quick{border:1px solid #dfe6f3;background:#fff;border-radius:99px;padding:7px 11px;color:#526482;font-size:11px}
+.quick:hover{border-color:#91aaf0;color:#365fc3}
+.notice{padding:12px 14px;border-radius:12px;background:#fff8e8;border:1px solid #f1e1b6;color:#80601c;font-size:12px}
+.notice.ok{background:#ebf8f1;border-color:#d1eddd;color:#216c4b}
+.notice.bad{background:#fff0f0;border-color:#f3d6d6;color:#a33d49}
+.result{white-space:pre-wrap;overflow-wrap:anywhere;padding:14px;background:#f7f9fd;border-radius:12px;font-size:13px}
+.footer{border-top:1px solid var(--line);padding:25px 12px;text-align:center;color:#8b96aa;font-size:11px}
+.hidden{display:none!important}
+@media(max-width:900px){.headinner{gap:12px;padding:0 16px}.nav button{padding:9px}.status{display:none}.hero-grid{grid-template-columns:1fr .7fr}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.steps{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:650px){.headinner{min-height:66px;flex-wrap:wrap;gap:7px;padding:9px 14px}.brandmark{width:37px;height:37px}.brandname{font-size:15px}.nav{order:3;flex-basis:100%;margin:0 -4px 2px}.headright{margin-left:auto}.nav button{font-size:11px;padding:8px 10px}.headinner{min-height:auto}main{padding:20px 14px 50px}.hero{padding:27px 22px;border-radius:23px}.hero-grid{grid-template-columns:1fr}.hero-art{min-height:215px}.orbit{width:210px}.core{width:100px;height:100px;font-size:48px;border-radius:30px}.f1{left:4%}.f2{right:0}.f3{bottom:4%}.hero h1{font-size:39px}.hero-copy{font-size:14px}.hero-foot{gap:13px;margin-top:25px}.grid{grid-template-columns:1fr}.sectionhead{margin-top:30px}.sectionhead h2{font-size:21px}.steps{grid-template-columns:repeat(2,1fr)}.pageintro{padding:22px}.pageintro h1{font-size:25px}.card{padding:18px}.progressbox{align-items:flex-start}.progressbox .muted{font-size:11px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+</style>
+</head>
 <body>
-<header><span class="tag">面向青少年 · STEM科学探究 · V4.0</span><h1>🔬 小小AI科学家</h1><p>提出问题、动手探究、记录证据，让好奇心成为科学发现的起点。</p><p>真实AI科学导师 · 学生学习空间 · 教师评价工具</p></header>
-<nav id="nav">
-<button class="active" data-tab="home">课程首页</button><button data-tab="learn">探究课程</button><button data-tab="lab">科学实验室</button><button data-tab="assistant">AI科学导师</button><button data-tab="quiz">知识挑战</button><button data-tab="teacher">教师工作台</button>
-</nav>
+<div class="topline"></div>
+<header class="sitehead">
+  <div class="headinner">
+    <a class="brand" href="#" onclick="tab('home');return false" aria-label="小小AI科学家首页">
+      <span class="brandmark">⚛</span><span class="brandname">小小AI科学家<small>AI SCIENCE EXPLORER</small></span>
+    </a>
+    <nav class="nav" id="nav" aria-label="主导航">
+      <button class="active" data-tab="home" aria-current="page">首页</button>
+      <button data-tab="learn">探索课程</button>
+      <button data-tab="assistant">AI科学导师</button>
+      <button data-tab="lab">科学实验室</button>
+      <button data-tab="quiz">知识挑战</button>
+      <button data-tab="teacher">教师工作台</button>
+    </nav>
+    <div class="headright"><span class="status"><i class="dot" id="healthDot"></i><span id="healthShort">正在连接</span></span></div>
+  </div>
+</header>
 <main>
 <section id="home" class="panel active">
-<div class="hero"><div><span class="pill">好奇心驱动学习</span><span class="pill">AI辅助探究</span><h2>像科学家一样思考！</h2><p>从生活中的小问题出发，学习观察、提出假设、设计实验、收集证据并解释结果。AI导师会启发思考，而不是替你完成探索。</p><button class="primary" onclick="tab('learn')">开始探究课程 →</button></div><div class="art">🧪 🔭 🤖</div></div>
-<div class="card"><h3>学习进度</h3><div id="progressText" class="muted">完成任意一个探究任务，记录你的科学发现。</div></div>
-<div class="grid"><div class="unit"><h3>🔍 观察与提问</h3><p>发现现象，提出值得研究的问题。</p></div><div class="unit"><h3>🧠 假设与推理</h3><p>用已有知识解释，并提出可检验的猜想。</p></div><div class="unit"><h3>🧫 实验与证据</h3><p>公平地开展实验，记录数据与现象。</p></div></div>
+  <div class="hero">
+    <div class="hero-grid">
+      <div>
+        <span class="eyebrow"><i></i> AI · STEM · SCIENCE EXPLORATION</span>
+        <h1>让好奇心，<br><em>探索无限可能。</em></h1>
+        <p class="hero-copy">一个面向青少年的 AI 科学探究平台。像真正的科学家一样观察世界、提出问题、设计实验、分析证据，让每一次好奇都成为发现的起点。</p>
+        <div class="actions">
+          <button class="btn primary" onclick="tab('learn')">开启科学探索 <span aria-hidden="true">→</span></button>
+          <button class="btn ghost" onclick="tab('assistant')">认识 AI 科学导师</button>
+        </div>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <div class="orbit"><div class="core">🔬</div><span class="float f1">✦ 科学思维</span><span class="float f2">AI 智能启发</span><span class="float f3">探索 · 发现 · 创造</span></div>
+      </div>
+    </div>
+    <div class="hero-foot"><span><b>01</b> 发现问题</span><span><b>02</b> 科学探究</span><span><b>03</b> 创造发现</span><span><b>04</b> 分享成果</span></div>
+  </div>
+
+  <div class="sectionhead"><div><div class="kicker">YOUR SCIENCE JOURNEY</div><h2>每一步探索，都值得记录</h2></div><p>从一个问题，走向一个发现</p></div>
+  <div class="progressbox"><div class="progress-icon">🌱</div><div class="progress-info"><b>我的探索进度</b><div class="muted" id="progressText">完成一次探究，记录你的第一个科学发现。</div><div class="progress-track"><div class="progress-fill" id="progressFill"></div></div></div><button class="btn soft" onclick="tab('lab')">继续探索 →</button></div>
+
+  <div class="sectionhead"><div><div class="kicker">EXPLORE THE PLATFORM</div><h2>六大科学学习空间</h2></div></div>
+  <div class="grid">
+    <article class="feature"><div class="feature-icon">🧭</div><h3>探索课程</h3><p>从生活现象出发，在有趣的主题任务中建立科学知识与探究方法。</p></article>
+    <article class="feature"><div class="feature-icon">🤖</div><h3>AI科学导师</h3><p>通过追问、提示与解释，帮助你形成自己的想法，而不是替你思考。</p></article>
+    <article class="feature"><div class="feature-icon">🧪</div><h3>科学实验室</h3><p>记录研究问题、假设、实验过程和观察证据，整理自己的科学笔记。</p></article>
+    <article class="feature"><div class="feature-icon">🧠</div><h3>知识挑战</h3><p>在情境题与即时反馈中检验理解，发现值得继续学习的知识点。</p></article>
+    <article class="feature"><div class="feature-icon">🏅</div><h3>成长记录</h3><p>查看本设备保存的探究记录，回顾问题、证据与自己的新发现。</p></article>
+    <article class="feature"><div class="feature-icon">📊</div><h3>教师工作台</h3><p>为教师提供作品评价辅助，帮助形成具体、可执行的学习反馈。</p></article>
+  </div>
+
+  <div class="sectionhead"><div><div class="kicker">SCIENTIFIC METHOD</div><h2>像科学家一样思考</h2></div><p>六步探究，形成完整学习闭环</p></div>
+  <div class="steps">
+    <div class="step"><b>STEP 01</b><strong>观察现象</strong><span>留意身边的变化</span></div>
+    <div class="step"><b>STEP 02</b><strong>提出问题</strong><span>找到想研究的事</span></div>
+    <div class="step"><b>STEP 03</b><strong>形成假设</strong><span>说出你的猜想</span></div>
+    <div class="step"><b>STEP 04</b><strong>设计实验</strong><span>想办法验证猜想</span></div>
+    <div class="step"><b>STEP 05</b><strong>收集证据</strong><span>认真观察与记录</span></div>
+    <div class="step"><b>STEP 06</b><strong>解释发现</strong><span>依据证据作结论</span></div>
+  </div>
 </section>
-<section id="learn" class="panel"><div class="card"><h2>探究课程</h2><p class="muted">选择一个主题，按科学探究步骤完成学习。</p><div class="grid">
-<div class="unit"><h3>🌱 植物怎样喝水？</h3><p>观察植物吸水现象，了解茎的运输作用。</p><button onclick="selectTopic('植物怎样吸收和运输水分？')">开始学习</button></div>
-<div class="unit"><h3>🌈 彩虹如何形成？</h3><p>探索光的折射、反射与色散。</p><button onclick="selectTopic('彩虹是怎样形成的？')">开始学习</button></div>
-<div class="unit"><h3>🧲 磁铁的秘密</h3><p>比较不同材料与磁铁的相互作用。</p><button onclick="selectTopic('哪些材料会被磁铁吸引？')">开始学习</button></div>
-</div></div><div class="card"><h3>科学探究六步骤</h3><ol><li>观察现象</li><li>提出问题</li><li>形成假设</li><li>设计公平实验</li><li>记录数据与证据</li><li>解释结果并反思</li></ol></div></section>
-<section id="lab" class="panel"><div class="card"><h2>科学实验室 · 我的探究记录</h2><label>实验主题</label><input id="topic" placeholder="例如：不同颜色的纸吸热一样快吗？"><label>我的假设</label><textarea id="hypothesis" placeholder="我认为……因为……"></textarea><label>实验步骤与观察记录</label><textarea id="observations" placeholder="我准备……我观察到……"></textarea><label>结论与新问题</label><textarea id="conclusion" placeholder="证据说明……我还想知道……"></textarea><button class="primary" onclick="saveLab()">保存本次记录</button><span id="saved" class="muted"></span></div></section>
-<section id="assistant" class="panel"><div class="card"><h2>🤖 真实AI科学导师</h2><p class="muted">向AI提出科学问题。导师会用启发式问题帮助你思考。</p><div id="mode" class="notice">正在检查AI服务状态……</div><div id="chatlog" class="chatlog"><div class="bubble bot">你好，小小科学家！你最近观察到了什么有趣的现象？我们一起用科学方法寻找答案吧！</div></div><label>你的问题</label><textarea id="question" maxlength="1200" placeholder="例如：为什么有些物体会浮在水面上？"></textarea><button class="primary" id="sendBtn" onclick="ask()">发送问题</button><button onclick="clearChat()">清空对话</button></div></section>
-<section id="quiz" class="panel"><div class="card"><h2>知识挑战</h2><p>做完题目后点击提交，检验你的科学思维。</p><div id="questions"></div><button class="primary" onclick="grade()">提交答案</button><h3 id="score"></h3></div></section>
-<section id="teacher" class="panel"><div class="card"><h2>教师工作台</h2><p class="muted">教师可使用管理员密码登录并提交学生探究作品，获取AI辅助评价。</p><label>管理员密码</label><input id="adminPassword" type="password" placeholder="输入部署时设置的 ADMIN_PASSWORD"><button class="primary" onclick="teacherLogin()">教师登录</button><div id="teacherPanel" hidden><label>学生探究作品</label><textarea id="studentWork" placeholder="粘贴学生的探究记录……"></textarea><label>评价维度</label><select id="rubric"><option>科学问题、假设、实验设计、证据与表达</option><option>科学思维与探究过程</option><option>课程目标达成情况</option></select><button class="primary" onclick="evaluateWork()">生成评价建议</button><pre id="evaluation" style="white-space:pre-wrap"></pre></div><p id="loginMsg" class="muted"></p></div></section>
-</main><footer>小小AI科学家 V4.0 · AI用于启发和辅助学习，实验请在教师或家长指导下安全开展。</footer>
+
+<section id="learn" class="panel">
+  <div class="pageintro"><div class="kicker">LEARNING PATH</div><h1>探索课程</h1><p>选择一个你感兴趣的科学主题，开始一段有问题、有实验、有证据的探索。</p></div>
+  <div class="grid">
+    <article class="unit course"><div class="course-top">🌱</div><div class="course-body"><span class="pill">生命科学</span><h3>植物怎样喝水？</h3><p>观察植物吸水现象，探索水分在植物体内的运输方式。</p><div class="course-meta"><span>入门 · 约30分钟</span><span>观察与实验</span></div><button class="btn soft" onclick="selectTopic('植物怎样吸收和运输水分？')">开始学习 →</button></div></article>
+    <article class="unit course"><div class="course-top">🌈</div><div class="course-body"><span class="pill">物理科学</span><h3>彩虹如何形成？</h3><p>探索光的折射、反射与色散，发现白光里的色彩秘密。</p><div class="course-meta"><span>入门 · 约30分钟</span><span>光学探究</span></div><button class="btn soft" onclick="selectTopic('彩虹是怎样形成的？')">开始学习 →</button></div></article>
+    <article class="unit course"><div class="course-top">🧲</div><div class="course-body"><span class="pill">物理科学</span><h3>磁铁的秘密</h3><p>比较不同材料与磁铁的相互作用，寻找磁性规律。</p><div class="course-meta"><span>入门 · 约25分钟</span><span>比较实验</span></div><button class="btn soft" onclick="selectTopic('哪些材料会被磁铁吸引？')">开始学习 →</button></div></article>
+  </div>
+  <div class="card" style="margin-top:17px"><h3>课程学习方法</h3><p class="muted">先独立思考，再向 AI 导师寻求线索；用实验和可靠证据检验想法。课程建议时长为学习规划参考，实际时间以探究过程为准。</p><ol><li>观察现象，写下你注意到的细节。</li><li>提出一个清楚、可以研究的问题。</li><li>形成假设，说明你这样猜想的理由。</li><li>设计公平、安全的实验。</li><li>如实记录数据和观察结果。</li><li>依据证据解释结果，并提出新问题。</li></ol></div>
+</section>
+
+<section id="lab" class="panel">
+  <div class="pageintro"><div class="kicker">MY SCIENCE NOTEBOOK</div><h1>科学实验室</h1><p>把你的猜想、过程与证据留下来。好的科学发现，从认真记录开始。</p></div>
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><h2>我的探究记录</h2><span class="pill">本设备保存</span></div>
+    <label for="topic">01 · 实验主题</label><input id="topic" maxlength="160" placeholder="例如：不同颜色的纸吸热一样快吗？">
+    <label for="hypothesis">02 · 我的假设</label><textarea id="hypothesis" maxlength="3000" placeholder="我认为……因为……"></textarea>
+    <label for="observations">03 · 实验步骤与观察记录</label><textarea id="observations" maxlength="5000" placeholder="我准备……我观察到……请记录真实过程和数据。"></textarea>
+    <label for="conclusion">04 · 结论与新问题</label><textarea id="conclusion" maxlength="3000" placeholder="证据说明……我还想知道……"></textarea>
+    <div class="actions" style="margin-top:16px"><button class="btn primary" onclick="saveLab()">保存探究记录</button><button class="btn outline" onclick="exportLab()">导出实验报告</button><button class="btn outline" onclick="resetLab()">新建记录</button></div>
+    <p id="saved" class="muted" role="status" aria-live="polite"></p>
+  </div>
+  <div class="card"><h3>最近保存的记录</h3><div id="savedList" class="muted">还没有保存记录。完成上方内容后，记录会显示在这里。</div></div>
+  <div class="notice">隐私提示：目前实验记录保存在当前浏览器设备，不会自动同步到教师端或云端。请勿填写姓名、电话、住址等个人信息。实验请在教师或家长指导下安全开展。</div>
+</section>
+
+<section id="assistant" class="panel">
+  <div class="pageintro"><div class="kicker">YOUR AI SCIENCE MENTOR</div><h1>AI科学导师</h1><p>不是替你给出答案，而是陪你提出好问题、设计好实验、读懂证据，逐步形成自己的科学解释。</p></div>
+  <div class="grid" style="margin-bottom:16px">
+    <article class="feature"><div class="feature-icon">🔎</div><h3>问题探索</h3><p>把模糊的好奇心变成清楚、可研究的问题。</p></article>
+    <article class="feature"><div class="feature-icon">🧪</div><h3>实验设计</h3><p>识别变量，考虑公平性与安全性，规划可执行步骤。</p></article>
+    <article class="feature"><div class="feature-icon">📈</div><h3>证据推理</h3><p>区分观察与猜想，用记录支持结论并认识局限。</p></article>
+  </div>
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2>🤖 和科学导师对话</h2><span class="pill">DeepSeek 服务</span></div>
+    <p class="muted">先选择你希望导师怎样帮助你。每次回答都会尽量提供思考线索和一个可以继续探索的问题。</p>
+    <div id="mode" class="notice" role="status" aria-live="polite">正在检查AI服务状态……</div>
+    <label for="mentorMode">选择探究方式</label>
+    <select id="mentorMode" onchange="setMentorMode()">
+      <option value="curiosity">🔎 好奇心探索｜帮我把问题问清楚</option>
+      <option value="experiment">🧪 实验设计｜帮我规划公平、安全的实验</option>
+      <option value="concept">💡 概念理解｜用生活例子解释科学知识</option>
+      <option value="evidence">📈 证据分析｜帮我分析观察和数据</option>
+      <option value="create">🚀 创意设计｜把科学知识用于解决问题</option>
+    </select>
+    <div id="mentorHint" class="notice" style="margin-top:10px">导师提示：先描述你观察到的现象，再把问题缩小到可以研究的范围。</div>
+    <div class="chattools" aria-label="快捷问题">
+      <button class="quick" onclick="quickAsk('为什么天空是蓝色的？')">为什么天空是蓝色的？</button>
+      <button class="quick" onclick="quickAsk('怎样设计一个公平的植物生长实验？')">设计植物实验</button>
+      <button class="quick" onclick="quickAsk('磁铁为什么能吸引一些物体？')">磁铁的秘密</button>
+      <button class="quick" onclick="quickAsk('我测量了三次水温，怎样分析这些数据？')">分析实验数据</button>
+    </div>
+    <div id="chatlog" class="chatlog" aria-live="polite"><div class="bubble bot">你好，小小科学家！🔬 你最近观察到了什么有趣的现象？选择一种探究方式，我们从你的问题开始。</div></div>
+    <label for="question">你的科学问题</label><textarea id="question" maxlength="1200" placeholder="例如：我发现……我想知道……（最多1200字，Ctrl / ⌘ + Enter 发送）"></textarea>
+    <div class="actions"><button class="btn primary" id="sendBtn" onclick="ask()">发送问题 <span aria-hidden="true">→</span></button><button class="btn outline" onclick="clearChat()">重新开始</button><button class="btn outline" onclick="useLabContext()">引用我的实验记录</button></div>
+    <p class="muted">请不要输入姓名、学校、住址、电话、账号或其他个人信息。AI可能出错，重要结论请与老师、教材或可靠资料核对。</p>
+    <div id="mentorPrivacy" class="notice">隐私保护：发送前会由服务器检查可能的个人身份信息。请仍然主动避免填写任何可识别个人的信息。</div>
+  </div>
+</section>
+
+<section id="quiz" class="panel">
+  <div class="pageintro"><div class="kicker">SCIENCE CHALLENGE</div><h1>知识挑战</h1><p>用三个小问题检验科学探究思维。提交后查看即时反馈与解析。</p></div>
+  <div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2>本轮科学挑战</h2><span class="pill">每轮随机抽取4题</span></div><div id="questions"></div><div class="actions"><button class="btn primary" onclick="grade()">提交答案并查看解析</button><button id="retryQuiz" class="btn outline hidden" onclick="retryQuiz()">再挑战一轮</button></div><h3 id="score" role="status" aria-live="polite"></h3><p id="quizHistory" class="muted">挑战记录保存在当前浏览器设备。</p></div>
+</section>
+
+<section id="teacher" class="panel">
+  <div class="pageintro"><div class="kicker">TEACHER WORKSPACE</div><h1>教师工作台</h1><p>教师可登录并提交已匿名化的学生探究作品，获取AI辅助评价建议。</p></div>
+  <div class="card">
+    <h2>教师身份验证</h2><label for="adminPassword">管理员密码</label><input id="adminPassword" type="password" autocomplete="current-password" placeholder="输入部署时设置的教师专用密码">
+    <div class="actions" style="margin-top:13px"><button class="btn primary" onclick="teacherLogin()">安全登录</button><button id="teacherLogout" class="btn outline hidden" onclick="teacherLogout()">退出教师工作台</button></div><p id="loginMsg" class="muted" role="status" aria-live="polite"></p>
+    <div id="teacherPanel" class="hidden">
+      <hr style="border:0;border-top:1px solid var(--line);margin:22px 0">
+      <h3>学生探究作品评价</h3><label for="studentWork">学生作品（请先去除个人身份信息）</label><textarea id="studentWork" maxlength="6000" placeholder="粘贴匿名化的学生探究记录……"></textarea>
+      <label for="rubric">评价维度</label><select id="rubric"><option>科学问题、假设、实验设计、证据与表达</option><option>科学思维与探究过程</option><option>课程目标达成情况</option></select>
+      <div class="actions" style="margin-top:14px"><button class="btn primary" id="evaluateBtn" onclick="evaluateWork()">生成评价建议</button><button class="btn outline" onclick="exportEvaluation()">导出评价建议</button></div><div id="evaluation" class="result" style="margin-top:14px" aria-live="polite"></div>
+    </div>
+  </div>
+  <div class="notice">AI评价仅提供形成性反馈建议，不能代替教师专业判断。不要提交学生姓名、联系方式、学校班级等可识别信息。</div>
+</section>
+</main>
+<footer class="footer">小小AI科学家 V5.0 · 让好奇心成为科学发现的起点<br>AI用于启发和辅助学习，重要信息请核查，实验请在成人指导下安全开展。</footer>
+
 <script>
 const $=id=>document.getElementById(id);
-function tab(id){document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));window.scrollTo({top:0,behavior:'smooth'})}
-document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
+function tab(id){
+  document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id===id));
+  document.querySelectorAll('#nav button').forEach(x=>{const active=x.dataset.tab===id;x.classList.toggle('active',active);if(active)x.setAttribute('aria-current','page');else x.removeAttribute('aria-current')});
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+document.querySelectorAll('#nav button').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
 function selectTopic(t){$('topic').value=t;tab('lab')}
-function saveLab(){const data={topic:$('topic').value,hypothesis:$('hypothesis').value,observations:$('observations').value,conclusion:$('conclusion').value,savedAt:new Date().toISOString()};if(!data.topic||!data.hypothesis){alert('请至少填写实验主题和假设。');return}localStorage.setItem('scienceLab',JSON.stringify(data));$('saved').textContent=' 已保存在本设备中。';$('progressText').textContent='已完成一份探究记录：'+data.topic}
-const questions=[['科学实验中，为什么通常一次只改变一个条件？',['为了让实验更公平，判断变量的影响','为了让实验更快结束','为了减少观察次数'],0,'控制其他条件，才能判断改变的因素是否造成结果差异。'],['下面哪一项属于实验证据？',['我觉得应该是这样','测量三次并记录每次水温','朋友说他见过'],1,'可观察、可测量并如实记录的数据属于证据。'],['如果结果不支持原来的假设，应该怎么办？',['修改或重新检验假设','删掉不符合预期的数据','宣布实验失败'],0,'科学探究需要尊重证据，依据结果修正解释。']];
-$('questions').innerHTML=questions.map((q,i)=>'<div class="unit"><b>'+ (i+1)+'. '+q[0]+'</b>'+q[1].map((a,j)=>'<label><input style="width:auto" type="radio" name="q'+i+'" value="'+j+'"> '+a+'</label>').join('')+'<p class="muted" id="ex'+i+'"></p></div>').join('');
-function grade(){let n=0;questions.forEach((q,i)=>{const v=document.querySelector('input[name=q'+i+']:checked');if(v&&+v.value===q[2])n++;$('ex'+i).textContent='解析：'+q[3]});$('score').textContent='你的得分：'+n+'/'+questions.length+'。继续保持探索精神！'}
+function getLabRecords(){try{const v=JSON.parse(localStorage.getItem('scienceLabs')||'[]');return Array.isArray(v)?v:[]}catch(e){return []}}
+function saveLab(){
+  const data={id:Date.now(),topic:$('topic').value.trim(),hypothesis:$('hypothesis').value.trim(),observations:$('observations').value.trim(),conclusion:$('conclusion').value.trim(),savedAt:new Date().toISOString()};
+  if(!data.topic||!data.hypothesis){$('saved').textContent='请至少填写实验主题和假设。';return}
+  try{const records=getLabRecords();records.unshift(data);localStorage.setItem('scienceLabs',JSON.stringify(records.slice(0,20)));$('saved').textContent='✓ 已保存在本设备浏览器中。';$('progressText').textContent='已保存探究记录：'+data.topic;renderSaved();updateProgress()}
+  catch(e){$('saved').textContent='保存失败：浏览器存储空间可能不足，请先导出已有记录。'}
+}
+function currentLab(){return {topic:$('topic').value.trim(),hypothesis:$('hypothesis').value.trim(),observations:$('observations').value.trim(),conclusion:$('conclusion').value.trim(),savedAt:new Date().toISOString()}}
+function exportLab(){
+  const d=currentLab();if(!d.topic){$('saved').textContent='请先填写实验主题。';return}
+  const txt='小小AI科学家｜科学探究报告\n\n实验主题：'+d.topic+'\n\n我的假设：\n'+d.hypothesis+'\n\n实验步骤与观察记录：\n'+d.observations+'\n\n结论与新问题：\n'+d.conclusion+'\n\n导出时间：'+new Date().toLocaleString();
+  const blob=new Blob([txt],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='科学探究报告.txt';a.click();URL.revokeObjectURL(url);$('saved').textContent='✓ 报告已导出。'
+}
+function resetLab(){['topic','hypothesis','observations','conclusion'].forEach(id=>$(id).value='');$('saved').textContent='已新建空白记录。'}
+function renderSaved(){
+  const records=getLabRecords();const el=$('savedList');if(!records.length){el.textContent='还没有保存记录。完成上方内容后，记录会显示在这里。';return}
+  el.innerHTML='';records.slice(0,8).forEach((r)=>{const row=document.createElement('div');row.className='unit';row.style.marginBottom='9px';const title=document.createElement('b');title.textContent=r.topic||'未命名探究';const date=document.createElement('p');date.textContent=new Date(r.savedAt).toLocaleString();const actions=document.createElement('div');actions.className='actions';const open=document.createElement('button');open.className='btn soft';open.textContent='载入并继续';open.onclick=()=>{ $('topic').value=r.topic||'';$('hypothesis').value=r.hypothesis||'';$('observations').value=r.observations||'';$('conclusion').value=r.conclusion||'';$('saved').textContent='已载入历史记录，可继续编辑并另存为新记录。';window.scrollTo({top:0,behavior:'smooth'});};const del=document.createElement('button');del.className='btn danger';del.textContent='删除记录';del.onclick=()=>{if(!confirm('确定删除这条本地探究记录吗？此操作无法撤销。'))return;localStorage.setItem('scienceLabs',JSON.stringify(getLabRecords().filter(x=>x.id!==r.id)));renderSaved();updateProgress();renderQuiz();$('saved').textContent='记录已从本设备浏览器删除。'};actions.append(open,del);row.append(title,date,actions);el.appendChild(row)});
+  const clear=document.createElement('button');clear.className='btn outline';clear.style.marginTop='10px';clear.textContent='清空全部本地记录';clear.onclick=()=>{if(!confirm('确定清空本设备保存的全部探究记录吗？建议先导出备份。'))return;localStorage.removeItem('scienceLabs');renderSaved();updateProgress();$('saved').textContent='本地记录已清空。'};el.appendChild(clear);
+}
+function updateProgress(){const n=getLabRecords().length;$('progressFill').style.width=(n?Math.min(100,n*20):0)+'%';if(n)$('progressText').textContent='已保存 '+n+' 份探究记录（仅保存在当前设备）。'}
+const questionBank=[
+['科学实验中，为什么通常一次只改变一个条件？',['为了让实验更公平，判断变量的影响','为了让实验更快结束','为了减少观察次数'],0,'控制其他条件，才能判断改变的因素是否造成结果差异。','实验设计'],
+['下面哪一项属于实验证据？',['我觉得应该是这样','测量三次并记录每次水温','朋友说他见过'],1,'可观察、可测量并如实记录的数据属于证据。','证据意识'],
+['如果结果不支持原来的假设，应该怎么办？',['修改或重新检验假设','删掉不符合预期的数据','宣布实验失败'],0,'科学探究需要尊重证据，依据结果修正解释。','科学态度'],
+['为了比较阳光对植物生长的影响，哪种做法更合理？',['一盆多浇水、一盆少浇水且放在不同位置','两盆植物使用相同土壤和水量，只改变光照条件','每天随意改变摆放位置'],1,'比较光照影响时，其他重要条件应尽量保持一致。','变量控制'],
+['测量同一物体长度时，重复测量几次有什么帮助？',['可以发现测量波动，减少偶然误差影响','保证每次结果一定相同','让实验看起来更复杂'],0,'重复测量有助于了解数据的稳定程度，并识别异常值。','数据记录']
+];
+let questions=[];
+function renderQuiz(){
+  questions=[...questionBank].sort(()=>Math.random()-.5).slice(0,4);
+  $('questions').innerHTML=questions.map((q,i)=>'<div class="unit" style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;gap:8px"><b>'+(i+1)+'. '+q[0]+'</b><span class="pill">'+q[4]+'</span></div>'+q[1].map((a,j)=>'<label style="font-weight:500"><input style="display:inline-block;width:auto;margin-right:7px" type="radio" name="q'+i+'" value="'+j+'"> '+a+'</label>').join('')+'<p class="muted" id="ex'+i+'"></p></div>').join('');
+  $('score').textContent='本轮共4题，完成后查看得分和逐题解析。';
+}
+function grade(){
+  let n=0,answered=0;
+  questions.forEach((q,i)=>{
+    const v=document.querySelector('input[name="q'+i+'"]:checked');
+    if(v)answered++;
+    const correct=Boolean(v&&Number(v.value)===q[2]);if(correct)n++;
+    $('ex'+i).textContent=(correct?'✓ 回答正确。':v?'✦ 再想一想。':'○ 尚未作答。')+'解析：'+q[3];
+    document.querySelectorAll('input[name="q'+i+'"]').forEach(x=>x.disabled=true);
+  });
+  const percent=Math.round(n/questions.length*100);
+  $('score').textContent='本轮得分：'+n+'/'+questions.length+'（'+percent+'%），已作答 '+answered+' 题。'+(n===questions.length?'太棒了，证据意识很扎实！':n>=2?'继续保持，看看解析中可以改进的地方。':'别着急，读完解析再挑战一次。');
+  try{const attempts=JSON.parse(localStorage.getItem('scienceQuizAttempts')||'[]');attempts.unshift({score:n,total:questions.length,at:new Date().toISOString()});localStorage.setItem('scienceQuizAttempts',JSON.stringify(attempts.slice(0,20)));}catch(e){}
+  $('quizHistory').textContent='本设备已记录最近 '+Math.min(20,(JSON.parse(localStorage.getItem('scienceQuizAttempts')||'[]')).length)+' 次挑战。';
+  $('retryQuiz').classList.remove('hidden');
+}
+function retryQuiz(){renderQuiz();$('retryQuiz').classList.add('hidden')}
+
 let history=[];
 function bubble(t,who){const d=document.createElement('div');d.className='bubble '+who;d.textContent=t;$('chatlog').appendChild(d);$('chatlog').scrollTop=$('chatlog').scrollHeight}
-async function health(){try{const r=await fetch('/api/health');const d=await r.json();$('mode').textContent=d.aiConfigured?'AI服务已配置，可以尝试向真实AI导师提问。':'AI服务尚未配置，请检查服务器端 DeepSeek API Key。';$('mode').className='notice '+(d.aiConfigured?'ok':'')}catch(e){$('mode').textContent='暂时无法连接服务，请稍后刷新。'}}
+function quickAsk(q){$('question').value=q;ask()}
+async function health(){
+  try{const r=await fetch('/api/health');const d=await r.json();const online=Boolean(d.aiConfigured);$('healthDot').classList.toggle('live',online);$('healthShort').textContent=online?'AI服务已配置':'AI服务待配置';$('mode').textContent=online?'AI服务已配置，可以向真实AI科学导师提问。':'AI服务尚未配置，请检查服务器端 DeepSeek API Key。';$('mode').className='notice '+(online?'ok':'')}
+  catch(e){$('healthShort').textContent='服务连接异常';$('mode').textContent='暂时无法连接服务，请稍后刷新页面。';$('mode').className='notice bad'}
+}
 health();
-async function ask(){const q=$('question').value.trim();if(!q)return;if(q.length>1200){alert('问题不能超过1200字');return}bubble(q,'user');$('question').value='';$('sendBtn').disabled=true;$('sendBtn').textContent='AI思考中…';try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:q,topic:'青少年科学探究',history:history.slice(-6)})});const d=await r.json();if(!r.ok)throw new Error(d.error||'服务暂不可用');bubble(d.answer+(d.mode==='offline'?'（离线规则演示，并非真实AI回答）'+(d.notice?' 具体原因：'+d.notice:''):'（真实AI回答）'),'bot');history.push({role:'user',content:q},{role:'assistant',content:d.answer});history=history.slice(-8)}catch(e){bubble('暂时无法获得AI回答：'+e.message,'bot')}finally{$('sendBtn').disabled=false;$('sendBtn').textContent='发送问题'}}
-function clearChat(){history=[];$('chatlog').innerHTML='<div class="bubble bot">对话已清空。你有什么新的科学问题？</div>'}
+const mentorModes={
+  curiosity:{label:'好奇心探索',hint:'先描述你观察到的现象，再把问题缩小到可以研究的范围。',prompt:'请采用好奇心探索方式：先回应学生的观察，再帮助把问题变得具体、可研究；不要直接替学生完成探究。'},
+  experiment:{label:'实验设计',hint:'想一想：改变什么、观察什么、哪些条件要保持相同？先检查实验安全。',prompt:'请采用实验设计方式：引导学生明确自变量、因变量和控制变量，给出适龄、安全、可操作的步骤，并提醒需要成人指导的风险。'},
+  concept:{label:'概念理解',hint:'用熟悉的生活例子理解概念，再尝试用自己的话解释。',prompt:'请采用概念理解方式：用准确、适龄的中文和生活类比解释概念，说明类比的局限，并提出一个理解检查问题。'},
+  evidence:{label:'证据分析',hint:'区分观察事实、数据、解释和猜想；看看证据是否足以支持结论。',prompt:'请采用证据分析方式：帮助区分观察、数据、推断和结论；指出数据可能的局限，不要编造数据。'},
+  create:{label:'创意设计',hint:'从真实需求出发，提出方案、预测可能的问题，并设计测试方法。',prompt:'请采用创意设计方式：引导学生说明需求、约束、设计方案、测试指标和迭代方向，鼓励多种方案比较。'}
+};
+function setMentorMode(){const m=mentorModes[$('mentorMode').value]||mentorModes.curiosity;$('mentorHint').textContent='导师提示：'+m.hint}
+function useLabContext(){const d=currentLab();if(!d.topic&&!d.hypothesis&&!d.observations&&!d.conclusion){$('question').value='我还没有填写实验记录，请帮我想一个适合入门的科学探究问题。';tab('assistant');return}const context='请帮我分析这份实验记录，并提出下一步探究建议：\n主题：'+d.topic+'\n假设：'+d.hypothesis+'\n观察：'+d.observations+'\n结论：'+d.conclusion;$('question').value=context.slice(0,1200);tab('assistant');$('question').focus()}
+async function ask(){
+  const q=$('question').value.trim();if(!q)return;
+  if(q.length>1200){$('mode').textContent='问题不能超过1200字。';return}
+  const mode=mentorModes[$('mentorMode').value]||mentorModes.curiosity;
+  const prompt=mode.prompt+'\n学生的问题：'+q;
+  bubble(q,'user');$('question').value='';$('sendBtn').disabled=true;$('sendBtn').textContent='AI思考中…';
+  const wait=document.createElement('div');wait.className='bubble bot';wait.textContent='导师正在思考……';$('chatlog').appendChild(wait);$('chatlog').scrollTop=$('chatlog').scrollHeight;
+  try{
+    const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:prompt,topic:'青少年科学探究',history:history.slice(-6)})});
+    const d=await r.json();if(!r.ok)throw new Error(d.error||'服务暂不可用');
+    wait.remove();const suffix=d.mode==='offline'?'\n\n（离线规则提示，并非实时大模型回答）'+(d.notice?' 原因：'+d.notice:''):'\n\n（DeepSeek 实时回答 · '+mode.label+'）';bubble(d.answer+suffix,'bot');
+    history.push({role:'user',content:prompt},{role:'assistant',content:d.answer});history=history.slice(-8)
+  }catch(e){wait.remove();bubble('暂时无法获得AI回答：'+e.message,'bot')}
+  finally{$('sendBtn').disabled=false;$('sendBtn').textContent='发送问题 →'}
+}
+$('question').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();ask()}});
+function clearChat(){history=[];$('chatlog').innerHTML='<div class="bubble bot">对话已清空。你有什么新的科学问题？</div>';$('question').value=''}
 let teacherToken=null;
-async function teacherLogin(){ $('loginMsg').textContent='正在验证…';try{const r=await fetch('/api/teacher/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('adminPassword').value})});const d=await r.json();if(!r.ok)throw new Error(d.error||'登录失败');teacherToken=d.token;$('teacherPanel').hidden=false;$('loginMsg').textContent='登录成功。'}catch(e){$('loginMsg').textContent=e.message}}
-async function evaluateWork(){const work=$('studentWork').value.trim();if(!work){alert('请先填写学生作品');return} $('evaluation').textContent='正在生成评价…';try{const r=await fetch('/api/teacher/evaluate',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+teacherToken},body:JSON.stringify({work,rubric:$('rubric').value})});const d=await r.json();if(!r.ok)throw new Error(d.error||'评价失败');$('evaluation').textContent=d.answer+(d.mode==='offline'?'（离线规则演示，非真实AI评价）':'')}catch(e){$('evaluation').textContent='无法生成评价：'+e.message}}
-</script></body></html>
+function teacherLogout(){teacherToken=null;$('teacherPanel').classList.add('hidden');$('teacherLogout').classList.add('hidden');$('adminPassword').value='';$('studentWork').value='';$('evaluation').textContent='';$('loginMsg').textContent='已安全退出教师工作台。'}
+async function teacherLogin(){
+  $('loginMsg').textContent='正在验证身份…';
+  try{
+    const r=await fetch('/api/teacher/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('adminPassword').value})});
+    const d=await r.json();if(!r.ok)throw new Error(d.error||'登录失败');
+    teacherToken=d.token;$('teacherPanel').classList.remove('hidden');$('teacherLogout').classList.remove('hidden');$('adminPassword').value='';$('loginMsg').textContent='✓ 登录成功。教师会话有效期为2小时；关闭页面或退出后需重新登录。'
+  }catch(e){$('loginMsg').textContent=e.message}
+}
+async function evaluateWork(){
+  const work=$('studentWork').value.trim();if(!work){$('evaluation').textContent='请先填写已匿名化的学生作品。';return}
+  if(!teacherToken){$('evaluation').textContent='教师会话已失效，请重新登录。';return}
+  $('evaluateBtn').disabled=true;$('evaluateBtn').textContent='正在评价…';$('evaluation').textContent='正在依据所选维度生成形成性反馈，请稍候…';
+  try{
+    const r=await fetch('/api/teacher/evaluate',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+teacherToken},body:JSON.stringify({work,rubric:$('rubric').value})});
+    const d=await r.json();if(r.status===401){teacherLogout();throw new Error('教师登录已过期，请重新登录。')}
+    if(!r.ok)throw new Error(d.error||'评价失败');
+    $('evaluation').textContent=d.answer+(d.mode==='offline'?'\n\n（离线规则提示，非真实AI评价）':'\n\n（AI辅助建议，请教师结合教学目标独立判断）')
+  }catch(e){$('evaluation').textContent='无法生成评价：'+e.message}
+  finally{$('evaluateBtn').disabled=false;$('evaluateBtn').textContent='生成评价建议'}
+}
+function exportEvaluation(){
+  const text=$('evaluation').textContent.trim();if(!text){$('evaluation').textContent='请先生成评价建议，再导出。';return}
+  const blob=new Blob(['小小AI科学家｜教师形成性评价建议\n\n'+text+'\n\n说明：AI建议仅供教师参考，不代替教师专业判断。'],{type:'text/plain;charset=utf-8'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='教师评价建议.txt';a.click();URL.revokeObjectURL(url)
+}
+renderSaved();updateProgress();renderQuiz();
+</script>
+</body>
+</html>
