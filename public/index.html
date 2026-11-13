@@ -182,20 +182,36 @@ textarea{min-height:105px;resize:vertical}
 </section>
 
 <section id="assistant" class="panel">
-  <div class="pageintro"><div class="kicker">YOUR AI SCIENCE MENTOR</div><h1>AI科学导师</h1><p>大胆提出问题。导师会陪你寻找线索、整理思路，并鼓励你用证据验证答案。</p></div>
+  <div class="pageintro"><div class="kicker">YOUR AI SCIENCE MENTOR</div><h1>AI科学导师</h1><p>不是替你给出答案，而是陪你提出好问题、设计好实验、读懂证据，逐步形成自己的科学解释。</p></div>
+  <div class="grid" style="margin-bottom:16px">
+    <article class="feature"><div class="feature-icon">🔎</div><h3>问题探索</h3><p>把模糊的好奇心变成清楚、可研究的问题。</p></article>
+    <article class="feature"><div class="feature-icon">🧪</div><h3>实验设计</h3><p>识别变量，考虑公平性与安全性，规划可执行步骤。</p></article>
+    <article class="feature"><div class="feature-icon">📈</div><h3>证据推理</h3><p>区分观察与猜想，用记录支持结论并认识局限。</p></article>
+  </div>
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2>🤖 和科学导师对话</h2><span class="pill">DeepSeek 服务</span></div>
-    <p class="muted">试着从一个你真正好奇的问题开始。AI可能出错，重要结论请与老师、教材或可靠资料核对。</p>
+    <p class="muted">先选择你希望导师怎样帮助你。每次回答都会尽量提供思考线索和一个可以继续探索的问题。</p>
     <div id="mode" class="notice" role="status" aria-live="polite">正在检查AI服务状态……</div>
+    <label for="mentorMode">选择探究方式</label>
+    <select id="mentorMode" onchange="setMentorMode()">
+      <option value="curiosity">🔎 好奇心探索｜帮我把问题问清楚</option>
+      <option value="experiment">🧪 实验设计｜帮我规划公平、安全的实验</option>
+      <option value="concept">💡 概念理解｜用生活例子解释科学知识</option>
+      <option value="evidence">📈 证据分析｜帮我分析观察和数据</option>
+      <option value="create">🚀 创意设计｜把科学知识用于解决问题</option>
+    </select>
+    <div id="mentorHint" class="notice" style="margin-top:10px">导师提示：先描述你观察到的现象，再把问题缩小到可以研究的范围。</div>
     <div class="chattools" aria-label="快捷问题">
       <button class="quick" onclick="quickAsk('为什么天空是蓝色的？')">为什么天空是蓝色的？</button>
-      <button class="quick" onclick="quickAsk('植物怎样把水运送到叶子？')">植物怎样喝水？</button>
+      <button class="quick" onclick="quickAsk('怎样设计一个公平的植物生长实验？')">设计植物实验</button>
       <button class="quick" onclick="quickAsk('磁铁为什么能吸引一些物体？')">磁铁的秘密</button>
+      <button class="quick" onclick="quickAsk('我测量了三次水温，怎样分析这些数据？')">分析实验数据</button>
     </div>
-    <div id="chatlog" class="chatlog" aria-live="polite"><div class="bubble bot">你好，小小科学家！🔬 你最近观察到了什么有趣的现象？我们一起用科学方法寻找答案吧！</div></div>
-    <label for="question">你的科学问题</label><textarea id="question" maxlength="1200" placeholder="输入你的问题……（最多1200字，按 Ctrl / ⌘ + Enter 发送）"></textarea>
-    <div class="actions"><button class="btn primary" id="sendBtn" onclick="ask()">发送问题 <span aria-hidden="true">→</span></button><button class="btn outline" onclick="clearChat()">重新开始</button></div>
-    <p class="muted">请不要输入姓名、学校、住址、电话、账号或其他个人信息。</p>
+    <div id="chatlog" class="chatlog" aria-live="polite"><div class="bubble bot">你好，小小科学家！🔬 你最近观察到了什么有趣的现象？选择一种探究方式，我们从你的问题开始。</div></div>
+    <label for="question">你的科学问题</label><textarea id="question" maxlength="1200" placeholder="例如：我发现……我想知道……（最多1200字，Ctrl / ⌘ + Enter 发送）"></textarea>
+    <div class="actions"><button class="btn primary" id="sendBtn" onclick="ask()">发送问题 <span aria-hidden="true">→</span></button><button class="btn outline" onclick="clearChat()">重新开始</button><button class="btn outline" onclick="useLabContext()">引用我的实验记录</button></div>
+    <p class="muted">请不要输入姓名、学校、住址、电话、账号或其他个人信息。AI可能出错，重要结论请与老师、教材或可靠资料核对。</p>
+    <div id="mentorPrivacy" class="notice">隐私保护：发送前会由服务器检查可能的个人身份信息。请仍然主动避免填写任何可识别个人的信息。</div>
   </div>
 </section>
 
@@ -264,16 +280,27 @@ async function health(){
   catch(e){$('healthShort').textContent='服务连接异常';$('mode').textContent='暂时无法连接服务，请稍后刷新页面。';$('mode').className='notice bad'}
 }
 health();
+const mentorModes={
+  curiosity:{label:'好奇心探索',hint:'先描述你观察到的现象，再把问题缩小到可以研究的范围。',prompt:'请采用好奇心探索方式：先回应学生的观察，再帮助把问题变得具体、可研究；不要直接替学生完成探究。'},
+  experiment:{label:'实验设计',hint:'想一想：改变什么、观察什么、哪些条件要保持相同？先检查实验安全。',prompt:'请采用实验设计方式：引导学生明确自变量、因变量和控制变量，给出适龄、安全、可操作的步骤，并提醒需要成人指导的风险。'},
+  concept:{label:'概念理解',hint:'用熟悉的生活例子理解概念，再尝试用自己的话解释。',prompt:'请采用概念理解方式：用准确、适龄的中文和生活类比解释概念，说明类比的局限，并提出一个理解检查问题。'},
+  evidence:{label:'证据分析',hint:'区分观察事实、数据、解释和猜想；看看证据是否足以支持结论。',prompt:'请采用证据分析方式：帮助区分观察、数据、推断和结论；指出数据可能的局限，不要编造数据。'},
+  create:{label:'创意设计',hint:'从真实需求出发，提出方案、预测可能的问题，并设计测试方法。',prompt:'请采用创意设计方式：引导学生说明需求、约束、设计方案、测试指标和迭代方向，鼓励多种方案比较。'}
+};
+function setMentorMode(){const m=mentorModes[$('mentorMode').value]||mentorModes.curiosity;$('mentorHint').textContent='导师提示：'+m.hint}
+function useLabContext(){const d=currentLab();if(!d.topic&&!d.hypothesis&&!d.observations&&!d.conclusion){$('question').value='我还没有填写实验记录，请帮我想一个适合入门的科学探究问题。';tab('assistant');return}const context='请帮我分析这份实验记录，并提出下一步探究建议：\n主题：'+d.topic+'\n假设：'+d.hypothesis+'\n观察：'+d.observations+'\n结论：'+d.conclusion;$('question').value=context.slice(0,1200);tab('assistant');$('question').focus()}
 async function ask(){
   const q=$('question').value.trim();if(!q)return;
   if(q.length>1200){$('mode').textContent='问题不能超过1200字。';return}
+  const mode=mentorModes[$('mentorMode').value]||mentorModes.curiosity;
+  const prompt=mode.prompt+'\n学生的问题：'+q;
   bubble(q,'user');$('question').value='';$('sendBtn').disabled=true;$('sendBtn').textContent='AI思考中…';
-  const wait=document.createElement('div');wait.className='bubble bot';wait.textContent='正在整理思路，请稍候…';$('chatlog').appendChild(wait);
+  const wait=document.createElement('div');wait.className='bubble bot';wait.textContent='导师正在思考……';$('chatlog').appendChild(wait);$('chatlog').scrollTop=$('chatlog').scrollHeight;
   try{
-    const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:q,topic:'青少年科学探究',history:history.slice(-6)})});
+    const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:prompt,topic:'青少年科学探究',history:history.slice(-6)})});
     const d=await r.json();if(!r.ok)throw new Error(d.error||'服务暂不可用');
-    wait.remove();bubble(d.answer+(d.mode==='offline'?'\n\n（离线规则提示，并非实时大模型回答）'+(d.notice?' 原因：'+d.notice:''):'\n\n（真实AI回答）'),'bot');
-    history.push({role:'user',content:q},{role:'assistant',content:d.answer});history=history.slice(-8)
+    wait.remove();const suffix=d.mode==='offline'?'\n\n（离线规则提示，并非实时大模型回答）'+(d.notice?' 原因：'+d.notice:''):'\n\n（DeepSeek 实时回答 · '+mode.label+'）';bubble(d.answer+suffix,'bot');
+    history.push({role:'user',content:prompt},{role:'assistant',content:d.answer});history=history.slice(-8)
   }catch(e){wait.remove();bubble('暂时无法获得AI回答：'+e.message,'bot')}
   finally{$('sendBtn').disabled=false;$('sendBtn').textContent='发送问题 →'}
 }
