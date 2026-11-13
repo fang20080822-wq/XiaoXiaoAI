@@ -217,7 +217,7 @@ textarea{min-height:105px;resize:vertical}
 
 <section id="quiz" class="panel">
   <div class="pageintro"><div class="kicker">SCIENCE CHALLENGE</div><h1>知识挑战</h1><p>用三个小问题检验科学探究思维。提交后查看即时反馈与解析。</p></div>
-  <div class="card"><div id="questions"></div><button class="btn primary" onclick="grade()">提交答案并查看解析</button><h3 id="score" role="status" aria-live="polite"></h3></div>
+  <div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2>本轮科学挑战</h2><span class="pill">每轮随机抽取4题</span></div><div id="questions"></div><div class="actions"><button class="btn primary" onclick="grade()">提交答案并查看解析</button><button id="retryQuiz" class="btn outline hidden" onclick="retryQuiz()">再挑战一轮</button></div><h3 id="score" role="status" aria-live="polite"></h3><p id="quizHistory" class="muted">挑战记录保存在当前浏览器设备。</p></div>
 </section>
 
 <section id="teacher" class="panel">
@@ -262,17 +262,40 @@ function exportLab(){
 function resetLab(){['topic','hypothesis','observations','conclusion'].forEach(id=>$(id).value='');$('saved').textContent='已新建空白记录。'}
 function renderSaved(){
   const records=getLabRecords();const el=$('savedList');if(!records.length){el.textContent='还没有保存记录。完成上方内容后，记录会显示在这里。';return}
-  el.innerHTML='';records.slice(0,8).forEach((r)=>{const row=document.createElement('div');row.className='unit';row.style.marginBottom='9px';const title=document.createElement('b');title.textContent=r.topic||'未命名探究';const date=document.createElement('p');date.textContent=new Date(r.savedAt).toLocaleString();const actions=document.createElement('div');actions.className='actions';const open=document.createElement('button');open.className='btn soft';open.textContent='载入并继续';open.onclick=()=>{ $('topic').value=r.topic||'';$('hypothesis').value=r.hypothesis||'';$('observations').value=r.observations||'';$('conclusion').value=r.conclusion||'';$('saved').textContent='已载入历史记录，可继续编辑并另存为新记录。';window.scrollTo({top:0,behavior:'smooth'});};const del=document.createElement('button');del.className='btn danger';del.textContent='删除记录';del.onclick=()=>{if(!confirm('确定删除这条本地探究记录吗？此操作无法撤销。'))return;localStorage.setItem('scienceLabs',JSON.stringify(getLabRecords().filter(x=>x.id!==r.id)));renderSaved();updateProgress();$('saved').textContent='记录已从本设备浏览器删除。'};actions.append(open,del);row.append(title,date,actions);el.appendChild(row)});
+  el.innerHTML='';records.slice(0,8).forEach((r)=>{const row=document.createElement('div');row.className='unit';row.style.marginBottom='9px';const title=document.createElement('b');title.textContent=r.topic||'未命名探究';const date=document.createElement('p');date.textContent=new Date(r.savedAt).toLocaleString();const actions=document.createElement('div');actions.className='actions';const open=document.createElement('button');open.className='btn soft';open.textContent='载入并继续';open.onclick=()=>{ $('topic').value=r.topic||'';$('hypothesis').value=r.hypothesis||'';$('observations').value=r.observations||'';$('conclusion').value=r.conclusion||'';$('saved').textContent='已载入历史记录，可继续编辑并另存为新记录。';window.scrollTo({top:0,behavior:'smooth'});};const del=document.createElement('button');del.className='btn danger';del.textContent='删除记录';del.onclick=()=>{if(!confirm('确定删除这条本地探究记录吗？此操作无法撤销。'))return;localStorage.setItem('scienceLabs',JSON.stringify(getLabRecords().filter(x=>x.id!==r.id)));renderSaved();updateProgress();renderQuiz();$('saved').textContent='记录已从本设备浏览器删除。'};actions.append(open,del);row.append(title,date,actions);el.appendChild(row)});
   const clear=document.createElement('button');clear.className='btn outline';clear.style.marginTop='10px';clear.textContent='清空全部本地记录';clear.onclick=()=>{if(!confirm('确定清空本设备保存的全部探究记录吗？建议先导出备份。'))return;localStorage.removeItem('scienceLabs');renderSaved();updateProgress();$('saved').textContent='本地记录已清空。'};el.appendChild(clear);
 }
 function updateProgress(){const n=getLabRecords().length;$('progressFill').style.width=(n?Math.min(100,n*20):0)+'%';if(n)$('progressText').textContent='已保存 '+n+' 份探究记录（仅保存在当前设备）。'}
-const questions=[
-['科学实验中，为什么通常一次只改变一个条件？',['为了让实验更公平，判断变量的影响','为了让实验更快结束','为了减少观察次数'],0,'控制其他条件，才能判断改变的因素是否造成结果差异。'],
-['下面哪一项属于实验证据？',['我觉得应该是这样','测量三次并记录每次水温','朋友说他见过'],1,'可观察、可测量并如实记录的数据属于证据。'],
-['如果结果不支持原来的假设，应该怎么办？',['修改或重新检验假设','删掉不符合预期的数据','宣布实验失败'],0,'科学探究需要尊重证据，依据结果修正解释。']
+const questionBank=[
+['科学实验中，为什么通常一次只改变一个条件？',['为了让实验更公平，判断变量的影响','为了让实验更快结束','为了减少观察次数'],0,'控制其他条件，才能判断改变的因素是否造成结果差异。','实验设计'],
+['下面哪一项属于实验证据？',['我觉得应该是这样','测量三次并记录每次水温','朋友说他见过'],1,'可观察、可测量并如实记录的数据属于证据。','证据意识'],
+['如果结果不支持原来的假设，应该怎么办？',['修改或重新检验假设','删掉不符合预期的数据','宣布实验失败'],0,'科学探究需要尊重证据，依据结果修正解释。','科学态度'],
+['为了比较阳光对植物生长的影响，哪种做法更合理？',['一盆多浇水、一盆少浇水且放在不同位置','两盆植物使用相同土壤和水量，只改变光照条件','每天随意改变摆放位置'],1,'比较光照影响时，其他重要条件应尽量保持一致。','变量控制'],
+['测量同一物体长度时，重复测量几次有什么帮助？',['可以发现测量波动，减少偶然误差影响','保证每次结果一定相同','让实验看起来更复杂'],0,'重复测量有助于了解数据的稳定程度，并识别异常值。','数据记录']
 ];
-$('questions').innerHTML=questions.map((q,i)=>'<div class="unit" style="margin-bottom:12px"><b>'+(i+1)+'. '+q[0]+'</b>'+q[1].map((a,j)=>'<label style="font-weight:500"><input style="display:inline-block;width:auto;margin-right:7px" type="radio" name="q'+i+'" value="'+j+'"> '+a+'</label>').join('')+'<p class="muted" id="ex'+i+'"></p></div>').join('');
-function grade(){let n=0;questions.forEach((q,i)=>{const v=document.querySelector('input[name="q'+i+'"]:checked');if(v&&Number(v.value)===q[2])n++;$('ex'+i).textContent=(v&&Number(v.value)===q[2]?'✓ 回答正确。':'再想一想。')+'解析：'+q[3]});$('score').textContent='你的得分：'+n+'/'+questions.length+'。继续保持探索精神！'}
+let questions=[];
+function renderQuiz(){
+  questions=[...questionBank].sort(()=>Math.random()-.5).slice(0,4);
+  $('questions').innerHTML=questions.map((q,i)=>'<div class="unit" style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;gap:8px"><b>'+(i+1)+'. '+q[0]+'</b><span class="pill">'+q[4]+'</span></div>'+q[1].map((a,j)=>'<label style="font-weight:500"><input style="display:inline-block;width:auto;margin-right:7px" type="radio" name="q'+i+'" value="'+j+'"> '+a+'</label>').join('')+'<p class="muted" id="ex'+i+'"></p></div>').join('');
+  $('score').textContent='本轮共4题，完成后查看得分和逐题解析。';
+}
+function grade(){
+  let n=0,answered=0;
+  questions.forEach((q,i)=>{
+    const v=document.querySelector('input[name="q'+i+'"]:checked');
+    if(v)answered++;
+    const correct=Boolean(v&&Number(v.value)===q[2]);if(correct)n++;
+    $('ex'+i).textContent=(correct?'✓ 回答正确。':v?'✦ 再想一想。':'○ 尚未作答。')+'解析：'+q[3];
+    document.querySelectorAll('input[name="q'+i+'"]').forEach(x=>x.disabled=true);
+  });
+  const percent=Math.round(n/questions.length*100);
+  $('score').textContent='本轮得分：'+n+'/'+questions.length+'（'+percent+'%），已作答 '+answered+' 题。'+(n===questions.length?'太棒了，证据意识很扎实！':n>=2?'继续保持，看看解析中可以改进的地方。':'别着急，读完解析再挑战一次。');
+  try{const attempts=JSON.parse(localStorage.getItem('scienceQuizAttempts')||'[]');attempts.unshift({score:n,total:questions.length,at:new Date().toISOString()});localStorage.setItem('scienceQuizAttempts',JSON.stringify(attempts.slice(0,20)));}catch(e){}
+  $('quizHistory').textContent='本设备已记录最近 '+Math.min(20,(JSON.parse(localStorage.getItem('scienceQuizAttempts')||'[]')).length)+' 次挑战。';
+  $('retryQuiz').classList.remove('hidden');
+}
+function retryQuiz(){renderQuiz();$('retryQuiz').classList.add('hidden')}
+
 let history=[];
 function bubble(t,who){const d=document.createElement('div');d.className='bubble '+who;d.textContent=t;$('chatlog').appendChild(d);$('chatlog').scrollTop=$('chatlog').scrollHeight}
 function quickAsk(q){$('question').value=q;ask()}
