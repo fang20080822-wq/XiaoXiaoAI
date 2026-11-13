@@ -272,7 +272,7 @@ async function ask(){
   try{
     const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:q,topic:'青少年科学探究',history:history.slice(-6)})});
     const d=await r.json();if(!r.ok)throw new Error(d.error||'服务暂不可用');
-    wait.remove();bubble(d.answer+(d.mode==='offline'?'\\n\\n（离线规则提示，并非实时大模型回答）'+(d.notice?' 原因：'+d.notice:''):'\\n\\n（真实AI回答）'),'bot');
+    wait.remove();bubble(d.answer+(d.mode==='offline'?'\n\n（离线规则提示，并非实时大模型回答）'+(d.notice?' 原因：'+d.notice:''):'\n\n（真实AI回答）'),'bot');
     history.push({role:'user',content:q},{role:'assistant',content:d.answer});history=history.slice(-8)
   }catch(e){wait.remove();bubble('暂时无法获得AI回答：'+e.message,'bot')}
   finally{$('sendBtn').disabled=false;$('sendBtn').textContent='发送问题 →'}
@@ -288,7 +288,7 @@ async function teacherLogin(){
 async function evaluateWork(){
   const work=$('studentWork').value.trim();if(!work){$('evaluation').textContent='请先填写已匿名化的学生作品。';return}
   $('evaluation').textContent='正在生成评价建议…';
-  try{const r=await fetch('/api/teacher/evaluate',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+teacherToken},body:JSON.stringify({work,rubric:$('rubric').value})});const d=await r.json();if(!r.ok)throw new Error(d.error||'评价失败');$('evaluation').textContent=d.answer+(d.mode==='offline'?'\\n\\n（离线规则提示，非真实AI评价）':'')}
+  try{const r=await fetch('/api/teacher/evaluate',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+teacherToken},body:JSON.stringify({work,rubric:$('rubric').value})});const d=await r.json();if(!r.ok)throw new Error(d.error||'评价失败');$('evaluation').textContent=d.answer+(d.mode==='offline'?'\n\n（离线规则提示，非真实AI评价）':'')}
   catch(e){$('evaluation').textContent='无法生成评价：'+e.message}
 }
 renderSaved();updateProgress();
