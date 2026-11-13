@@ -14,7 +14,8 @@ if (start < 0 || end < 0 || html.indexOf(openTag, start + 1) >= 0) {
 new vm.Script(html.slice(start + openTag.length, end), { filename: 'public/index.html:inline-script' });
 
 for (const id of ['home', 'learn', 'assistant', 'lab', 'quiz', 'teacher']) {
-  if (!html.includes('id="' + id + '" class="panel"')) throw new Error('Missing application section: ' + id);
+  const sectionPattern = new RegExp('<section\\s+id="' + id + '"\\s+class="panel(?:\\s+active)?"');
+  if (!sectionPattern.test(html)) throw new Error('Missing application section: ' + id);
 }
 for (const route of ['/api/health', '/api/chat', '/api/teacher/login', '/api/teacher/evaluate']) {
   if (!html.includes(route)) throw new Error('Frontend no longer calls expected API route: ' + route);
