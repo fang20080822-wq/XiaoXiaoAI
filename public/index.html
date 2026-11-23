@@ -176,6 +176,7 @@ textarea{min-height:105px;resize:vertical}
     <p class="muted">使用老师提供的邀请码和匿名代号加入。请不要填写真实姓名、学校、电话或其他个人信息。</p>
     <label for="classInvite">班级邀请码</label><input id="classInvite" maxlength="8" placeholder="8位邀请码" autocomplete="off">
     <label for="studentAlias">匿名代号</label><input id="studentAlias" maxlength="24" placeholder="例如：学生A" autocomplete="off">
+    <label for="studentGrade">学习学段</label><select id="studentGrade"><option value="3-4" selected>三至四年级</option><option value="5-6">五至六年级</option></select>
     <label style="display:flex;gap:9px;align-items:flex-start;font-weight:500"><input id="guardianAck" type="checkbox" style="width:auto;margin-top:6px">我已在教师/监护人指导下参与，且已取得必要的监护人同意。</label>
     <button class="btn primary" onclick="joinClass()">加入班级</button>
     <p id="joinStatus" class="muted" role="status" aria-live="polite">尚未加入班级。</p>
@@ -426,7 +427,7 @@ async function joinClass(){
   const inviteCode=$('classInvite').value.trim().toUpperCase(),alias=$('studentAlias').value.trim();
   if(!$('guardianAck').checked){$('joinStatus').textContent='请先确认已取得教师和监护人必要同意。';return}
   $('joinStatus').textContent='正在验证邀请码……';
-  try{const r=await fetch('/api/student/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({inviteCode,alias,guardianConsent:true})});const d=await r.json();if(!r.ok)throw new Error(d.error||'加入失败');studentToken=d.token;studentAlias=d.alias;localStorage.setItem('scienceStudentToken',studentToken);localStorage.setItem('scienceStudentAlias',studentAlias);$('joinStatus').textContent='✓ 已加入班级，匿名身份：'+studentAlias+'。';await restoreChat();}
+  try{const r=await fetch('/api/student/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({inviteCode,alias,grade:$('studentGrade').value,guardianConsent:true})});const d=await r.json();if(!r.ok)throw new Error(d.error||'加入失败');studentToken=d.token;studentAlias=d.alias;localStorage.setItem('scienceStudentToken',studentToken);localStorage.setItem('scienceStudentAlias',studentAlias);$('joinStatus').textContent='✓ 已加入班级，匿名身份：'+studentAlias+'。';await restoreChat();}
   catch(e){$('joinStatus').textContent=e.message}
 }
 async function loadMyRecords(){
@@ -439,10 +440,19 @@ async function loadMyRecords(){
 }
 async function submitCloudRecord(){
   if(!studentToken){$('cloudSaveStatus').textContent='请先使用班级邀请码加入班级。';return}
-  const d=currentLab();const required=['topic','observedPhenomenon','researchQuestion','questionBoundary','measurementIndicator','hypothesis','hypothesisBasis','expectedResult','independentVariable','dependentVariable','controlVariables','controlRationale','method','dataTable','evidence','anomalyHandling','evidenceReasoning','conclusion','reflection'];const missing=required.find(k=>!d[k]);if(missing){$('cloudSaveStatus').textContent='尚未达到水平4提交条件：请补全所有探究栏目。';return}if(!Number.isInteger(d.repetitionCount)||d.repetitionCount<2||d.repetitionCount>20){$('cloudSaveStatus').textContent='重复实验次数须填写2—20次。';return}const dataRows=d.dataTable.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);if(dataRows.length<2){$('cloudSaveStatus').textContent='至少填写两行真实测量数据后才能提交。';return}if(!dataRows.every(row=>{const parts=row.split(/[|｜]/).map(x=>x.trim());return parts.length>=4&&parts[0]&&parts[1]&&parts[2].length>0&&Number.isFinite(Number(parts[2]))&&parts[3]})){$('cloudSaveStatus').textContent='数据请按“第几次｜日期/时间｜数值｜单位”逐行填写。';return}const payload={topic:d.topic,observedPhenomenon:d.observedPhenomenon,question:d.researchQuestion,questionBoundary:d.questionBoundary,measurementIndicator:d.measurementIndicator,hypothesis:d.hypothesis,hypothesisBasis:d.hypothesisBasis,expectedResult:d.expectedResult,independentVariable:d.independentVariable,dependentVariable:d.dependentVariable,controlVariables:d.controlVariables,controlRationale:d.controlRationale,repetitionCount:d.repetitionCount,method:d.method,dataTable:d.dataTable,evidence:d.evidence,anomalyHandling:d.anomalyHandling,evidenceReasoning:d.evidenceReasoning,conclusion:d.conclusion,reflection:d.reflection};
+  const d=currentLab();
+  const topic=String(d.topic||'').trim(),question=String(d.researchQuestion||'').trim();
+  if(!topic||!question){$('cloudSaveStatus').textContent='请先填写实验主题和研究问题，即可提交。';return}
+  const payload={topic,question,observedPhenomenon:d.observedPhenomenon||'',questionBoundary:d.questionBoundary||'',measurementIndicator:d.measurementIndicator||'',hypothesis:d.hypothesis||'',hypothesisBasis:d.hypothesisBasis||'',expectedResult:d.expectedResult||'',independentVariable:d.independentVariable||'',dependentVariable:d.dependentVariable||'',controlVariables:d.controlVariables||'',controlRationale:d.controlRationale||'',repetitionCount:d.repetitionCount||0,method:d.method||'',dataTable:d.dataTable||'',evidence:d.evidence||'',anomalyHandling:d.anomalyHandling||'',evidenceReasoning:d.evidenceReasoning||'',conclusion:d.conclusion||'',reflection:d.reflection||''};
   $('cloudSaveStatus').textContent='正在提交云端档案……';
-  try{const r=await fetch('/api/student/records',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+studentToken},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok)throw new Error(d.error||'提交失败');$('cloudSaveStatus').textContent='✓ 已提交到教师班级档案。记录编号：'+d.record.id;}
-  catch(e){$('cloudSaveStatus').textContent='云端提交失败：'+e.message+' 请先导出本地报告备份。'}
+  try{
+    const r=await fetch('/api/student/records',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+studentToken},body:JSON.stringify(payload)});
+    const result=await r.json();if(!r.ok)throw new Error(result.error||'提交失败');
+    const level=Math.max(1,Math.min(4,Number(result.level)||1));
+    const tips=Array.isArray(result.next_steps)?result.next_steps.slice(0,3).map(x=>x.suggestion||('请补充：'+(x.missing||[]).join('、'))).join('；'):'';
+    $('cloudSaveStatus').textContent='✓ 已提交。当前探究水平：L'+level+'。'+(tips?' 下一步：'+tips:'');
+    await loadMyRecords();
+  }catch(e){$('cloudSaveStatus').textContent='云端提交失败：'+e.message+' 请先导出本地报告备份。'}
 }
 
 let teacherToken=null;
