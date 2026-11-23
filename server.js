@@ -160,9 +160,9 @@ async function resolveStudentSession(token){
     if(!dbReady)await initDatabase();
     const session=await readSession(db,token);
     if(!session||session.role!=="student")return null;
-    const learner=await db.query("SELECT id,class_id FROM science_learners WHERE id=$1",[session.subjectId]);
+    const learner=await db.query("SELECT id,class_id,grade FROM science_learners WHERE id=$1",[session.subjectId]);
     if(!learner.rowCount)return null;
-    return {role:"student",learnerId:learner.rows[0].id,classId:learner.rows[0].class_id};
+    return {role:"student",learnerId:learner.rows[0].id,classId:learner.rows[0].class_id,grade:learner.rows[0].grade||"3-4"};
   }catch(error){console.error("chat_student_session_failed",error.message);return null;}
 }
 async function requireStudent(req,res,next){
