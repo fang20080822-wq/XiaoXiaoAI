@@ -292,7 +292,7 @@ app.post("/api/chat/stream",chatLimiter,async(req,res)=>{
   let started=false;
   const emit=(payload)=>{if(!res.destroyed)res.write("data: "+JSON.stringify(payload)+"\n\n")};
   try{
-    const previous=ownsSession?await db.query("SELECT role,content FROM messages WHERE session_id=$1 AND student_id=$2 ORDER BY created_at DESC LIMIT 8",[sessionId,ownerLearnerId,ownerClassId]):{rows:[]};
+    const previous=ownsSession?await db.query("SELECT role,content FROM messages WHERE session_id=$1 AND student_id=$2 ORDER BY created_at DESC LIMIT 8",[sessionId,ownerLearnerId]):{rows:[]};
     const history=previous.rows.reverse().filter(m=>!looksLikePII(m.content)).map(m=>({role:m.role,content:m.content.slice(0,1200)}));
     if(ownsSession)await db.query("INSERT INTO messages(session_id,student_id,role,content,mode) VALUES($1,$2,'user',$3,'pending')",[sessionId,ownerLearnerId,message]);
     const topicHint={ai:"课程主题：认识人工智能。",ml:"课程主题：机器学习。",sensor:"课程主题：智能感知。",safety:"课程主题：AI安全。",design:"课程主题：AI创意设计。"}[topic]||"课程主题：儿童科学探究。";
@@ -332,7 +332,7 @@ app.post("/api/chat",chatLimiter,async(req,res)=>{
     const ownerLearnerId=ownsSession?String(student.learnerId):"";
     const ownerClassId=ownsSession?String(student.classId):"";
     const previous=ownsSession
-      ? await db.query("SELECT role,content FROM messages WHERE session_id=$1 AND student_id=$2 ORDER BY created_at DESC LIMIT 8",[sessionId,ownerLearnerId,ownerClassId])
+      ? await db.query("SELECT role,content FROM messages WHERE session_id=$1 AND student_id=$2 ORDER BY created_at DESC LIMIT 8",[sessionId,ownerLearnerId])
       : {rows:[]};
     const safeHistory=previous.rows.reverse().filter(m=>!looksLikePII(m.content)).map(m=>({role:m.role,content:m.content.slice(0,1200)}));
     if(ownsSession) await db.query("INSERT INTO messages(session_id,student_id,role,content,mode) VALUES($1,$2,'user',$3,'pending')",[sessionId,ownerLearnerId,message]);
