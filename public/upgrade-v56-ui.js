@@ -77,7 +77,14 @@
     try{const d=await api('/api/admin/teachers');box.replaceChildren(el('h3','管理员：教师账号审核'));(d.teachers||[]).forEach(t=>{const row=el('div',undefined,'unit');row.append(el('b',t.email),el('p',t.school+' · '+t.status));if(t.status==='pending'){for(const status of ['approved','rejected']){const b=el('button',status==='approved'?'批准':'驳回','btn soft');b.type='button';b.addEventListener('click',async()=>{try{await api('/api/admin/teachers/'+encodeURIComponent(t.id)+'/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({status})});loadAdminReviews();}catch(e){row.appendChild(el('p',e.message));}});row.appendChild(b);}}box.appendChild(row);});}
     catch(e){box.appendChild(el('p','管理员审核列表仅管理员可见：'+e.message));}
   }
-  function applyRoleVisibility(token){\n    let role='teacher';try{const part=token.split('.')[0].replace(/-/g,'+').replace(/_/g,'/');role=JSON.parse(atob(part)).role||'teacher';}catch{}\n    const admin=role==='admin';\n    ['newClassName','classList','classRecords','studentWork','evaluation'].forEach(id=>{const n=$(id);if(n)n.hidden=admin;});\n    document.querySelectorAll('#teacherPanel button[onclick]').forEach(b=>{if(/createClass|loadClasses|evaluateWork|exportEvaluation/.test(b.getAttribute('onclick')||''))b.hidden=admin;});\n    document.querySelectorAll('#teacherPanel h3').forEach(h=>{if(/班级管理与学习档案|学生探究作品评价/.test(h.textContent))h.hidden=admin;});\n  }\n  const oldLogin=window.teacherLogin;
+  function applyRoleVisibility(token){
+    let role='teacher';try{const part=token.split('.')[0].replace(/-/g,'+').replace(/_/g,'/');role=JSON.parse(atob(part)).role||'teacher';}catch{}
+    const admin=role==='admin';
+    ['newClassName','classList','classRecords','studentWork','evaluation'].forEach(id=>{const n=$(id);if(n)n.hidden=admin;});
+    document.querySelectorAll('#teacherPanel button[onclick]').forEach(b=>{if(/createClass|loadClasses|evaluateWork|exportEvaluation/.test(b.getAttribute('onclick')||''))b.hidden=admin;});
+    document.querySelectorAll('#teacherPanel h3').forEach(h=>{if(/班级管理与学习档案|学生探究作品评价/.test(h.textContent))h.hidden=admin;});
+  }
+  const oldLogin=window.teacherLogin;
   if(typeof oldLogin==='function')window.teacherLogin=async function(){await oldLogin();applyRoleVisibility((typeof teacherToken!=='undefined'&&teacherToken)||'');setTimeout(()=>{loadAdminReviews();},100);};
   const oldLoad=window.loadClasses;
   if(typeof oldLoad==='function')window.loadClasses=async function(){const v=await oldLoad();loadDashboard();loadAudit();return v;};
