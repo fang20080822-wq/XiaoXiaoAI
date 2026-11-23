@@ -230,12 +230,22 @@ app.post("/api/student/records",apiLimiter,requireStudent,requireDatabase,async(
   catch(e){console.error("record_save_failed",e.message);res.status(500).json({error:"云端保存失败，请先导出备份。"});}
 });
 app.get("/api/teacher/classes",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
-  try{const q=await db.query("SELECT c.id,c.class_name,c.invite_code,c.created_at,COUNT(DISTINCT l.id)::int AS learner_count,COUNT(r.id)::int AS record_count FROM science_classes c LEFT JOIN science_learners l ON l.class_id=c.id LEFT JOIN science_records r ON r.class_id=c.id WHERE c.teacher_id=$1 GROUP BY c.id ORDER BY c.created_at DESC",[teacherId(req)]);res.json({classes:q.rows});}
+  try{const q=await db.query("SELECT c.id,c.class_name,c.invite_code,c.created_at,COUNT(DISTINCT l.id)::int AS learner_count,COUNT(DISTINCT r.id)::int AS record_count FROM science_classes c LEFT JOIN science_learners l ON l.class_id=c.id LEFT JOIN science_records r ON r.class_id=c.id WHERE c.teacher_id=$1 GROUP BY c.id ORDER BY c.created_at DESC",[teacherId(req)]);res.json({classes:q.rows});}
   catch(e){console.error("class_list_failed",e.message);res.status(500).json({error:"读取班级列表失败。"});}
 });
 app.get("/api/teacher/classes/:id/records",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
   try{const own=await db.query("SELECT id FROM science_classes WHERE id=$1 AND teacher_id=$2",[req.params.id,teacherId(req)]);if(!own.rowCount)return res.status(404).json({error:"班级不存在。"});const q=await db.query("SELECT r.id,l.alias,r.topic,r.question,r.hypothesis,r.independent_variable,r.dependent_variable,r.control_variables,r.method,r.evidence,r.conclusion,r.reflection,r.created_at FROM science_records r JOIN science_learners l ON l.id=r.learner_id WHERE r.class_id=$1 ORDER BY r.created_at DESC LIMIT 300",[req.params.id]);res.json({records:q.rows});}
   catch(e){console.error("record_list_failed",e.message);res.status(500).json({error:"读取探究档案失败。"});}
+});
+
+
+app.delete("/api/student/records/:id",apiLimiter,requireStudent,requireDatabase,async(req,res)=>{
+  try{const q=await db.query("DELETE FROM science_records WHERE id=$1 AND class_id=$2 AND learner_id=$3",[req.params.id,req.student.classId,req.student.learnerId]);if(!q.rowCount)return res.status(404).json({error:"记录不存在或无权删除。"});res.json({deleted:true});}
+  catch(e){console.error("student_record_delete_failed",e.message);res.status(500).json({error:"删除记录失败。"});}
+});
+app.delete("/api/teacher/classes/:id",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
+  try{const q=await db.query("DELETE FROM science_classes WHERE id=$1 AND teacher_id=$2",[req.params.id,teacherId(req)]);if(!q.rowCount)return res.status(404).json({error:"班级不存在或无权删除。"});res.json({deleted:true});}
+  catch(e){console.error("class_delete_failed",e.message);res.status(500).json({error:"删除班级失败。"});}
 });
 
 app.use(express.static(path.join(__dirname,"public"),{extensions:["html"],fallthrough:true}));
@@ -244,4 +254,4 @@ app.use((req,res)=>{
   return res.status(404).type("text/plain; charset=utf-8").send("页面不存在（404）。请检查网址，或返回小小AI科学家首页。");
 });
 app.use((err,req,res,next)=>{console.error("request_error",err?.message||"unknown");res.status(500).json({error:"服务器内部错误，请稍后重试。"});});
-app.listen(PORT,()=>console.log(`Little AI Scientists V4 listening on ${PORT}`));
+app.listen(PORT,()=>console.log(`Little AI Scientists V5.2 listening on ${PORT}`));
