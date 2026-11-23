@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101a3a">
 <meta name="description" content="小小AI科学家：面向青少年的AI科学探究平台，让好奇心成为科学发现的起点。">
-<title>小小AI科学家 V5.1｜AI科学探究平台</title>
+<title>小小AI科学家 V5.2｜AI科学探究平台</title>
 <style>
 :root{--navy:#101a3a;--navy2:#172653;--blue:#3978f6;--cyan:#65d5ff;--violet:#8665f6;--ink:#17233d;--muted:#71809a;--bg:#f5f7fc;--line:#e4e9f3;--surface:#fff;--green:#14845d;--shadow:0 18px 48px rgba(27,43,84,.09);--radius:22px}
 *{box-sizing:border-box}
@@ -169,12 +169,34 @@ textarea{min-height:105px;resize:vertical}
 
 <section id="lab" class="panel">
   <div class="pageintro"><div class="kicker">MY SCIENCE NOTEBOOK</div><h1>科学实验室</h1><p>把你的猜想、过程与证据留下来。好的科学发现，从认真记录开始。</p></div>
+
+  <div class="card" id="classJoinCard">
+    <h3>加入班级（学生端）</h3>
+    <p class="muted">使用老师提供的邀请码和匿名代号加入。请不要填写真实姓名、学校、电话或其他个人信息。</p>
+    <label for="classInvite">班级邀请码</label><input id="classInvite" maxlength="8" placeholder="8位邀请码" autocomplete="off">
+    <label for="studentAlias">匿名代号</label><input id="studentAlias" maxlength="24" placeholder="例如：学生A" autocomplete="off">
+    <label style="display:flex;gap:9px;align-items:flex-start;font-weight:500"><input id="guardianAck" type="checkbox" style="width:auto;margin-top:6px">我已在教师/监护人指导下参与，且已取得必要的监护人同意。</label>
+    <button class="btn primary" onclick="joinClass()">加入班级</button>
+    <p id="joinStatus" class="muted" role="status" aria-live="polite">尚未加入班级。</p>
+  </div>
+
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><h2>我的探究记录</h2><span class="pill">本设备保存</span></div>
     <label for="topic">01 · 实验主题</label><input id="topic" maxlength="160" placeholder="例如：不同颜色的纸吸热一样快吗？">
     <label for="hypothesis">02 · 我的假设</label><textarea id="hypothesis" maxlength="3000" placeholder="我认为……因为……"></textarea>
     <label for="observations">03 · 实验步骤与观察记录</label><textarea id="observations" maxlength="5000" placeholder="我准备……我观察到……请记录真实过程和数据。"></textarea>
-    <label for="conclusion">04 · 结论与新问题</label><textarea id="conclusion" maxlength="3000" placeholder="证据说明……我还想知道……"></textarea>
+
+    <label for="researchQuestion">02 · 可研究的问题</label><textarea id="researchQuestion" maxlength="1500" placeholder="我想研究的问题是……"></textarea>
+    <label for="independentVariable">03 · 自变量（我主动改变什么）</label><input id="independentVariable" maxlength="500" placeholder="例如：光照时间">
+    <label for="dependentVariable">04 · 因变量（我观察或测量什么）</label><input id="dependentVariable" maxlength="500" placeholder="例如：植物高度">
+    <label for="controlVariables">05 · 控制变量（哪些条件保持相同）</label><textarea id="controlVariables" maxlength="1500" placeholder="例如：植物种类、土壤、水量、花盆大小……"></textarea>
+    <label for="method">06 · 实验方法与步骤</label><textarea id="method" maxlength="5000" placeholder="写下材料、步骤、安全注意事项……"></textarea>
+    <label for="evidence">07 · 证据与数据（如实记录）</label><textarea id="evidence" maxlength="5000" placeholder="记录观察、测量数据、次数和单位；没有测量的数据不要编造。"></textarea>
+    <label for="reflection">08 · 反思与下一步</label><textarea id="reflection" maxlength="1500" placeholder="哪些地方可能有误差？下一次准备怎样改进？"></textarea>
+    <div class="actions"><button class="btn soft" onclick="submitCloudRecord()">提交到班级档案</button></div>
+    <p id="cloudSaveStatus" class="muted" role="status" aria-live="polite">加入班级后，可将结构化探究记录提交到教师端。</p>
+
+    <label for="conclusion">09 · 结论与新问题</label><textarea id="conclusion" maxlength="3000" placeholder="证据说明……我还想知道……"></textarea>
     <div class="actions" style="margin-top:16px"><button class="btn primary" onclick="saveLab()">保存探究记录</button><button class="btn outline" onclick="exportLab()">导出实验报告</button><button class="btn outline" onclick="resetLab()">新建记录</button></div>
     <p id="saved" class="muted" role="status" aria-live="polite"></p>
   </div>
@@ -228,6 +250,13 @@ textarea{min-height:105px;resize:vertical}
     <div class="actions" style="margin-top:13px"><button class="btn primary" onclick="teacherLogin()">安全登录</button><button id="teacherLogout" class="btn outline hidden" onclick="teacherLogout()">退出教师工作台</button></div><p id="loginMsg" class="muted" role="status" aria-live="polite"></p>
     <div id="teacherPanel" class="hidden">
       <hr style="border:0;border-top:1px solid var(--line);margin:22px 0">
+
+      <h3>班级管理与学习档案</h3>
+      <label for="newClassName">创建班级代号</label><input id="newClassName" maxlength="60" placeholder="例如：科学探究一组">
+      <div class="actions"><button class="btn primary" onclick="createClass()">创建班级并生成邀请码</button><button class="btn outline" onclick="loadClasses()">刷新班级</button></div>
+      <div id="classList" class="muted" role="status" aria-live="polite">登录后可管理班级并查看学生提交的探究档案。</div>
+      <div id="classRecords" class="result" style="margin-top:12px"></div>
+
       <h3>学生探究作品评价</h3><label for="studentWork">学生作品（请先去除个人身份信息）</label><textarea id="studentWork" maxlength="6000" placeholder="粘贴匿名化的学生探究记录……"></textarea>
       <label for="rubric">评价维度</label><select id="rubric"><option>科学问题、假设、实验设计、证据与表达</option><option>科学思维与探究过程</option><option>课程目标达成情况</option></select>
       <div class="actions" style="margin-top:14px"><button class="btn primary" id="evaluateBtn" onclick="evaluateWork()">生成评价建议</button><button class="btn outline" onclick="exportEvaluation()">导出评价建议</button></div><div id="evaluation" class="result" style="margin-top:14px" aria-live="polite"></div>
@@ -236,7 +265,7 @@ textarea{min-height:105px;resize:vertical}
   <div class="notice">AI评价仅提供形成性反馈建议，不能代替教师专业判断。不要提交学生姓名、联系方式、学校班级等可识别信息。</div>
 </section>
 </main>
-<footer class="footer">小小AI科学家 V5.1 · 让好奇心成为科学发现的起点<br>AI用于启发和辅助学习，重要信息请核查，实验请在成人指导下安全开展。</footer>
+<footer class="footer">小小AI科学家 V5.2 · 让好奇心成为科学发现的起点<br>AI用于启发和辅助学习，重要信息请核查，实验请在成人指导下安全开展。</footer>
 
 <script>
 const $=id=>document.getElementById(id);
