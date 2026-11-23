@@ -254,7 +254,7 @@ async function callDeepSeekStream(messages,onDelta,maxTokens=1000) {
   } finally {clearTimeout(timer)}
 }
 
-app.post("/api/chat/stream",chatLimiter,requireDatabase,async(req,res)=>{
+app.post("/api/chat/stream",chatLimiter,async(req,res)=>{
   const message=typeof req.body?.message==="string"?req.body.message.trim():"";
   const sessionId=String(req.body?.sessionId||"");
   const topic=typeof req.body?.topic==="string"?req.body.topic.slice(0,30):"general";
@@ -265,7 +265,7 @@ app.post("/api/chat/stream",chatLimiter,requireDatabase,async(req,res)=>{
   if(looksLikePII(message))return res.status(400).json({error:"检测到可能的个人身份信息，请删除后再提问。"});
   const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
   const student=verifyToken(token);
-  const ownsSession=student?.role==="student"&&student.learnerId&&student.classId;
+  const ownsSession=Boolean(dbReady&&student?.role==="student"&&student.learnerId&&student.classId);
   const ownerLearnerId=ownsSession?String(student.learnerId):"";
   const ownerClassId=ownsSession?String(student.classId):"";
   const headers={"Content-Type":"text/event-stream; charset=utf-8","Cache-Control":"no-cache, no-transform","Connection":"keep-alive","X-Accel-Buffering":"no"};
@@ -296,7 +296,7 @@ app.post("/api/chat/stream",chatLimiter,requireDatabase,async(req,res)=>{
   }
 });
 
-app.post("/api/chat",chatLimiter,requireDatabase,async(req,res)=>{
+app.post("/api/chat",chatLimiter,async(req,res)=>{
   const message=typeof req.body?.message==="string"?req.body.message.trim():"";
   const sessionId=String(req.body?.sessionId||"");
   const topic=typeof req.body?.topic==="string"?req.body.topic.slice(0,30):"general";
@@ -308,7 +308,7 @@ app.post("/api/chat",chatLimiter,requireDatabase,async(req,res)=>{
   try{
     const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
     const student=verifyToken(token);
-    const ownsSession=student?.role==="student" && student.learnerId && student.classId;
+    const ownsSession=Boolean(dbReady&&student?.role==="student" && student.learnerId && student.classId);
     const ownerLearnerId=ownsSession?String(student.learnerId):"";
     const ownerClassId=ownsSession?String(student.classId):"";
     const previous=ownsSession
