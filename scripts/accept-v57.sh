@@ -76,7 +76,7 @@ INVITE_CODE="$(jq -r '.class.invite_code // empty' <<<"$RESP")"
 [[ -n "$CLASS_ID" && -n "$INVITE_CODE" ]] || fail "class creation payload"
 check "teacher creates a class"
 # 10 student joins with grade
-ALIAS="验收$(date +%H%M%S)"
+ALIAS="验收$(printf '%04d' "$((RANDOM%10000))")"
 request POST /api/student/join "$(jq -nc --arg c "$INVITE_CODE" --arg a "$ALIAS" '{inviteCode:$c,alias:$a,grade:"5-6",guardianConsent:true}')"
 expect 200 "student join"
 STUDENT_TOKEN="$(jq -r '.token // empty' <<<"$RESP")"
