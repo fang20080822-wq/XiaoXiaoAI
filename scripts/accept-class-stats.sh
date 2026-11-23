@@ -13,7 +13,6 @@ BASE_URL="${BASE_URL%/}"
 TMP="$(mktemp)"
 CLASS_ID=""
 EMPTY_CLASS_ID=""
-TEACHER_TOKEN=""
 cleanup() {
   if [[ -n "$TEACHER_TOKEN" && -n "$CLASS_ID" ]]; then
     curl -sS -X DELETE "$BASE_URL/api/teacher/classes/$CLASS_ID" -H "Authorization: Bearer $TEACHER_TOKEN" >/dev/null || true
