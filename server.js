@@ -206,6 +206,37 @@ app.post("/api/teacher/classes",apiLimiter,requireTeacher,async(req,res)=>{
   catch(e){console.error("class_create_failed",e.message);res.status(500).json({error:"创建班级失败。"});}
 });
 
+
+app.post("/api/teacher/classes",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
+  const className=typeof req.body?.className==="string"?req.body.className.trim().slice(0,60):"";
+  if(!className)return res.status(400).json({error:"请填写班级代号，不要填写学校名称或真实班级信息。"});
+  const inviteCode=crypto.randomBytes(4).toString("hex").toUpperCase();
+  try{const q=await db.query("INSERT INTO science_classes(teacher_id,class_name,invite_code) VALUES($1,$2,$3) RETURNING id,class_name,invite_code,created_at",[teacherId(req),className,inviteCode]);res.status(201).json({class:q.rows[0]});}
+  catch(e){console.error("class_create_failed",e.message);res.status(500).json({error:"创建班级失败。"});}
+});
+app.post("/api/student/join",apiLimiter,requireDatabase,async(req,res)=>{
+  const code=String(req.body?.inviteCode||"").trim().toUpperCase(),alias=String(req.body?.alias||"").trim().slice(0,24);
+  if(!/^[A-F0-9]{8}$/.test(code))return res.status(400).json({error:"邀请码格式不正确。"});
+  if(!/^学生[A-Z0-9]{1,8}$/.test(alias))return res.status(400).json({error:"请使用匿名代号，例如学生A，不要使用真实姓名。"});
+  try{const c=await db.query("SELECT id FROM science_classes WHERE invite_code=$1",[code]);if(!c.rowCount)return res.status(404).json({error:"邀请码无效。"});const l=await db.query("INSERT INTO science_learners(class_id,alias) VALUES($1,$2) ON CONFLICT(class_id,alias) DO UPDATE SET alias=EXCLUDED.alias RETURNING id,alias",[c.rows[0].id,alias]);const token=signToken({role:"student",classId:c.rows[0].id,learnerId:l.rows[0].id,exp:Date.now()+30*24*60*60*1000});res.json({token,alias:l.rows[0].alias});}
+  catch(e){console.error("student_join_failed",e.message);res.status(500).json({error:"加入班级失败。"});}
+});
+app.post("/api/student/records",apiLimiter,requireStudent,requireDatabase,async(req,res)=>{
+  const keys=["topic","question","hypothesis","independentVariable","dependentVariable","controlVariables","method","evidence","conclusion","reflection"],d={};
+  for(const k of keys){d[k]=typeof req.body?.[k]==="string"?req.body[k].trim():"";if(d[k].length>(["method","evidence"].includes(k)?5000:1500))return res.status(400).json({error:"记录内容过长，请精简。"});if(looksLikePII(d[k]))return res.status(400).json({error:"检测到可能的个人身份信息，请删除后再提交。"});}
+  if(keys.slice(0,9).some(k=>!d[k]))return res.status(400).json({error:"请完成主题、问题、假设、变量、方法、证据和结论后再提交。"});
+  try{const q=await db.query("INSERT INTO science_records(class_id,learner_id,topic,question,hypothesis,independent_variable,dependent_variable,control_variables,method,evidence,conclusion,reflection) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id,created_at",[req.student.classId,req.student.learnerId,d.topic,d.question,d.hypothesis,d.independentVariable,d.dependentVariable,d.controlVariables,d.method,d.evidence,d.conclusion,d.reflection]);res.status(201).json({saved:true,record:q.rows[0]});}
+  catch(e){console.error("record_save_failed",e.message);res.status(500).json({error:"云端保存失败，请先导出备份。"});}
+});
+app.get("/api/teacher/classes",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
+  try{const q=await db.query("SELECT c.id,c.class_name,c.invite_code,c.created_at,COUNT(DISTINCT l.id)::int AS learner_count,COUNT(r.id)::int AS record_count FROM science_classes c LEFT JOIN science_learners l ON l.class_id=c.id LEFT JOIN science_records r ON r.class_id=c.id WHERE c.teacher_id=$1 GROUP BY c.id ORDER BY c.created_at DESC",[teacherId(req)]);res.json({classes:q.rows});}
+  catch(e){console.error("class_list_failed",e.message);res.status(500).json({error:"读取班级列表失败。"});}
+});
+app.get("/api/teacher/classes/:id/records",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
+  try{const own=await db.query("SELECT id FROM science_classes WHERE id=$1 AND teacher_id=$2",[req.params.id,teacherId(req)]);if(!own.rowCount)return res.status(404).json({error:"班级不存在。"});const q=await db.query("SELECT r.id,l.alias,r.topic,r.question,r.hypothesis,r.independent_variable,r.dependent_variable,r.control_variables,r.method,r.evidence,r.conclusion,r.reflection,r.created_at FROM science_records r JOIN science_learners l ON l.id=r.learner_id WHERE r.class_id=$1 ORDER BY r.created_at DESC LIMIT 300",[req.params.id]);res.json({records:q.rows});}
+  catch(e){console.error("record_list_failed",e.message);res.status(500).json({error:"读取探究档案失败。"});}
+});
+
 app.use(express.static(path.join(__dirname,"public"),{extensions:["html"],fallthrough:true}));
 app.use((req,res)=>{
   if(req.path.startsWith("/api/")) return res.status(404).json({error:"接口不存在。"});
