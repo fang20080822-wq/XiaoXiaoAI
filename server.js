@@ -99,8 +99,8 @@ function requireTeacher(req,res,next) {
   if(!payload || payload.role!=="teacher") return res.status(401).json({error:"教师身份验证已失效，请重新登录。"});
   next();
 }
-function teacherId(req){const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");return verifyToken(token)?.teacherId||"teacher-default";}
-function requireStudent(req,res,next){const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");const p=verifyToken(token);if(!p||p.role!=="student")return res.status(401).json({error:"学生会话已失效，请重新加入班级。"});req.student=p;next();}
+function teacherId(req){const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");return verifyToken(token)?.teacherId||"teacher-default";}
+function requireStudent(req,res,next){const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");const p=verifyToken(token);if(!p||p.role!=="student")return res.status(401).json({error:"学生会话已失效，请重新加入班级。"});req.student=p;next();}
 function requireDatabase(req,res,next){if(!db||!dbReady)return res.status(503).json({error:"云端数据库尚未就绪，请稍后重试。"});next();}
 function looksLikePII(text) {
   const patterns=[
@@ -207,13 +207,7 @@ app.post("/api/teacher/classes",apiLimiter,requireTeacher,async(req,res)=>{
 });
 
 
-app.post("/api/teacher/classes",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
-  const className=typeof req.body?.className==="string"?req.body.className.trim().slice(0,60):"";
-  if(!className)return res.status(400).json({error:"请填写班级代号，不要填写学校名称或真实班级信息。"});
-  const inviteCode=crypto.randomBytes(4).toString("hex").toUpperCase();
-  try{const q=await db.query("INSERT INTO science_classes(teacher_id,class_name,invite_code) VALUES($1,$2,$3) RETURNING id,class_name,invite_code,created_at",[teacherId(req),className,inviteCode]);res.status(201).json({class:q.rows[0]});}
-  catch(e){console.error("class_create_failed",e.message);res.status(500).json({error:"创建班级失败。"});}
-});
+
 app.post("/api/student/join",apiLimiter,requireDatabase,async(req,res)=>{
   const code=String(req.body?.inviteCode||"").trim().toUpperCase(),alias=String(req.body?.alias||"").trim().slice(0,24);
   if(!/^[A-F0-9]{8}$/.test(code))return res.status(400).json({error:"邀请码格式不正确。"});
