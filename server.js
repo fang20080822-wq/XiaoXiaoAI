@@ -7,7 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import pg from "pg";
-import { registerV56Routes } from "./upgrade-v56.js";
+import { registerV56Routes, scoreInquiryRecord } from "./upgrade-v56.js";
 
 dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -35,6 +35,7 @@ async function initDatabase(){
       "CREATE TABLE IF NOT EXISTS science_learners(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), class_id UUID REFERENCES science_classes(id) ON DELETE CASCADE, alias TEXT NOT NULL, guardian_consent BOOLEAN NOT NULL DEFAULT FALSE, consent_recorded_at TIMESTAMPTZ, UNIQUE(class_id,alias))",
       "ALTER TABLE science_learners ADD COLUMN IF NOT EXISTS guardian_consent BOOLEAN NOT NULL DEFAULT FALSE",
       "ALTER TABLE science_learners ADD COLUMN IF NOT EXISTS consent_recorded_at TIMESTAMPTZ",
+      "ALTER TABLE science_learners ADD COLUMN IF NOT EXISTS grade TEXT NOT NULL DEFAULT '3-4'",
       "CREATE TABLE IF NOT EXISTS science_records(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), class_id UUID REFERENCES science_classes(id) ON DELETE CASCADE, learner_id UUID REFERENCES science_learners(id) ON DELETE CASCADE, topic TEXT NOT NULL, question TEXT NOT NULL, hypothesis TEXT NOT NULL, independent_variable TEXT NOT NULL, dependent_variable TEXT NOT NULL, control_variables TEXT NOT NULL, method TEXT NOT NULL, evidence TEXT NOT NULL, conclusion TEXT NOT NULL, reflection TEXT DEFAULT '', created_at TIMESTAMPTZ DEFAULT NOW())",
       "ALTER TABLE science_records ADD COLUMN IF NOT EXISTS observed_phenomenon TEXT NOT NULL DEFAULT ''",
       "ALTER TABLE science_records ADD COLUMN IF NOT EXISTS question_boundary TEXT NOT NULL DEFAULT ''",
@@ -46,6 +47,8 @@ async function initDatabase(){
       "ALTER TABLE science_records ADD COLUMN IF NOT EXISTS data_table TEXT NOT NULL DEFAULT ''",
       "ALTER TABLE science_records ADD COLUMN IF NOT EXISTS anomaly_handling TEXT NOT NULL DEFAULT ''",
       "ALTER TABLE science_records ADD COLUMN IF NOT EXISTS evidence_reasoning TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE science_records ADD COLUMN IF NOT EXISTS level INTEGER NOT NULL DEFAULT 1",
+      "ALTER TABLE science_records ADD COLUMN IF NOT EXISTS level_json TEXT NOT NULL DEFAULT '{}'",
       "CREATE INDEX IF NOT EXISTS idx_science_classes_teacher_created ON science_classes(teacher_id, created_at DESC)",
       "CREATE INDEX IF NOT EXISTS idx_science_records_learner_created ON science_records(class_id, learner_id, created_at DESC)",
       "CREATE TABLE IF NOT EXISTS chat_messages(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), session_id UUID NOT NULL, role TEXT NOT NULL CHECK(role IN ('user','assistant')), content TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW())",
@@ -252,6 +255,55 @@ app.post("/api/chat",chatLimiter,requireDatabase,async(req,res)=>{
     res.json({mode,model:MODEL,answer,hintLevel:req.scienceHintLevel||1,qualityCheck:req.scienceQualityCheck||null,...(notice?{notice}:{})});
   }catch(err){console.error("chat_request_failed",err.message);res.status(503).json({mode:"offline",fallback:"offline",error:"对话服务暂不可用，请稍后重试。"});}
 });
+app.post("/api/chat/stream",chatLimiter,requireDatabase,async(req,res)=>{
+  const message=typeof req.body?.message==="string"?req.body.message.trim():"";
+  const sessionId=String(req.body?.sessionId||"");
+  const topic=typeof req.body?.topic==="string"?req.body.topic.slice(0,30):"general";
+  const mentorMode=typeof req.body?.mode==="string"&&Object.hasOwn(MENTOR_MODES,req.body.mode)?req.body.mode:"curiosity";
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId))return res.status(400).json({error:"对话会话标识无效，请刷新页面重试。"});
+  if(!message)return res.status(400).json({error:"请输入问题。"});
+  if(message.length>6000)return res.status(400).json({error:"问题过长，请控制在6000字以内。"});
+  if(looksLikePII(message))return res.status(400).json({error:"检测到可能的个人身份信息，请删除后再提问。"});
+  const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
+  const student=verifyToken(token),ownsSession=student?.role==="student"&&student.learnerId&&student.classId;
+  const ownerLearnerId=ownsSession?String(student.learnerId):"",ownerClassId=ownsSession?String(student.classId):"";
+  try{
+    const previous=ownsSession?await db.query("SELECT role,content FROM chat_messages WHERE session_id=$1 AND learner_id=$2 AND class_id=$3 ORDER BY created_at DESC LIMIT 8",[sessionId,ownerLearnerId,ownerClassId]):{rows:[]};
+    const history=previous.rows.reverse().filter(m=>!looksLikePII(m.content)).map(m=>({role:m.role,content:m.content.slice(0,1200)}));
+    if(ownsSession)await db.query("INSERT INTO chat_messages(session_id,learner_id,class_id,role,content) VALUES($1,$2,$3,'user',$4)",[sessionId,ownerLearnerId,ownerClassId,message]);
+    const topicHint={ai:"课程主题：认识人工智能。帮助学生区分人工智能、自动化与普通程序。",ml:"课程主题：机器学习。重点解释样例、特征、训练、测试、偏差和预测。",sensor:"课程主题：智能感知。重点解释传感器、输入—处理—输出与误报。",safety:"课程主题：AI安全。重点解释隐私、事实核查、偏见、版权和人工监督。",design:"课程主题：AI创意设计。引导学生说明需求、输入、处理、输出、风险、测试和迭代。"}[topic]||"课程主题：儿童科学探究。";
+    const messages=[{role:"system",content:SYSTEM_BASE+"\n"+MENTOR_MODES[mentorMode]+"\n"+topicHint+(req.scienceSystemContext||"")},...history,{role:"user",content:message}];
+    res.writeHead(200,{"Content-Type":"text/event-stream; charset=utf-8","Cache-Control":"no-cache, no-transform","Connection":"keep-alive","X-Accel-Buffering":"no"});
+    const send=obj=>res.write("data: "+JSON.stringify(obj)+"\n\n");
+    const prefix=req.scienceHintLevel===4?"参考答案（仅供参考，请用自己的话复述）\\n":"";
+    let full=prefix,mode="online",notice;
+    if(prefix)send({delta:prefix});
+    if(!API_KEY){const answer=offlineTutor(message,topic);full+=answer;mode="offline";for(const part of answer.match(/[\s\S]{1,24}/g)||[])send({delta:part});}
+    else{
+      const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),35000);
+      try{
+        const upstream=await fetch(`${BASE_URL}/chat/completions`,{method:"POST",headers:{"Authorization":`Bearer ${API_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({model:MODEL,messages,stream:true,max_tokens:1000,temperature:0.5,thinking:{type:"disabled"}}),signal:controller.signal});
+        if(!upstream.ok)throw new Error("模型服务暂不可用（HTTP "+upstream.status+"）。");
+        const decoder=new TextDecoder();let buffer="";
+        for await(const chunk of upstream.body){
+          buffer+=decoder.decode(chunk,{stream:true});
+          const lines=buffer.split("\n");buffer=lines.pop()||"";
+          for(const line of lines){if(!line.startsWith("data:"))continue;const payload=line.slice(5).trim();if(!payload||payload==="[DONE]")continue;
+            try{const delta=JSON.parse(payload).choices?.[0]?.delta?.content||"";if(delta){full+=delta;send({delta});}}catch{}}
+        }
+        if(buffer.startsWith("data:")){const payload=buffer.slice(5).trim();if(payload&&payload!=="[DONE]"){try{const delta=JSON.parse(payload).choices?.[0]?.delta?.content||"";if(delta){full+=delta;send({delta});}}catch{}}}
+      }catch(error){mode="offline";notice=error.message;const answer=offlineTutor(message,topic);full=prefix+answer;send({reset:true});for(const part of full.match(/[\s\S]{1,24}/g)||[])send({delta:part});}
+      finally{clearTimeout(timer);}
+    }
+    if(req.scienceHintLevel===4&&!/请用自己的话复述/.test(full))full+="\\n\\n请用自己的话复述你的理解。";
+    if(looksLikePII(full)){full="这条回答可能包含个人身份信息，为保护隐私已隐藏。请改用匿名信息继续探究。";send({reset:true});send({delta:full});}
+    if(ownsSession){
+      await db.query("INSERT INTO chat_messages(session_id,learner_id,class_id,role,content) VALUES($1,$2,$3,'assistant',$4)",[sessionId,ownerLearnerId,ownerClassId,full]);
+      await db.query("DELETE FROM chat_messages WHERE session_id=$1 AND learner_id=$2 AND class_id=$3 AND id NOT IN (SELECT id FROM chat_messages WHERE session_id=$1 AND learner_id=$2 AND class_id=$3 ORDER BY created_at DESC LIMIT 30)",[sessionId,ownerLearnerId,ownerClassId]);
+    }
+    send({done:true,mode,model:MODEL,hintLevel:req.scienceHintLevel||1,qualityCheck:req.scienceQualityCheck||null,...(notice?{notice}:{})});res.end();
+  }catch(error){console.error("chat_stream_failed",error.message);if(!res.headersSent)return res.status(503).json({error:"流式对话暂不可用，请稍后重试。"});res.end();}
+});
 app.post("/api/teacher/login",loginLimiter,(req,res)=>{
   if(!ADMIN_PASSWORD || !TOKEN_SECRET) return res.status(503).json({error:"教师端尚未完成安全配置，请管理员设置ADMIN_PASSWORD和TOKEN_SECRET。"});
   const password=typeof req.body?.password==="string"?req.body.password:"";
@@ -291,10 +343,12 @@ app.post("/api/teacher/classes",apiLimiter,requireTeacher,requireDatabase,async(
 app.post("/api/student/join",apiLimiter,requireDatabase,async(req,res)=>{
   if(!TOKEN_SECRET)return res.status(503).json({error:"学生会话安全配置尚未完成，请联系教师管理员。"});
   const code=String(req.body?.inviteCode||"").trim().toUpperCase(),alias=String(req.body?.alias||"").trim().slice(0,24);
+  const grade=String(req.body?.grade||"3-4");
+  if(!["3-4","5-6"].includes(grade))return res.status(400).json({error:"学段选择无效。"});
   if(!/^[A-F0-9]{8}$/.test(code))return res.status(400).json({error:"邀请码格式不正确。"});
   if(looksLikePII(alias)||!/^(?:学生|Learner)[A-Z0-9]{1,8}$/i.test(alias))return res.status(400).json({error:"请使用匿名代号，例如学生A，不要使用真实姓名或联系方式。"});
   if(req.body?.guardianConsent!==true)return res.status(400).json({error:"请先确认已取得教师和监护人必要同意。"});
-  try{const c=await db.query("SELECT id FROM science_classes WHERE invite_code=$1",[code]);if(!c.rowCount)return res.status(404).json({error:"邀请码无效。"});const l=await db.query("INSERT INTO science_learners(class_id,alias,guardian_consent,consent_recorded_at) VALUES($1,$2,TRUE,NOW()) ON CONFLICT(class_id,alias) DO UPDATE SET alias=EXCLUDED.alias,guardian_consent=TRUE,consent_recorded_at=NOW() RETURNING id,alias",[c.rows[0].id,alias]);const token=signToken({role:"student",classId:c.rows[0].id,learnerId:l.rows[0].id,exp:Date.now()+30*24*60*60*1000});res.json({token,alias:l.rows[0].alias});}
+  try{const c=await db.query("SELECT id FROM science_classes WHERE invite_code=$1",[code]);if(!c.rowCount)return res.status(404).json({error:"邀请码无效。"});const l=await db.query("INSERT INTO science_learners(class_id,alias,guardian_consent,consent_recorded_at,grade) VALUES($1,$2,TRUE,NOW(),$3) ON CONFLICT(class_id,alias) DO UPDATE SET alias=EXCLUDED.alias,guardian_consent=TRUE,consent_recorded_at=NOW(),grade=EXCLUDED.grade RETURNING id,alias,grade",[c.rows[0].id,alias,grade]);const token=signToken({role:"student",classId:c.rows[0].id,learnerId:l.rows[0].id,exp:Date.now()+30*24*60*60*1000});res.json({token,alias:l.rows[0].alias});}
   catch(e){console.error("student_join_failed",e.message);res.status(500).json({error:"加入班级失败。"});}
 });
 app.post("/api/student/records",apiLimiter,requireStudent,requireDatabase,async(req,res)=>{
@@ -315,34 +369,48 @@ app.post("/api/student/records",apiLimiter,requireStudent,requireDatabase,async(
     if(d[key].length>limit)return res.status(400).json({error:"记录内容过长，请精简。"});
     if(looksLikePII(d[key]))return res.status(400).json({error:"检测到可能的个人身份信息，请删除后再提交。"});
   }
-  const repetitions=Number(req.body?.repetitionCount);
-  if(!Number.isInteger(repetitions)||repetitions<2||repetitions>20)return res.status(400).json({error:"重复实验次数须填写2—20次。"});
+  if(d.topic.length<2)return res.status(400).json({error:"请至少填写实验主题。"});
+  if(d.question.length<4)return res.status(400).json({error:"请至少写出研究问题。"});
+  const repetitions=Number(req.body?.repetitionCount||0);
+  if(!Number.isInteger(repetitions)||repetitions<0||repetitions>20)return res.status(400).json({error:"重复实验次数须填写0—20次；未开展实验可填0。"});
   d.repetitionCount=repetitions;
-  const required=["topic","observedPhenomenon","question","questionBoundary","measurementIndicator","hypothesis","hypothesisBasis","expectedResult","independentVariable","dependentVariable","controlVariables","controlRationale","method","evidence","dataTable","anomalyHandling","evidenceReasoning","conclusion","reflection"];
-  if(required.some(k=>!d[k]))return res.status(400).json({error:"请完成五项水平4探究要求后再提交；每个必填项都需要有具体内容。"});
-  const rows=d.dataTable.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
-  if(rows.length<2)return res.status(400).json({error:"证据记录至少需要两行实际测量记录，请按次数逐行填写。"});
-  if(rows.length>repetitions)return res.status(400).json({error:"数据记录行数不能超过填写的重复实验次数。"});
-  const validRows=rows.every(row=>{const parts=row.split(/[|｜]/).map(x=>x.trim());const numericValue=parts.length>=4?Number(parts[2]):NaN;return parts.length>=4&&parts[0]&&parts[1]&&parts[2].length>0&&Number.isFinite(numericValue)&&parts[3].length>0;});
-  if(!validRows)return res.status(400).json({error:"每行数据请按“第几次｜日期/时间｜数值｜单位”填写，数值必须是数字并注明单位。"});
+  const evaluation=scoreInquiryRecord(d);
   try{
     const q=await db.query(
-      "INSERT INTO science_records(class_id,learner_id,topic,question,hypothesis,independent_variable,dependent_variable,control_variables,method,evidence,conclusion,reflection,observed_phenomenon,question_boundary,measurement_indicator,hypothesis_basis,expected_result,repetition_count,control_rationale,data_table,anomaly_handling,evidence_reasoning) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING id,created_at",
-      [req.student.classId,req.student.learnerId,d.topic,d.question,d.hypothesis,d.independentVariable,d.dependentVariable,d.controlVariables,d.method,d.evidence,d.conclusion,d.reflection,d.observedPhenomenon,d.questionBoundary,d.measurementIndicator,d.hypothesisBasis,d.expectedResult,d.repetitionCount,d.controlRationale,d.dataTable,d.anomalyHandling,d.evidenceReasoning]
+      "INSERT INTO science_records(class_id,learner_id,topic,question,hypothesis,independent_variable,dependent_variable,control_variables,method,evidence,conclusion,reflection,observed_phenomenon,question_boundary,measurement_indicator,hypothesis_basis,expected_result,repetition_count,control_rationale,data_table,anomaly_handling,evidence_reasoning,level,level_json) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24) RETURNING id,created_at,level",
+      [req.student.classId,req.student.learnerId,d.topic,d.question,d.hypothesis,d.independentVariable,d.dependentVariable,d.controlVariables,d.method,d.evidence,d.conclusion,d.reflection,d.observedPhenomenon,d.questionBoundary,d.measurementIndicator,d.hypothesisBasis,d.expectedResult,d.repetitionCount,d.controlRationale,d.dataTable,d.anomalyHandling,d.evidenceReasoning,evaluation.level_int,JSON.stringify(evaluation)]
     );
-    res.status(201).json({saved:true,record:q.rows[0]});
+    res.status(201).json({saved:true,record:q.rows[0],evaluation});
   }catch(e){console.error("record_save_failed",e.message);res.status(500).json({error:"云端保存失败，请先导出备份。"});}
 });
 app.get("/api/student/records",apiLimiter,requireStudent,requireDatabase,async(req,res)=>{
-  try{const q=await db.query("SELECT id,topic,question,hypothesis,independent_variable,dependent_variable,control_variables,method,evidence,conclusion,reflection,observed_phenomenon,question_boundary,measurement_indicator,hypothesis_basis,expected_result,repetition_count,control_rationale,data_table,anomaly_handling,evidence_reasoning,created_at FROM science_records WHERE class_id=$1 AND learner_id=$2 ORDER BY created_at DESC LIMIT 100",[req.student.classId,req.student.learnerId]);res.json({records:q.rows});}
+  try{const q=await db.query("SELECT id,topic,question,hypothesis,independent_variable,dependent_variable,control_variables,method,evidence,conclusion,reflection,observed_phenomenon,question_boundary,measurement_indicator,hypothesis_basis,expected_result,repetition_count,control_rationale,data_table,anomaly_handling,evidence_reasoning,level,level_json,created_at FROM science_records WHERE class_id=$1 AND learner_id=$2 ORDER BY created_at DESC LIMIT 100",[req.student.classId,req.student.learnerId]);res.json({records:q.rows});}
   catch(e){console.error("student_record_list_failed",e.message);res.status(500).json({error:"读取个人探究记录失败。"});}
 });
 app.get("/api/teacher/classes",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
   try{const q=await db.query("SELECT c.id,c.class_name,c.invite_code,c.created_at,COUNT(DISTINCT l.id)::int AS learner_count,COUNT(DISTINCT r.id)::int AS record_count FROM science_classes c LEFT JOIN science_learners l ON l.class_id=c.id LEFT JOIN science_records r ON r.class_id=c.id WHERE c.teacher_id=$1 GROUP BY c.id ORDER BY c.created_at DESC",[teacherId(req)]);await db.query("INSERT INTO audit_log(teacher_id,action,target_type,target_id) VALUES($1,$2,$3,$4)",[teacherId(req),"list_classes","teacher","all"]);res.json({classes:q.rows});}
   catch(e){console.error("class_list_failed",e.message);res.status(500).json({error:"读取班级列表失败。"});}
 });
+app.get("/api/teacher/classes/:id/stats",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
+  try{
+    const own=await db.query("SELECT id FROM science_classes WHERE id=$1 AND teacher_id=$2",[req.params.id,teacherId(req)]);
+    if(!own.rowCount)return res.status(404).json({error:"班级不存在。"});
+    const q=await db.query(`SELECT
+      COUNT(DISTINCT l.id)::int AS learners,
+      COUNT(DISTINCT r.learner_id)::int AS submitted,
+      COUNT(DISTINCT r.id)::int AS records,
+      CASE WHEN COUNT(DISTINCT l.id)=0 THEN 0 ELSE ROUND(COUNT(DISTINCT r.learner_id)::numeric/COUNT(DISTINCT l.id)*100,1) END AS submission_rate,
+      CASE WHEN COUNT(DISTINCT r.id)=0 THEN 0 ELSE ROUND(COUNT(DISTINCT r.id) FILTER (WHERE r.independent_variable ~ '[,，、和以及]' OR r.repetition_count<2 OR r.data_table !~ '[0-9]')::numeric/COUNT(DISTINCT r.id)*100,1) END AS variable_control_error_rate,
+      COUNT(DISTINCT r.id) FILTER (WHERE r.question ~ '为什么|怎样|如何|是否')::int AS question_exploratory,
+      COUNT(DISTINCT r.id) FILTER (WHERE r.question ~ '什么是|是什么|定义')::int AS question_concept,
+      COUNT(DISTINCT r.id) FILTER (WHERE r.question !~ '为什么|怎样|如何|是否|什么是|是什么|定义')::int AS question_other
+      FROM science_classes c LEFT JOIN science_learners l ON l.class_id=c.id LEFT JOIN science_records r ON r.class_id=c.id WHERE c.id=$1 GROUP BY c.id`,[req.params.id]);
+    await db.query("INSERT INTO audit_log(teacher_id,action,target_type,target_id) VALUES($1,$2,$3,$4)",[teacherId(req),"view_class_stats","class",req.params.id]);
+    res.json(q.rows[0]||{learners:0,submitted:0,records:0,submission_rate:0,variable_control_error_rate:0,question_exploratory:0,question_concept:0,question_other:0});
+  }catch(e){console.error("class_stats_failed",e.message);res.status(503).json({error:"班级统计暂不可用。"});}
+});
 app.get("/api/teacher/classes/:id/records",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
-  try{const own=await db.query("SELECT id FROM science_classes WHERE id=$1 AND teacher_id=$2",[req.params.id,teacherId(req)]);if(!own.rowCount)return res.status(404).json({error:"班级不存在。"});const q=await db.query("SELECT r.id,l.alias,r.topic,r.question,r.hypothesis,r.independent_variable,r.dependent_variable,r.control_variables,r.method,r.evidence,r.conclusion,r.reflection,r.observed_phenomenon,r.question_boundary,r.measurement_indicator,r.hypothesis_basis,r.expected_result,r.repetition_count,r.control_rationale,r.data_table,r.anomaly_handling,r.evidence_reasoning,r.created_at FROM science_records r JOIN science_learners l ON l.id=r.learner_id WHERE r.class_id=$1 ORDER BY r.created_at DESC LIMIT 300",[req.params.id]);await db.query("INSERT INTO audit_log(teacher_id,action,target_type,target_id) VALUES($1,$2,$3,$4)",[teacherId(req),"view_class_records","class",req.params.id]);res.json({records:q.rows});}
+  try{const own=await db.query("SELECT id FROM science_classes WHERE id=$1 AND teacher_id=$2",[req.params.id,teacherId(req)]);if(!own.rowCount)return res.status(404).json({error:"班级不存在。"});const q=await db.query("SELECT r.id,l.alias,r.topic,r.question,r.hypothesis,r.independent_variable,r.dependent_variable,r.control_variables,r.method,r.evidence,r.conclusion,r.reflection,r.observed_phenomenon,r.question_boundary,r.measurement_indicator,r.hypothesis_basis,r.expected_result,r.repetition_count,r.control_rationale,r.data_table,r.anomaly_handling,r.evidence_reasoning,r.level,r.level_json,r.created_at FROM science_records r JOIN science_learners l ON l.id=r.learner_id WHERE r.class_id=$1 ORDER BY r.created_at DESC LIMIT 300",[req.params.id]);await db.query("INSERT INTO audit_log(teacher_id,action,target_type,target_id) VALUES($1,$2,$3,$4)",[teacherId(req),"view_class_records","class",req.params.id]);res.json({records:q.rows});}
   catch(e){console.error("record_list_failed",e.message);res.status(500).json({error:"读取探究档案失败。"});}
 });
 

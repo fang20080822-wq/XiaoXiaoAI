@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { CURRICULUM_12, nextHintState, validateInquiry } from "../upgrade-v56.js";
+import { CURRICULUM_12, nextHintState, validateInquiry, scoreInquiryRecord } from "../upgrade-v56.js";
 
 assert.equal(CURRICULUM_12.length,12,"exactly 12 curriculum topics must be mapped");
 assert.ok(CURRICULUM_12.every(x=>x.title&&x.grade&&x.concept&&x.domain),"each topic needs a grade band, core concept and domain");
@@ -36,3 +36,10 @@ const incomplete=validateInquiry({independentVariable:"光照和水量",dataTabl
 assert.ok(incomplete.issues.some(x=>x.code==="multiple_independent"),"multiple independent variables must be flagged");
 assert.ok(incomplete.issues.some(x=>x.code==="insufficient_data"),"unmeasurable text must not pass evidence validation");
 console.log("V5.6 unit tests passed: scaffold progression, L4 gate, curriculum completeness and deterministic inquiry validation.");
+
+const partial=scoreInquiryRecord({topic:"植物喝水",question:"植物怎样吸水？",repetitionCount:0});
+assert.equal(partial.level_int,1,"a minimal inquiry should be accepted at L1");
+assert.ok(partial.completeness<20,"partial record completeness should remain low");
+const developed=scoreInquiryRecord({topic:"植物喝水",question:"不同光照下植物吸水速度是否不同？",questionBoundary:"比较两种光照条件",measurementIndicator:"水位变化厘米",observedPhenomenon:"叶片出现萎蔫",hypothesis:"光照较强吸水较快",hypothesisBasis:"观察到蒸腾差异",expectedResult:"水位下降更多",independentVariable:"光照强度",dependentVariable:"水位下降",controlVariables:"植物种类和初始水量",controlRationale:"保持其他条件相同",repetitionCount:3,dataTable:"第1次｜09:00｜2｜cm\\n第2次｜10:00｜3｜cm\\n第3次｜11:00｜4｜cm",anomalyHandling:"检查异常测量",conclusion:"强光下水位下降较多",evidenceReasoning:"三次数据支持趋势",reflection:"样本数量仍有限"});
+assert.equal(developed.level_int,4,"complete evidence-backed inquiry should reach L4");
+assert.equal(developed.evidence_ok,true,"at least two numeric unit-bearing measurements and repeats should be marked as evidence");
