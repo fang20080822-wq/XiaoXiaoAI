@@ -36,7 +36,7 @@ if (!html.includes('function createClass()') || !html.includes('function viewCla
 const archiveView = html.slice(html.indexOf('async function viewClassRecords('), html.indexOf('async function teacherLogin('));
 if (!archiveView.includes('await loadClasses()')) throw new Error('Opening a class archive must refresh live student and record counts');
 
-const inquiryOrder = ['topic', 'researchQuestion', 'hypothesis', 'independentVariable', 'dependentVariable', 'controlVariables', 'method', 'evidence', 'conclusion', 'reflection'];
+const inquiryOrder = ['topic','observedPhenomenon','researchQuestion','questionBoundary','measurementIndicator','hypothesis','hypothesisBasis','expectedResult','independentVariable','dependentVariable','controlVariables','controlRationale','repetitionCount','method','dataTable','evidence','anomalyHandling','evidenceReasoning','conclusion','reflection'];
 let previousIndex = -1;
 for (const field of inquiryOrder) {
   const index = html.indexOf('id="' + field + '"');
@@ -50,13 +50,13 @@ if (!server.includes('guardian_consent') || !server.includes('req.body?.guardian
 if (!server.includes('DATABASE_URL') || !server.includes('science_records')) throw new Error('PostgreSQL learning record storage missing');
 if (!html.includes('科学探究能力量规')) throw new Error('Science inquiry competency rubric missing');
 if (html.includes('六维100分评审量规') || html.includes('技术深度与工程') || html.includes('未成年人合规')) throw new Error('Legacy competition scoring rubric must be removed from teacher UI');
-for (const term of ['问题提出','假设预测','变量控制','实验设计','证据记录','结论反思']) if (!html.includes(term)) throw new Error('Inquiry rubric dimension missing: '+term);
+for (const term of ['提出问题','假设与依据','变量与设计','证据与记录','解释与反思']) if (!html.includes(term)) throw new Error('Inquiry rubric dimension missing: '+term);
 if (html.includes('DEEPSEEK_API_KEY=')) throw new Error('Possible API key assignment found in public frontend');
 console.log('V5 frontend syntax, six modules, API contracts, and frontend secret scan passed.');
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const lock = JSON.parse(readFileSync(new URL('../package-lock.json', import.meta.url), 'utf8'));
-if (pkg.version !== '5.4.0' || lock.version !== pkg.version || lock.packages?.['']?.version !== pkg.version) throw new Error('Package and lockfile versions must match V5.4.0');
+if (pkg.version !== '5.5.0' || lock.version !== pkg.version || lock.packages?.['']?.version !== pkg.version) throw new Error('Package and lockfile versions must match V5.5.0');
 if (!server.includes('const APP_VERSION = JSON.parse(readFileSync(new URL("./package.json"') || !server.includes('version:APP_VERSION')) throw new Error('Backend health version must derive from package.json');
 if (!html.includes("fetch('/api/health')") || !html.includes("$('appVersion').textContent='V'+d.version") || !html.includes("document.title='小小AI科学家 V'+d.version")) throw new Error('Page version must be injected from the health endpoint');
 if (/小小AI科学家 V5\\.\\d/.test(html)) throw new Error('Frontend must not hardcode a release version');
@@ -73,7 +73,11 @@ const chatRoute=server.slice(server.indexOf('app.post("/api/chat"'),server.index
 if (chatRoute.includes('req.body?.history') || !chatRoute.includes('SELECT role,content FROM chat_messages') || !chatRoute.includes('INSERT INTO chat_messages')) throw new Error('Chat must read prior history only from the database and persist new turns');
 if (!server.includes('limit:30') || !server.includes('limit:120') || !server.includes('req.ip||req.socket?.remoteAddress') || !server.includes('"student:"+payload.learnerId')) throw new Error('Rate limits must use student token first, IP fallback, 30 chat/minute and 120 API/minute');
 if (!server.includes('本分钟对话次数已达上限') || !server.includes('fallback:"offline"') || !html.includes('r.status===429')) throw new Error('HTTP 429 must return and display a graceful offline fallback');
-if (!server.includes('function looksLikePII') || !server.includes('looksLikePII(alias)') || !server.includes('looksLikePII(d[k])') || !server.includes('looksLikePII(work)') || !server.includes('looksLikePII(message)')) throw new Error('PII screening must cover chat, alias, all inquiry fields and teacher studentWork');
+if (!server.includes('function looksLikePII') || !server.includes('looksLikePII(alias)') || !server.includes('looksLikePII(d[k])') || !server.includes('looksLikePII(work)') || !server.includes('looksLikePII(message)'))
+for (const field of ['observedPhenomenon','questionBoundary','measurementIndicator','hypothesisBasis','expectedResult','controlRationale','dataTable','anomalyHandling','evidenceReasoning']) if (!html.includes('id="'+field+'"') || !server.includes(field)) throw new Error('Level-four inquiry field missing end-to-end: '+field);
+if (!html.includes('至少填写两行真实测量数据') || !server.includes('rows.length<2') || !server.includes('repetitions<2')) throw new Error('Level-four submission must enforce multiple real data entries and repeat count');
+for (const term of ['真实观察','问题边界','可测量指标','假设依据','预期结果','控制理由','异常值处理','证据解释']) if (!server.includes(term) && !html.includes(term)) throw new Error('Level-four rubric requirement missing: '+term);
+if (!server.includes('五项能力') || !server.includes('尚无证据')) throw new Error('Teacher evaluation must use five level-four dimensions and avoid inferring evidence'); throw new Error('PII screening must cover chat, alias, all inquiry fields and teacher studentWork');
 if (!server.includes('q.rows.reverse().filter(m=>!looksLikePII(m.content))') || !server.includes('if(looksLikePII(answer))')) throw new Error('Chat history responses and stored AI answers must also be screened for PII');
 if (!html.includes('示例探究记录 · 只读') || !html.includes('示例班级 · 只读') || !html.includes('data-course="plant"') || !html.includes('scienceSelectedCourse')) throw new Error('Homepage must include read-only sample work/class and a default selected course');
 const routeDefinitions = [
