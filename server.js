@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
+import pg from "pg";
 
 dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -16,6 +17,12 @@ const BASE_URL = (process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com").r
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const TOKEN_SECRET = process.env.TOKEN_SECRET || "";
 const ALLOW_ORIGIN = process.env.ALLOW_ORIGIN || "";
+const DATABASE_URL = process.env.DATABASE_URL || "";
+const { Pool } = pg;
+const db = DATABASE_URL ? new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false }, max: 5 }) : null;
+let dbReady = false;
+async function initDatabase(){ if(!db) return; await db.query("CREATE TABLE IF NOT EXISTS science_classes(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), teacher_id TEXT NOT NULL, class_name TEXT NOT NULL, invite_code TEXT UNIQUE NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW()); CREATE TABLE IF NOT EXISTS science_learners(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), class_id UUID REFERENCES science_classes(id) ON DELETE CASCADE, alias TEXT NOT NULL, guardian_consent BOOLEAN NOT NULL DEFAULT FALSE, consent_recorded_at TIMESTAMPTZ, UNIQUE(class_id,alias)); ALTER TABLE science_learners ADD COLUMN IF NOT EXISTS guardian_consent BOOLEAN NOT NULL DEFAULT FALSE; ALTER TABLE science_learners ADD COLUMN IF NOT EXISTS consent_recorded_at TIMESTAMPTZ; CREATE TABLE IF NOT EXISTS science_records(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), class_id UUID REFERENCES science_classes(id) ON DELETE CASCADE, learner_id UUID REFERENCES science_learners(id) ON DELETE CASCADE, topic TEXT NOT NULL, question TEXT NOT NULL, hypothesis TEXT NOT NULL, independent_variable TEXT NOT NULL, dependent_variable TEXT NOT NULL, control_variables TEXT NOT NULL, method TEXT NOT NULL, evidence TEXT NOT NULL, conclusion TEXT NOT NULL, reflection TEXT DEFAULT '', created_at TIMESTAMPTZ DEFAULT NOW())"); dbReady=true; }
+if(db) initDatabase().catch(e=>console.error("database_init_failed",e.message));
 
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
@@ -84,13 +91,17 @@ function verifyToken(token) {
   const expected=crypto.createHmac("sha256",TOKEN_SECRET).update(body).digest();
   let got; try { got=Buffer.from(sig,"base64url"); } catch { return false; }
   if (got.length!==expected.length || !crypto.timingSafeEqual(got,expected)) return false;
-  try { const p=JSON.parse(Buffer.from(body,"base64url").toString()); return p.role==="teacher" && p.exp>Date.now(); } catch { return false; }
+  try { const p=JSON.parse(Buffer.from(body,"base64url").toString()); return p.exp>Date.now()?p:false; } catch { return false; }
 }
 function requireTeacher(req,res,next) {
   const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
-  if(!verifyToken(token)) return res.status(401).json({error:"教师身份验证已失效，请重新登录。"});
+  const payload=verifyToken(token);
+  if(!payload || payload.role!=="teacher") return res.status(401).json({error:"教师身份验证已失效，请重新登录。"});
   next();
 }
+function teacherId(req){const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");return verifyToken(token)?.teacherId||"teacher-default";}
+function requireStudent(req,res,next){const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");const p=verifyToken(token);if(!p||p.role!=="student")return res.status(401).json({error:"学生会话已失效，请重新加入班级。"});req.student=p;next();}
+function requireDatabase(req,res,next){if(!db||!dbReady)return res.status(503).json({error:"云端数据库尚未就绪，请稍后重试。"});next();}
 function looksLikePII(text) {
   const patterns=[
     /(?:\+?\d[\d\s-]{7,}\d)/,
@@ -133,7 +144,7 @@ async function callDeepSeek(messages, maxTokens=900) {
   } finally { clearTimeout(timer); }
 }
 
-app.get("/api/health",(req,res)=>res.json({ok:true,aiConfigured:Boolean(API_KEY),model:MODEL,mode:API_KEY?"online":"offline",version:"5.1.0",capabilities:{serverSideMentorModes:true,contentSecurityPolicy:true,cloudLearningRecords:false}}));
+app.get("/api/health",(req,res)=>res.json({ok:true,aiConfigured:Boolean(API_KEY),model:MODEL,mode:API_KEY?"online":"offline",version:"5.2.0",database:dbReady?"ready":DATABASE_URL?"connecting":"not_configured",capabilities:{serverSideMentorModes:true,contentSecurityPolicy:true,cloudLearningRecords:dbReady,classroomManagement:dbReady,structuredInquiryRecords:dbReady}}));
 app.post("/api/chat",async(req,res)=>{
   const message=typeof req.body?.message==="string"?req.body.message.trim():"";
   const topic=typeof req.body?.topic==="string"?req.body.topic.slice(0,30):"general";
@@ -164,7 +175,8 @@ app.post("/api/teacher/login",loginLimiter,(req,res)=>{
   const password=typeof req.body?.password==="string"?req.body.password:"";
   const a=Buffer.from(password),b=Buffer.from(ADMIN_PASSWORD);
   if(a.length!==b.length || !crypto.timingSafeEqual(a,b)) return res.status(401).json({error:"密码不正确。"});
-  const token=signToken({role:"teacher",exp:Date.now()+2*60*60*1000});
+  const teacherId=crypto.createHash("sha256").update(ADMIN_PASSWORD).digest("hex").slice(0,24);
+  const token=signToken({role:"teacher",teacherId,exp:Date.now()+2*60*60*1000});
   res.json({token,expiresIn:7200});
 });
 app.post("/api/teacher/evaluate",apiLimiter,requireTeacher,async(req,res)=>{
@@ -176,7 +188,7 @@ app.post("/api/teacher/evaluate",apiLimiter,requireTeacher,async(req,res)=>{
   if(!API_KEY) return res.json({mode:"offline",answer:"离线演示：教师评价功能尚未连接DeepSeek。请依据课程量规人工评价。建议关注：问题是否真实明确；输入数据是否可获得且适当；处理逻辑是否合理；输出是否可验证；是否考虑错误、隐私、公平性和人工复核；是否提出测试与迭代。"});
   try {
     const answer=await callDeepSeek([
-      {role:"system",content:`你是小学科学与信息科技课程的教师评价辅助工具。仅依据提交作品给出形成性反馈，不推断学生人格、能力等级或敏感属性。不能替代教师评分。指出证据充分处、待改进处、一个可执行建议和需要教师核查的问题。若信息不足明确说明。量规：${rubric}`},
+      {role:"system",content:`你是小学科学与信息科技课程的教师评价辅助工具。只能依据提交材料中可见证据评价，不得补造课堂实施、学生人数、前后测、访谈、试点数据或运行结果。不能替代教师最终评分。请按以下100分量规逐项给出“建议分数/满分、材料中的证据、扣分理由、下一步可执行改进”；缺乏证据的维度必须标注“证据不足”，不得臆测。维度与权重：教育价值与教学法设计25分；AI技术深度与工程25分；产品完成度与体验20分；学习成效证据15分；未成年人合规10分；可持续与规模化5分。最后给出总分建议、最关键的3项整改和教师必须人工复核的事项。当前教师选择：${rubric}`},
       {role:"user",content:`请对以下已匿名化的学生作品提供评价建议：\n${work}`}
     ],1400);
     res.json({mode:"online",model:MODEL,answer});
@@ -184,10 +196,62 @@ app.post("/api/teacher/evaluate",apiLimiter,requireTeacher,async(req,res)=>{
     res.json({mode:"offline",answer:"AI评价服务暂不可用。请由教师按量规人工评价。"+err.message});
   }
 });
+
+app.post("/api/teacher/classes",apiLimiter,requireTeacher,async(req,res)=>{
+  if(!DATABASE_URL||!dbReady)return res.status(503).json({error:"云端数据库尚未连接，暂不能创建云端班级。"});
+  const className=typeof req.body?.className==="string"?req.body.className.trim().slice(0,60):"";
+  if(!className)return res.status(400).json({error:"请填写班级代号，不要填写真实学校或班级信息。"});
+  const inviteCode=crypto.randomBytes(4).toString("hex").toUpperCase();
+  try{const q=await db.query("INSERT INTO science_classes(teacher_id,class_name,invite_code) VALUES($1,$2,$3) RETURNING id,class_name,invite_code,created_at",[teacherId(req),className,inviteCode]);res.status(201).json({class:q.rows[0]});}
+  catch(e){console.error("class_create_failed",e.message);res.status(500).json({error:"创建班级失败。"});}
+});
+
+
+app.post("/api/teacher/classes",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
+  const className=typeof req.body?.className==="string"?req.body.className.trim().slice(0,60):"";
+  if(!className)return res.status(400).json({error:"请填写班级代号，不要填写学校名称或真实班级信息。"});
+  const inviteCode=crypto.randomBytes(4).toString("hex").toUpperCase();
+  try{const q=await db.query("INSERT INTO science_classes(teacher_id,class_name,invite_code) VALUES($1,$2,$3) RETURNING id,class_name,invite_code,created_at",[teacherId(req),className,inviteCode]);res.status(201).json({class:q.rows[0]});}
+  catch(e){console.error("class_create_failed",e.message);res.status(500).json({error:"创建班级失败。"});}
+});
+app.post("/api/student/join",apiLimiter,requireDatabase,async(req,res)=>{
+  const code=String(req.body?.inviteCode||"").trim().toUpperCase(),alias=String(req.body?.alias||"").trim().slice(0,24);
+  if(!/^[A-F0-9]{8}$/.test(code))return res.status(400).json({error:"邀请码格式不正确。"});
+  if(!/^学生[A-Z0-9]{1,8}$/.test(alias))return res.status(400).json({error:"请使用匿名代号，例如学生A，不要使用真实姓名。"});
+  if(req.body?.guardianConsent!==true)return res.status(400).json({error:"请先确认已取得教师和监护人必要同意。"});
+  try{const c=await db.query("SELECT id FROM science_classes WHERE invite_code=$1",[code]);if(!c.rowCount)return res.status(404).json({error:"邀请码无效。"});const l=await db.query("INSERT INTO science_learners(class_id,alias,guardian_consent,consent_recorded_at) VALUES($1,$2,TRUE,NOW()) ON CONFLICT(class_id,alias) DO UPDATE SET alias=EXCLUDED.alias,guardian_consent=TRUE,consent_recorded_at=NOW() RETURNING id,alias",[c.rows[0].id,alias]);const token=signToken({role:"student",classId:c.rows[0].id,learnerId:l.rows[0].id,exp:Date.now()+30*24*60*60*1000});res.json({token,alias:l.rows[0].alias});}
+  catch(e){console.error("student_join_failed",e.message);res.status(500).json({error:"加入班级失败。"});}
+});
+app.post("/api/student/records",apiLimiter,requireStudent,requireDatabase,async(req,res)=>{
+  const keys=["topic","question","hypothesis","independentVariable","dependentVariable","controlVariables","method","evidence","conclusion","reflection"],d={};
+  for(const k of keys){d[k]=typeof req.body?.[k]==="string"?req.body[k].trim():"";if(d[k].length>(["method","evidence"].includes(k)?5000:1500))return res.status(400).json({error:"记录内容过长，请精简。"});if(looksLikePII(d[k]))return res.status(400).json({error:"检测到可能的个人身份信息，请删除后再提交。"});}
+  if(keys.slice(0,9).some(k=>!d[k]))return res.status(400).json({error:"请完成主题、问题、假设、变量、方法、证据和结论后再提交。"});
+  try{const q=await db.query("INSERT INTO science_records(class_id,learner_id,topic,question,hypothesis,independent_variable,dependent_variable,control_variables,method,evidence,conclusion,reflection) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id,created_at",[req.student.classId,req.student.learnerId,d.topic,d.question,d.hypothesis,d.independentVariable,d.dependentVariable,d.controlVariables,d.method,d.evidence,d.conclusion,d.reflection]);res.status(201).json({saved:true,record:q.rows[0]});}
+  catch(e){console.error("record_save_failed",e.message);res.status(500).json({error:"云端保存失败，请先导出备份。"});}
+});
+app.get("/api/teacher/classes",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
+  try{const q=await db.query("SELECT c.id,c.class_name,c.invite_code,c.created_at,COUNT(DISTINCT l.id)::int AS learner_count,COUNT(DISTINCT r.id)::int AS record_count FROM science_classes c LEFT JOIN science_learners l ON l.class_id=c.id LEFT JOIN science_records r ON r.class_id=c.id WHERE c.teacher_id=$1 GROUP BY c.id ORDER BY c.created_at DESC",[teacherId(req)]);res.json({classes:q.rows});}
+  catch(e){console.error("class_list_failed",e.message);res.status(500).json({error:"读取班级列表失败。"});}
+});
+app.get("/api/teacher/classes/:id/records",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
+  try{const own=await db.query("SELECT id FROM science_classes WHERE id=$1 AND teacher_id=$2",[req.params.id,teacherId(req)]);if(!own.rowCount)return res.status(404).json({error:"班级不存在。"});const q=await db.query("SELECT r.id,l.alias,r.topic,r.question,r.hypothesis,r.independent_variable,r.dependent_variable,r.control_variables,r.method,r.evidence,r.conclusion,r.reflection,r.created_at FROM science_records r JOIN science_learners l ON l.id=r.learner_id WHERE r.class_id=$1 ORDER BY r.created_at DESC LIMIT 300",[req.params.id]);res.json({records:q.rows});}
+  catch(e){console.error("record_list_failed",e.message);res.status(500).json({error:"读取探究档案失败。"});}
+});
+
+
+app.delete("/api/student/records/:id",apiLimiter,requireStudent,requireDatabase,async(req,res)=>{
+  try{const q=await db.query("DELETE FROM science_records WHERE id=$1 AND class_id=$2 AND learner_id=$3",[req.params.id,req.student.classId,req.student.learnerId]);if(!q.rowCount)return res.status(404).json({error:"记录不存在或无权删除。"});res.json({deleted:true});}
+  catch(e){console.error("student_record_delete_failed",e.message);res.status(500).json({error:"删除记录失败。"});}
+});
+app.delete("/api/teacher/classes/:id",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
+  try{const q=await db.query("DELETE FROM science_classes WHERE id=$1 AND teacher_id=$2",[req.params.id,teacherId(req)]);if(!q.rowCount)return res.status(404).json({error:"班级不存在或无权删除。"});res.json({deleted:true});}
+  catch(e){console.error("class_delete_failed",e.message);res.status(500).json({error:"删除班级失败。"});}
+});
+
 app.use(express.static(path.join(__dirname,"public"),{extensions:["html"],fallthrough:true}));
 app.use((req,res)=>{
   if(req.path.startsWith("/api/")) return res.status(404).json({error:"接口不存在。"});
   return res.status(404).type("text/plain; charset=utf-8").send("页面不存在（404）。请检查网址，或返回小小AI科学家首页。");
 });
 app.use((err,req,res,next)=>{console.error("request_error",err?.message||"unknown");res.status(500).json({error:"服务器内部错误，请稍后重试。"});});
-app.listen(PORT,()=>console.log(`Little AI Scientists V4 listening on ${PORT}`));
+app.listen(PORT,()=>console.log(`Little AI Scientists V5.2 listening on ${PORT}`));
