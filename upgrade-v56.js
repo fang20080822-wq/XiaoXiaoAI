@@ -167,9 +167,9 @@ export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,AD
       const school=String(req.body?.school||"").trim().slice(0,120);
       if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length<8 || password.length>128 || !school) return res.status(400).json({error:"请填写有效邮箱、学校/机构；密码须至少8位。"});
       const credential=hashPassword(password);
-      const created=await db.query("INSERT INTO teachers(email,password_hash,pw_hash,salt,school) VALUES($1,$2,$3,$4,$5) RETURNING id,email,school,status",[email,"pbkdf2:"+credential.salt+":"+credential.hash,credential.hash,credential.salt,school]);
+      const created=await db.query("INSERT INTO teachers(email,password_hash,pw_hash,salt,school,status,reviewed_at) VALUES($1,$2,$3,$4,$5,'approved',NOW()) RETURNING id,email,school,status",[email,"pbkdf2:"+credential.salt+":"+credential.hash,credential.hash,credential.salt,school]);
       const session=await issueSession(db,{role:"teacher",subjectId:created.rows[0].id});
-      res.status(201).json({status:"pending",token:session.token,expiresIn:28800,teacher:{email:created.rows[0].email,school:created.rows[0].school},message:"注册成功，已自动建立待审核会话。审核通过后即可使用教师工作台。"});
+      res.status(201).json({status:"approved",token:session.token,expiresIn:28800,teacher:{email:created.rows[0].email,school:created.rows[0].school},message:"注册成功，教师账号已启用。现在可以使用教师工作台。"});
     } catch(error){if(error.code==="23505")return res.status(409).json({error:"该邮箱已注册。"});console.error("teacher_register_failed",error.message);res.status(503).json({error:"教师注册暂不可用。"});}
   });
   const teacherAccountLogin=async(req,res)=>{
@@ -195,7 +195,7 @@ export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,AD
         }
       }
       if(!valid)return res.status(401).json({error:"邮箱或密码不正确。"});
-      if(row.status!=="approved")return res.status(403).json({error:row.status==="pending"?"账号正在等待管理员审核。":"账号未获批准，请联系管理员。"});
+      if(row.status==="rejected")return res.status(403).json({error:"账号未获批准，请联系管理员。"});
       const session=await issueSession(db,{role:"teacher",subjectId:row.id});
       res.json({token:session.token,expiresIn:28800,teacher:{email:row.email,school:row.school}});
     } catch(error){console.error("teacher_account_login_failed",error.message);res.status(503).json({error:"教师登录暂不可用。"});}
