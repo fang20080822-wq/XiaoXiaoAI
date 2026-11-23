@@ -379,7 +379,9 @@ function renderMarkdown(parent,source){
 }
 function bubble(t,who){const d=document.createElement('div');d.className='bubble '+who;if(who==='bot')renderMarkdown(d,t);else d.textContent=t;$('chatlog').appendChild(d);$('chatlog').scrollTop=$('chatlog').scrollHeight}
 async function restoreChat(){
-  try{const r=await fetch('/api/chat/history/'+encodeURIComponent(chatSessionId));if(!r.ok)throw new Error('history unavailable');const d=await r.json();$('chatlog').innerHTML='';if(!d.messages.length){bubble('你好，小小科学家！🔬 你最近观察到了什么有趣的现象？选择一种探究方式，我们从你的问题开始。','bot');return}d.messages.forEach(m=>bubble(m.content,m.role==='user'?'user':'bot'))}
+  const token=localStorage.getItem('scienceStudentToken')||'';
+  if(!token){if(!$('chatlog').children.length)bubble('你好，小小科学家！🔬 你最近观察到了什么有趣的现象？选择一种探究方式，我们从你的问题开始。','bot');return}
+  try{const r=await fetch('/api/chat/history/'+encodeURIComponent(chatSessionId),{headers:{'Authorization':'Bearer '+token}});if(!r.ok)throw new Error('history unavailable');const d=await r.json();$('chatlog').innerHTML='';if(!d.messages.length){bubble('你好，小小科学家！🔬 你最近观察到了什么有趣的现象？选择一种探究方式，我们从你的问题开始。','bot');return}d.messages.forEach(m=>bubble(m.content,m.role==='user'?'user':'bot'))}
   catch(e){if(!$('chatlog').children.length)bubble('你好，小小科学家！🔬 你最近观察到了什么有趣的现象？选择一种探究方式，我们从你的问题开始。','bot')}
 }
 restoreChat();
@@ -415,7 +417,7 @@ async function ask(){
   finally{$('sendBtn').disabled=false;$('sendBtn').textContent='发送问题 →'}
 }
 $('question').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();ask()}});
-async function clearChat(){try{await fetch('/api/chat/history/'+encodeURIComponent(chatSessionId),{method:'DELETE'})}catch(e){}$('chatlog').innerHTML='';bubble('对话已清空。你有什么新的科学问题？','bot');$('question').value=''}
+async function clearChat(){const token=localStorage.getItem('scienceStudentToken')||'';if(token){try{await fetch('/api/chat/history/'+encodeURIComponent(chatSessionId),{method:'DELETE',headers:{'Authorization':'Bearer '+token}})}catch(e){}}$('chatlog').innerHTML='';bubble('对话已清空。你有什么新的科学问题？','bot');$('question').value=''}
 
 let studentToken=localStorage.getItem('scienceStudentToken')||'';
 let studentAlias=localStorage.getItem('scienceStudentAlias')||'';
@@ -424,7 +426,7 @@ async function joinClass(){
   const inviteCode=$('classInvite').value.trim().toUpperCase(),alias=$('studentAlias').value.trim();
   if(!$('guardianAck').checked){$('joinStatus').textContent='请先确认已取得教师和监护人必要同意。';return}
   $('joinStatus').textContent='正在验证邀请码……';
-  try{const r=await fetch('/api/student/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({inviteCode,alias,guardianConsent:true})});const d=await r.json();if(!r.ok)throw new Error(d.error||'加入失败');studentToken=d.token;studentAlias=d.alias;localStorage.setItem('scienceStudentToken',studentToken);localStorage.setItem('scienceStudentAlias',studentAlias);$('joinStatus').textContent='✓ 已加入班级，匿名身份：'+studentAlias+'。';}
+  try{const r=await fetch('/api/student/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({inviteCode,alias,guardianConsent:true})});const d=await r.json();if(!r.ok)throw new Error(d.error||'加入失败');studentToken=d.token;studentAlias=d.alias;localStorage.setItem('scienceStudentToken',studentToken);localStorage.setItem('scienceStudentAlias',studentAlias);$('joinStatus').textContent='✓ 已加入班级，匿名身份：'+studentAlias+'。';await restoreChat();}
   catch(e){$('joinStatus').textContent=e.message}
 }
 async function loadMyRecords(){
