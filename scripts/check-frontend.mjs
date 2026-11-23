@@ -38,6 +38,7 @@ for (const field of ['researchQuestion', 'independentVariable', 'dependentVariab
 }
 if (!html.includes('function joinClass()') || !html.includes('function submitCloudRecord()') || !html.includes('function loadMyRecords()')) throw new Error('Student classroom workflow missing');
 if (!html.includes('/api/teacher/login') || !html.includes('/api/teacher/register') || html.includes('id="adminPassword"')) throw new Error('Teacher UI must use independent email/password accounts, not the shared password field');
+if (html.includes('新账号需完成管理员审核')) throw new Error('Teacher UI must not claim new accounts require approval when immediate activation is selected');
 if (!server.includes('app.post("/api/chat/stream"') || !html.includes("fetch('/api/chat/stream'") || !server.includes('X-Accel-Buffering')) throw new Error('Streaming chat endpoint and frontend reader must be connected');
 if (!html.includes('function createClass()') || !html.includes('function viewClassRecords(')) throw new Error('Teacher classroom workflow missing');
 const archiveView = html.slice(html.indexOf('async function viewClassRecords('), html.indexOf('async function teacherLogin('));
