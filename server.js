@@ -91,13 +91,17 @@ function verifyToken(token) {
   const expected=crypto.createHmac("sha256",TOKEN_SECRET).update(body).digest();
   let got; try { got=Buffer.from(sig,"base64url"); } catch { return false; }
   if (got.length!==expected.length || !crypto.timingSafeEqual(got,expected)) return false;
-  try { const p=JSON.parse(Buffer.from(body,"base64url").toString()); return p.role==="teacher" && p.exp>Date.now(); } catch { return false; }
+  try { const p=JSON.parse(Buffer.from(body,"base64url").toString()); return p.exp>Date.now()?p:false; } catch { return false; }
 }
 function requireTeacher(req,res,next) {
   const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
-  if(!verifyToken(token)) return res.status(401).json({error:"教师身份验证已失效，请重新登录。"});
+  const payload=verifyToken(token);
+  if(!payload || payload.role!=="teacher") return res.status(401).json({error:"教师身份验证已失效，请重新登录。"});
   next();
 }
+function teacherId(req){const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");return verifyToken(token)?.teacherId||"teacher-default";}
+function requireStudent(req,res,next){const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");const p=verifyToken(token);if(!p||p.role!=="student")return res.status(401).json({error:"学生会话已失效，请重新加入班级。"});req.student=p;next();}
+function requireDatabase(req,res,next){if(!db||!dbReady)return res.status(503).json({error:"云端数据库尚未就绪，请稍后重试。"});next();}
 function looksLikePII(text) {
   const patterns=[
     /(?:\+?\d[\d\s-]{7,}\d)/,
@@ -140,7 +144,7 @@ async function callDeepSeek(messages, maxTokens=900) {
   } finally { clearTimeout(timer); }
 }
 
-app.get("/api/health",(req,res)=>res.json({ok:true,aiConfigured:Boolean(API_KEY),model:MODEL,mode:API_KEY?"online":"offline",version:"5.1.0",capabilities:{serverSideMentorModes:true,contentSecurityPolicy:true,cloudLearningRecords:false}}));
+app.get("/api/health",(req,res)=>res.json({ok:true,aiConfigured:Boolean(API_KEY),model:MODEL,mode:API_KEY?"online":"offline",version:"5.2.0",database:dbReady?"ready":DATABASE_URL?"connecting":"not_configured",capabilities:{serverSideMentorModes:true,contentSecurityPolicy:true,cloudLearningRecords:dbReady,classroomManagement:dbReady,structuredInquiryRecords:dbReady}}));
 app.post("/api/chat",async(req,res)=>{
   const message=typeof req.body?.message==="string"?req.body.message.trim():"";
   const topic=typeof req.body?.topic==="string"?req.body.topic.slice(0,30):"general";
@@ -171,7 +175,8 @@ app.post("/api/teacher/login",loginLimiter,(req,res)=>{
   const password=typeof req.body?.password==="string"?req.body.password:"";
   const a=Buffer.from(password),b=Buffer.from(ADMIN_PASSWORD);
   if(a.length!==b.length || !crypto.timingSafeEqual(a,b)) return res.status(401).json({error:"密码不正确。"});
-  const token=signToken({role:"teacher",exp:Date.now()+2*60*60*1000});
+  const teacherId=crypto.createHash("sha256").update(ADMIN_PASSWORD).digest("hex").slice(0,24);
+  const token=signToken({role:"teacher",teacherId,exp:Date.now()+2*60*60*1000});
   res.json({token,expiresIn:7200});
 });
 app.post("/api/teacher/evaluate",apiLimiter,requireTeacher,async(req,res)=>{
