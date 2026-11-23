@@ -186,15 +186,25 @@ textarea{min-height:105px;resize:vertical}
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><h2>我的探究记录</h2><span class="pill">本地草稿 · 班级云档案</span></div>
     <p class="muted">按照科学探究的顺序填写。先提出问题和假设，再设计实验、记录证据，最后形成结论。</p>
     <label for="topic">01 · 实验主题</label><input id="topic" maxlength="160" placeholder="例如：不同颜色的纸吸热一样快吗？">
-    <label for="researchQuestion">02 · 可研究的问题</label><textarea id="researchQuestion" maxlength="1500" placeholder="我想研究的问题是……"></textarea>
-    <label for="hypothesis">03 · 我的假设</label><textarea id="hypothesis" maxlength="3000" placeholder="我认为……因为……"></textarea>
+    <label for="observedPhenomenon">02 · 真实观察（我实际看到了什么）</label><textarea id="observedPhenomenon" maxlength="1500" placeholder="写下亲眼观察到的现象、发生地点/条件和观察时间；不要把猜想写成观察。"></textarea>
+    <label for="researchQuestion">03 · 可研究的问题</label><textarea id="researchQuestion" maxlength="1500" placeholder="基于上面的观察，我想知道……"></textarea>
+    <label for="questionBoundary">问题边界（研究对象与范围）</label><textarea id="questionBoundary" maxlength="1000" placeholder="明确研究哪种对象、在什么条件/时间范围内研究，哪些内容暂不研究。"></textarea>
+    <label for="measurementIndicator">可测量指标（用什么数据回答）</label><input id="measurementIndicator" maxlength="300" placeholder="例如：每隔24小时测量一次茎的高度，单位cm">
+    <label for="hypothesis">04 · 我的假设</label><textarea id="hypothesis" maxlength="3000" placeholder="如果……那么……（写出可以通过观察或测量检验的预测）。"></textarea>
+    <label for="hypothesisBasis">假设依据（为什么这样预测）</label><textarea id="hypothesisBasis" maxlength="1500" placeholder="依据来自刚才的观察、学过的科学知识或已有生活经验；写明具体理由。"></textarea>
+    <label for="expectedResult">预期结果（我预计会观察到什么）</label><textarea id="expectedResult" maxlength="1000" placeholder="写出结果的方向、数值范围或可观察变化；不要把预期当成实验结果。"></textarea>
     <label for="independentVariable">04 · 自变量（我主动改变什么）</label><input id="independentVariable" maxlength="500" placeholder="例如：光照时间">
     <label for="dependentVariable">05 · 因变量（我观察或测量什么）</label><input id="dependentVariable" maxlength="500" placeholder="例如：植物高度">
-    <label for="controlVariables">06 · 控制变量（哪些条件保持相同）</label><textarea id="controlVariables" maxlength="1500" placeholder="例如：植物种类、土壤、水量、花盆大小……"></textarea>
+    <label for="controlVariables">07 · 控制变量（哪些条件保持相同）</label><textarea id="controlVariables" maxlength="1500" placeholder="列出所有需要保持相同的条件，例如植物种类、土壤、水量、容器大小。"></textarea>
+    <label for="controlRationale">为什么要控制这些条件</label><textarea id="controlRationale" maxlength="1200" placeholder="说明如果这些条件发生变化，会怎样影响结果，为什么必须保持相同。"></textarea>
+    <label for="repetitionCount">重复实验次数（至少2次）</label><input id="repetitionCount" type="number" min="2" max="20" step="1" value="3" placeholder="建议3次或更多">
     <label for="method">07 · 实验方法与步骤</label><textarea id="method" maxlength="5000" placeholder="写下材料、步骤和安全注意事项；记录你实际做了什么。"></textarea>
-    <label for="evidence">08 · 证据与数据（如实记录）</label><textarea id="evidence" maxlength="5000" placeholder="记录观察、测量数据、次数和单位；没有测量的数据不要编造。"></textarea>
-    <label for="conclusion">09 · 结论与新问题</label><textarea id="conclusion" maxlength="3000" placeholder="哪些证据支持或不支持你的假设？你还想知道什么？"></textarea>
-    <label for="reflection">10 · 反思与下一步</label><textarea id="reflection" maxlength="1500" placeholder="哪些地方可能有误差？下一次准备怎样改进？"></textarea>
+    <label for="dataTable">08 · 多次测量数据表（每次一行）</label><textarea id="dataTable" maxlength="5000" placeholder="至少填写2行真实测量记录，建议格式：第1次｜日期/时间｜测量值｜单位\n第2次｜日期/时间｜测量值｜单位\n第3次｜日期/时间｜测量值｜单位"></textarea>
+    <label for="evidence">补充观察与证据说明</label><textarea id="evidence" maxlength="5000" placeholder="记录测量工具、测量方法、观察到的现象及数据来源；只写实际发生的内容。"></textarea>
+    <label for="anomalyHandling">异常值检查与处理</label><textarea id="anomalyHandling" maxlength="1500" placeholder="说明是否有明显异常值；若有，记录原始值、可能原因，以及保留/复测/排除的理由。若没有，也要写明检查方法。"></textarea>
+    <label for="evidenceReasoning">证据如何支持或不支持假设</label><textarea id="evidenceReasoning" maxlength="1500" placeholder="引用具体测量记录，解释它与假设的关系；区分观察事实和自己的解释。"></textarea>
+    <label for="conclusion">10 · 结论与新问题</label><textarea id="conclusion" maxlength="3000" placeholder="用数据回答研究问题；每个结论都要指出对应证据。若证据不足，请明确说明不能下结论，并提出新问题。"></textarea>
+    <label for="reflection">11 · 反思与下一步</label><textarea id="reflection" maxlength="1500" placeholder="说明实验局限、可能误差、哪些结论不能推广，以及下一步想验证的新问题。"></textarea>
     <div class="actions" style="margin-top:16px"><button class="btn primary" onclick="saveLab()">保存本地草稿</button><button class="btn outline" onclick="exportLab()">导出完整实验报告</button><button class="btn outline" onclick="resetLab()">新建记录</button></div>
     <div class="divider" style="height:1px;background:var(--line);margin:20px 0"></div>
     <h3>班级学习档案</h3>
@@ -262,7 +272,7 @@ textarea{min-height:105px;resize:vertical}
       <div id="classRecords" class="result" style="margin-top:12px"></div>
 
       <h3>学生探究作品评价</h3><label for="studentWork">学生作品（请先去除个人身份信息）</label><textarea id="studentWork" maxlength="6000" placeholder="粘贴匿名化的学生探究记录……"></textarea>
-      <div class="sample-card" style="margin-top:12px"><span class="sample-tag">SCIENCE INQUIRY COMPETENCY RUBRIC</span><h3>科学探究能力量规</h3><p>问题提出 · 假设预测 · 变量控制 · 实验设计 · 证据记录 · 结论反思</p><p>评价聚焦学生探究过程与作品证据，提供具体反馈和下一步建议，不进行竞赛技术打分。</p></div>
+      <div class="sample-card" style="margin-top:12px"><span class="sample-tag">SCIENCE INQUIRY COMPETENCY RUBRIC</span><h3>科学探究能力量规</h3><p>提出问题 · 假设与依据 · 变量与设计 · 证据与记录 · 解释与反思</p><p>逐项对照水平4优秀标准：真实观察、可测量边界、明确依据、单一变量、多次记录、异常值处理、证据支持结论。</p></div>
       <div class="actions" style="margin-top:14px"><button class="btn primary" id="evaluateBtn" onclick="evaluateWork()">生成评价建议</button><button class="btn outline" onclick="exportEvaluation()">导出评价建议</button></div><div id="evaluation" class="result" style="margin-top:14px" aria-live="polite"></div>
     </div>
   </div>
