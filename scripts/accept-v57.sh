@@ -46,10 +46,10 @@ grep -q "尚未接入监护人身份核验" <<<"$RESP" || fail "guardian identit
 check "data policy states guardian identity is not verified"
 # 5 legacy teacher shared password is retired
 request POST /api/teacher/login '{"password":"not-used"}'
-expect 410 "legacy teacher login"
-check "legacy shared teacher login returns HTTP 410"
+expect 401 "shared-password-only teacher login"
+check "teacher login rejects shared-password-only requests"
 # 6 teacher account login
-request POST /api/teacher/account/login "$(jq -nc --arg e "$TEACHER_EMAIL" --arg p "$TEACHER_PASSWORD" '{email:$e,password:$p}')"
+request POST /api/teacher/login "$(jq -nc --arg e "$TEACHER_EMAIL" --arg p "$TEACHER_PASSWORD" '{email:$e,password:$p}')"
 expect 200 "teacher account login"
 TEACHER_TOKEN="$(jq -r '.token // empty' <<<"$RESP")"
 [[ -n "$TEACHER_TOKEN" ]] || fail "teacher token missing"
@@ -114,7 +114,7 @@ expect 200 "class stats"
 jq -e '.learners>=1 and .submitted>=1 and (.levels|has("L1") and has("L4"))' <<<"$RESP" >/dev/null || fail "class statistics payload"
 check "teacher class statistics and level distribution"
 # 18 second teacher cannot read first teacher class
-request POST /api/teacher/account/login "$(jq -nc --arg e "$TEACHER_B_EMAIL" --arg p "$TEACHER_B_PASSWORD" '{email:$e,password:$p}')"
+request POST /api/teacher/login "$(jq -nc --arg e "$TEACHER_B_EMAIL" --arg p "$TEACHER_B_PASSWORD" '{email:$e,password:$p}')"
 expect 200 "second teacher login"
 TEACHER_B_TOKEN="$(jq -r '.token // empty' <<<"$RESP")"
 [[ -n "$TEACHER_B_TOKEN" ]] || fail "second teacher token missing"
