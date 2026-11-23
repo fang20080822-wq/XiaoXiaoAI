@@ -196,6 +196,8 @@ textarea{min-height:105px;resize:vertical}
     <label for="reflection">08 · 反思与下一步</label><textarea id="reflection" maxlength="1500" placeholder="哪些地方可能有误差？下一次准备怎样改进？"></textarea>
     <div class="actions"><button class="btn soft" onclick="submitCloudRecord()">提交到班级档案</button></div>
     <p id="cloudSaveStatus" class="muted" role="status" aria-live="polite">加入班级后，可将结构化探究记录提交到教师端。</p>
+    <div class="actions"><button class="btn outline" onclick="loadMyRecords()">查看我的云端记录</button></div>
+    <div id="myCloudRecords" aria-live="polite"></div>
 
     <label for="conclusion">09 · 结论与新问题</label><textarea id="conclusion" maxlength="3000" placeholder="证据说明……我还想知道……"></textarea>
     <div class="actions" style="margin-top:16px"><button class="btn primary" onclick="saveLab()">保存探究记录</button><button class="btn outline" onclick="exportLab()">导出实验报告</button><button class="btn outline" onclick="resetLab()">新建记录</button></div>
@@ -371,6 +373,14 @@ async function joinClass(){
   $('joinStatus').textContent='正在验证邀请码……';
   try{const r=await fetch('/api/student/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({inviteCode,alias,guardianConsent:true})});const d=await r.json();if(!r.ok)throw new Error(d.error||'加入失败');studentToken=d.token;studentAlias=d.alias;localStorage.setItem('scienceStudentToken',studentToken);localStorage.setItem('scienceStudentAlias',studentAlias);$('joinStatus').textContent='✓ 已加入班级，匿名身份：'+studentAlias+'。';}
   catch(e){$('joinStatus').textContent=e.message}
+}
+async function loadMyRecords(){
+  const box=$('myCloudRecords');if(!studentToken){box.textContent='请先加入班级。';return}
+  box.textContent='正在读取你的云端探究记录……';
+  try{const r=await fetch('/api/student/records',{headers:{'Authorization':'Bearer '+studentToken}});const d=await r.json();if(!r.ok)throw new Error(d.error||'读取失败');box.innerHTML='';
+    if(!d.records.length){box.textContent='还没有云端记录，完成一次探究后可以提交。';return}
+    d.records.forEach(rec=>{const card=document.createElement('article');card.className='unit';card.style.margin='10px 0';const title=document.createElement('b');title.textContent=rec.topic+' · '+new Date(rec.created_at).toLocaleString();const summary=document.createElement('p');summary.textContent='问题：'+rec.question+'\\n结论：'+rec.conclusion;summary.style.whiteSpace='pre-wrap';const del=document.createElement('button');del.className='btn outline';del.textContent='删除这条记录';del.onclick=async()=>{if(!confirm('确定删除这条云端探究记录吗？此操作不可恢复。'))return;try{const x=await fetch('/api/student/records/'+encodeURIComponent(rec.id),{method:'DELETE',headers:{'Authorization':'Bearer '+studentToken}});const y=await x.json();if(!x.ok)throw new Error(y.error||'删除失败');loadMyRecords()}catch(e){summary.textContent='删除失败：'+e.message}};card.append(title,summary,del);box.appendChild(card)});
+  }catch(e){box.textContent='读取失败：'+e.message}
 }
 async function submitCloudRecord(){
   if(!studentToken){$('cloudSaveStatus').textContent='请先使用班级邀请码加入班级。';return}
