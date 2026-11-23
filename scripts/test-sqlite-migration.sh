@@ -20,8 +20,9 @@ sqlite3 "$DB" "INSERT INTO teachers(id,email,password_hash,pw_hash,salt,school,s
 [[ "$(sqlite3 "$DB" "SELECT COUNT(*) FROM pragma_table_info('science_learners') WHERE name='grade';")" == "1" ]]
 [[ "$(sqlite3 "$DB" "SELECT COUNT(*) FROM pragma_table_info('science_records') WHERE name IN ('level','level_json');")" == "2" ]]
 
-if sqlite3 "$DB" "INSERT INTO teachers(id,email) VALUES('teacher-2','teacher@example.test');" >/dev/null 2>&1; then
+sqlite3 "$DB" "INSERT OR IGNORE INTO teachers(id,email) VALUES('teacher-2','teacher@example.test');"
+[[ "$(sqlite3 "$DB" "SELECT COUNT(*) FROM teachers WHERE email='teacher@example.test';")" == "1" ]] || {
   echo "Duplicate teacher email was accepted" >&2
   exit 1
-fi
+}
 echo "SQLite V5.7 migration passed: legacy schema upgrade, idempotency, required columns and unique teacher email."
