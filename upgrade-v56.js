@@ -165,8 +165,9 @@ export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,AD
       const school=String(req.body?.school||"").trim().slice(0,120);
       if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length<8 || password.length>128 || !school) return res.status(400).json({error:"请填写有效邮箱、学校/机构；密码须至少8位。"});
       const credential=hashPassword(password);
-      await db.query("INSERT INTO teachers(email,password_hash,pw_hash,salt,school) VALUES($1,$2,$3,$4,$5)",[email,"pbkdf2:"+credential.salt+":"+credential.hash,credential.hash,credential.salt,school]);
-      res.status(201).json({status:"pending",message:"申请已提交，管理员审核通过后即可登录。"});
+      const created=await db.query("INSERT INTO teachers(email,password_hash,pw_hash,salt,school) VALUES($1,$2,$3,$4,$5) RETURNING id,email,school,status",[email,"pbkdf2:"+credential.salt+":"+credential.hash,credential.hash,credential.salt,school]);
+      const session=await issueSession(db,{role:"teacher",subjectId:created.rows[0].id});
+      res.status(201).json({status:"pending",token:session.token,expiresIn:28800,teacher:{email:created.rows[0].email,school:created.rows[0].school},message:"注册成功，已自动建立待审核会话。审核通过后即可使用教师工作台。"});
     } catch(error){if(error.code==="23505")return res.status(409).json({error:"该邮箱已注册。"});console.error("teacher_register_failed",error.message);res.status(503).json({error:"教师注册暂不可用。"});}
   });
   const teacherAccountLogin=async(req,res)=>{
