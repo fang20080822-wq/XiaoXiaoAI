@@ -72,6 +72,19 @@ export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,AD
   const audit = async (tid,action,type="",id="") => {
     await db.query("INSERT INTO audit_log(teacher_id,action,target_type,target_id) VALUES($1,$2,$3,$4)",[String(tid),action,type,id]);
   };
+  app.use("/api/teacher",async(req,res,next)=>{
+    if(!db)return next();
+    try {
+      await ensureTables();
+      const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");
+      const payload=verifyToken(token);
+      if(payload?.accountTeacher){
+        const q=await db.query("SELECT status FROM teachers WHERE id=$1",[payload.teacherId]);
+        if(!q.rows[0] || q.rows[0].status!=="approved")return res.status(403).json({error:"教师账号当前未获准访问，请联系管理员。"});
+      }
+      next();
+    } catch(error) { console.error("teacher_account_guard_failed",error.message); res.status(503).json({error:"教师账号服务暂不可用。"}); }
+  });
   const requireAdmin = (req,res,next) => {
     const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");
     const p=verifyToken(token);
