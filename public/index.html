@@ -507,7 +507,7 @@ async function viewClassRecords(classId){
 async function teacherLogin(){
   $('loginMsg').textContent='正在验证教师账号…';
   try{
-    const r=await fetch('/api/teacher/account/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:$('teacherEmail').value.trim(),password:$('teacherPassword').value})});
+    const r=await fetch('/api/teacher/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:$('teacherEmail').value.trim(),password:$('teacherPassword').value})});
     const d=await r.json();if(!r.ok)throw new Error(d.error||'登录失败');
     teacherToken=d.token;$('teacherPanel').classList.remove('hidden');$('teacherLogout').classList.remove('hidden');$('teacherPassword').value='';$('loginMsg').textContent='✓ 登录成功。教师会话有效期为8小时。'
   }catch(e){$('loginMsg').textContent=e.message}
