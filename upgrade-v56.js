@@ -15,6 +15,32 @@ export const CURRICULUM_12 = [
   {id:"filter",title:"怎样让水更清澈",grade:"5—6年级",concept:"过滤与材料结构",domain:"技术与工程",question:"不同过滤材料对水中可见颗粒的去除效果有何不同？"}
 ];
 
+
+export function scoreInquiryRecord(record = {}) {
+  const has=(key,min=1)=>String(record[key]??"").trim().length>=min;
+  const rows=String(record.dataTable||"").split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  const measured=rows.filter(row=>{const p=row.split(/[|｜,，\t]/).map(x=>x.trim());return p.length>=3&&p.some(x=>/\d/.test(x))&&p.some(x=>/(mm|cm|m|g|kg|℃|°c|秒|分钟|次|ml|毫升|%|个|片|株)/i.test(x));});
+  const dims={};
+  let lv=1;
+  if(has("question",8))lv=2;
+  if(has("questionBoundary",4))lv=3;
+  if(has("measurementIndicator",2)&&has("observedPhenomenon",4))lv=4;
+  dims["提出问题"]=lv;
+  lv=1;if(has("hypothesis",6))lv=2;if(has("hypothesisBasis",4))lv=3;if(has("expectedResult",4))lv=4;
+  dims["假设与依据"]=lv;
+  lv=1;if(has("independentVariable")&&has("dependentVariable"))lv=2;if(has("controlVariables",2))lv=3;if(has("controlRationale",4)&&Number(record.repetitionCount)>=3)lv=4;
+  dims["变量与设计"]=lv;
+  lv=1;if(measured.length>=1)lv=2;if(measured.length>=2)lv=3;if(measured.length>=3&&has("anomalyHandling",4))lv=4;
+  dims["证据与记录"]=lv;
+  lv=1;if(has("conclusion",8))lv=2;if(has("evidenceReasoning",6))lv=3;if(has("reflection",6))lv=4;
+  dims["解释与反思"]=lv;
+  const fields=["topic","question","observedPhenomenon","questionBoundary","measurementIndicator","hypothesis","hypothesisBasis","expectedResult","independentVariable","dependentVariable","controlVariables","controlRationale","method","dataTable","evidence","anomalyHandling","evidenceReasoning","conclusion","reflection"];
+  const completeness=Math.round(fields.filter(k=>has(k)).length/fields.length*1000)/10;
+  const advice={"提出问题":"把问题缩小到「改变什么、测量什么」","假设与依据":"补充猜想依据和预期结果","变量与设计":"明确只改变一个变量，并说明控制条件","证据与记录":"补充至少3行带数值和单位的真实测量记录","解释与反思":"让结论逐条对应证据，并说明实验局限"};
+  const level=Math.max(1,Math.min(4,Math.round(Object.values(dims).reduce((a,b)=>a+b,0)/5)));
+  return {level:"L"+level,level_int:level,dims,completeness,evidence_ok:measured.length>=2&&Number(record.repetitionCount)>=2,next_steps:Object.keys(dims).filter(k=>dims[k]<4).map(k=>advice[k]).slice(0,3),measured_rows:measured.length,checked_by:"deterministic-rules"};
+}
+
 export function validateInquiry(record = {}) {
   const issues = [];
   const has = (k) => String(record[k] ?? "").trim().length > 0;
