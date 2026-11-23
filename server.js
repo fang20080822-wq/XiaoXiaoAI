@@ -9,6 +9,7 @@ import dotenv from "dotenv";
 import pg from "pg";
 import { registerV56Routes } from "./upgrade-v56.js";
 import { registerV57Routes } from "./upgrade-v57.js";
+import { scoreRecord } from "./lib/inquiry.js";
 
 dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -307,40 +308,24 @@ app.post("/api/student/join",apiLimiter,requireDatabase,async(req,res)=>{
   catch(e){console.error("student_join_failed",e.message);res.status(500).json({error:"加入班级失败。"});}
 });
 app.post("/api/student/records",apiLimiter,requireStudent,requireDatabase,async(req,res)=>{
-  const fields={
-    topic:"topic",question:"question",hypothesis:"hypothesis",
-    independentVariable:"independentVariable",dependentVariable:"dependentVariable",
-    controlVariables:"controlVariables",method:"method",evidence:"evidence",
-    conclusion:"conclusion",reflection:"reflection",
-    observedPhenomenon:"observedPhenomenon",questionBoundary:"questionBoundary",
-    measurementIndicator:"measurementIndicator",hypothesisBasis:"hypothesisBasis",
-    expectedResult:"expectedResult",controlRationale:"controlRationale",
-    dataTable:"dataTable",anomalyHandling:"anomalyHandling",evidenceReasoning:"evidenceReasoning"
-  };
+  const fields=["topic","question","hypothesis","independentVariable","dependentVariable","controlVariables","method","evidence","conclusion","reflection","observedPhenomenon","questionBoundary","measurementIndicator","hypothesisBasis","expectedResult","controlRationale","dataTable","anomalyHandling","evidenceReasoning"];
   const d={};
-  for(const [key,bodyKey] of Object.entries(fields)){
-    d[key]=typeof req.body?.[bodyKey]==="string"?req.body[bodyKey].trim():"";
-    const limit=["method","evidence","dataTable"].includes(key)?5000:1500;
-    if(d[key].length>limit)return res.status(400).json({error:"记录内容过长，请精简。"});
-    if(looksLikePII(d[key]))return res.status(400).json({error:"检测到可能的个人身份信息，请删除后再提交。"});
+  for(const key of fields){
+    d[key]=typeof req.body?.[key]==="string"?req.body[key].trim():"";
+    if(d[key].length>(["method","evidence","dataTable"].includes(key)?5000:1500))return res.status(400).json({error:"记录内容过长，请精简。"});
+    if(d[key]&&looksLikePII(d[key]))return res.status(400).json({error:"检测到可能的个人身份信息，请删除后再提交。"});
   }
-  const repetitions=Number(req.body?.repetitionCount);
-  if(!Number.isInteger(repetitions)||repetitions<2||repetitions>20)return res.status(400).json({error:"重复实验次数须填写2—20次。"});
-  d.repetitionCount=repetitions;
-  const required=["topic","observedPhenomenon","question","questionBoundary","measurementIndicator","hypothesis","hypothesisBasis","expectedResult","independentVariable","dependentVariable","controlVariables","controlRationale","method","evidence","dataTable","anomalyHandling","evidenceReasoning","conclusion","reflection"];
-  if(required.some(k=>!d[k]))return res.status(400).json({error:"请完成五项水平4探究要求后再提交；每个必填项都需要有具体内容。"});
-  const rows=d.dataTable.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
-  if(rows.length<2)return res.status(400).json({error:"证据记录至少需要两行实际测量记录，请按次数逐行填写。"});
-  if(rows.length>repetitions)return res.status(400).json({error:"数据记录行数不能超过填写的重复实验次数。"});
-  const validRows=rows.every(row=>{const parts=row.split(/[|｜]/).map(x=>x.trim());const numericValue=parts.length>=4?Number(parts[2]):NaN;return parts.length>=4&&parts[0]&&parts[1]&&parts[2].length>0&&Number.isFinite(numericValue)&&parts[3].length>0;});
-  if(!validRows)return res.status(400).json({error:"每行数据请按“第几次｜日期/时间｜数值｜单位”填写，数值必须是数字并注明单位。"});
+  if(!d.topic||!d.question)return res.status(400).json({error:"请先填写实验主题和研究问题。"});
+  const repetition=Number(req.body?.repetitionCount);
+  d.repetitionCount=Number.isInteger(repetition)&&repetition>=1&&repetition<=20?repetition:0;
+  const scored=scoreRecord(d);
   try{
     const q=await db.query(
-      "INSERT INTO science_records(class_id,learner_id,topic,question,hypothesis,independent_variable,dependent_variable,control_variables,method,evidence,conclusion,reflection,observed_phenomenon,question_boundary,measurement_indicator,hypothesis_basis,expected_result,repetition_count,control_rationale,data_table,anomaly_handling,evidence_reasoning) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING id,created_at",
-      [req.student.classId,req.student.learnerId,d.topic,d.question,d.hypothesis,d.independentVariable,d.dependentVariable,d.controlVariables,d.method,d.evidence,d.conclusion,d.reflection,d.observedPhenomenon,d.questionBoundary,d.measurementIndicator,d.hypothesisBasis,d.expectedResult,d.repetitionCount,d.controlRationale,d.dataTable,d.anomalyHandling,d.evidenceReasoning]
+      "INSERT INTO science_records(class_id,learner_id,topic,question,hypothesis,independent_variable,dependent_variable,control_variables,method,evidence,conclusion,reflection,observed_phenomenon,question_boundary,measurement_indicator,hypothesis_basis,expected_result,repetition_count,control_rationale,data_table,anomaly_handling,evidence_reasoning,level,level_json) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24) RETURNING id,created_at",
+      [req.student.classId,req.student.learnerId,d.topic,d.question,d.hypothesis,d.independentVariable,d.dependentVariable,d.controlVariables,d.method,d.evidence,d.conclusion,d.reflection,d.observedPhenomenon,d.questionBoundary,d.measurementIndicator,d.hypothesisBasis,d.expectedResult,d.repetitionCount,d.controlRationale,d.dataTable,d.anomalyHandling,d.evidenceReasoning,scored.level,JSON.stringify(scored)]
     );
-    res.status(201).json({saved:true,record:q.rows[0]});
-  }catch(e){console.error("record_save_failed",e.message);res.status(500).json({error:"云端保存失败，请先导出备份。"});}
+    res.status(201).json({saved:true,record:q.rows[0],level:scored.level,level_json:scored,next_steps:scored.next_steps});
+  }catch(error){console.error("record_save_failed",error.message);res.status(500).json({error:"云端保存失败，请稍后重试。"});}
 });
 app.get("/api/student/records",apiLimiter,requireStudent,requireDatabase,async(req,res)=>{
   try{const q=await db.query("SELECT id,topic,question,hypothesis,independent_variable,dependent_variable,control_variables,method,evidence,conclusion,reflection,observed_phenomenon,question_boundary,measurement_indicator,hypothesis_basis,expected_result,repetition_count,control_rationale,data_table,anomaly_handling,evidence_reasoning,created_at FROM science_records WHERE class_id=$1 AND learner_id=$2 ORDER BY created_at DESC LIMIT 100",[req.student.classId,req.student.learnerId]);res.json({records:q.rows});}
