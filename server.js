@@ -1,6 +1,6 @@
 import express from "express";
 import helmet from "helmet";
-import rateLimit, { ipKeyGenerator } from "express-rate-limit";
+import rateLimit from "express-rate-limit";
 import crypto from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -83,7 +83,7 @@ if (ALLOW_ORIGIN) {
 function rateLimitKey(req){
   const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
   const payload=verifyToken(token);
-  return payload?.role==="student" && payload.learnerId ? "student:"+payload.learnerId : ipKeyGenerator(req.ip);
+  return payload?.role==="student" && payload.learnerId ? "student:"+payload.learnerId : "ip:"+(req.ip||req.socket?.remoteAddress||"unknown");
 }
 const apiLimiter = rateLimit({windowMs:60_000,limit:120,standardHeaders:"draft-7",legacyHeaders:false,keyGenerator:rateLimitKey,
   handler:(req,res)=>res.status(429).json({error:"请求过于频繁，请稍后再试。",mode:"offline",fallback:"offline"})});
