@@ -60,10 +60,12 @@ export function nextHintState(previous = {}, message = "") {
   return {level,streak,instruction:LEVEL_TEXT[level],selfCorrection,asksAnswer,repeatedPrompt,last_prompt:normalized};
 }
 
-export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,ADMIN_PASSWORD,TOKEN_SECRET,signToken,verifyToken,looksLikePII,resolveStudentSession}) {
+export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,ADMIN_PASSWORD,TOKEN_SECRET,signToken,verifyToken,looksLikePII,resolveStudentSession,initDatabase}) {
   let ready = false;
   async function ensureTables() {
     if (ready) return;
+    if (!db) throw new Error('database_not_configured');
+    if (typeof initDatabase === 'function') await initDatabase();
     const sql = [
       "CREATE TABLE IF NOT EXISTS teachers(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),email TEXT UNIQUE NOT NULL,password_hash TEXT NOT NULL DEFAULT '',pw_hash TEXT NOT NULL DEFAULT '',salt TEXT NOT NULL DEFAULT '',school TEXT NOT NULL DEFAULT '',status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),created_at TIMESTAMPTZ DEFAULT NOW(),reviewed_at TIMESTAMPTZ)",
       "ALTER TABLE teachers ADD COLUMN IF NOT EXISTS pw_hash TEXT NOT NULL DEFAULT ''",
