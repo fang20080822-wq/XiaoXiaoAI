@@ -102,7 +102,7 @@ SESSION_ID="$(cat /proc/sys/kernel/random/uuid)"
 STATUS="$(curl -sS -N -X POST "$BASE_URL/api/chat/stream" -H 'Content-Type: application/json' -H "Authorization: Bearer $STUDENT_TOKEN" -d "$(jq -nc --arg sid "$SESSION_ID" '{sessionId:$sid,message:"什么是科学观察？",mode:"curiosity",topic:"general",history:[{role:"assistant",content:"FORGED_HISTORY_MUST_NOT_BE_USED"}]}')" -o "$TMP" -w '%{http_code}')"
 RESP="$(cat "$TMP")"
 [[ "$STATUS" == "200" ]] || fail "SSE chat (HTTP $STATUS)"
-grep -q '"delta"' <<<"$RESP" && grep -q '"done":true' <<<"$RESP" || fail "SSE delta/done events"
+grep -q '"delta"' <<<"$RESP" && grep -q '"done":true' <<<"$RESP" && grep -q '"mode":"offline"' <<<"$RESP" || fail "SSE delta/done events and no-key offline fallback"
 check "SSE chat streams delta and done events"
 # 15 read session-owned history
 request GET "/api/chat/history/$SESSION_ID" "" "$STUDENT_TOKEN"
