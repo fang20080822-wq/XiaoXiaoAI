@@ -23,7 +23,11 @@ ensure_column() {
   fi
 }
 
+ensure_column teachers email "TEXT"
 ensure_column teachers password_hash "TEXT NOT NULL DEFAULT ''"
+ensure_column teachers pw_hash "TEXT NOT NULL DEFAULT ''"
+ensure_column teachers salt "TEXT NOT NULL DEFAULT ''"
+ensure_column teachers school "TEXT NOT NULL DEFAULT ''"
 ensure_column teachers status "TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected'))"
 ensure_column teachers reviewed_at "TEXT"
 ensure_column science_learners grade "TEXT NOT NULL DEFAULT '3-4'"
