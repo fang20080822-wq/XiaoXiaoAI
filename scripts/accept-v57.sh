@@ -64,7 +64,7 @@ expect 200 "teacher class list"
 check "teacher sees own class list"
 # 9 create test class
 request POST /api/teacher/classes '{"className":"V5.7验收临时班级"}' "$TEACHER_TOKEN"
-expect 200 "create test class"
+expect 201 "create test class"
 CLASS_ID="$(jq -r '.class.id // empty' <<<"$RESP")"
 INVITE_CODE="$(jq -r '.class.invite_code // empty' <<<"$RESP")"
 [[ -n "$CLASS_ID" && -n "$INVITE_CODE" ]] || fail "class creation payload"
