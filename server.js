@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
+import pg from "pg";
 
 dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -16,6 +17,12 @@ const BASE_URL = (process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com").r
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const TOKEN_SECRET = process.env.TOKEN_SECRET || "";
 const ALLOW_ORIGIN = process.env.ALLOW_ORIGIN || "";
+const DATABASE_URL = process.env.DATABASE_URL || "";
+const { Pool } = pg;
+const db = DATABASE_URL ? new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false }, max: 5 }) : null;
+let dbReady = false;
+async function initDatabase(){ if(!db) return; await db.query("CREATE TABLE IF NOT EXISTS science_classes(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), teacher_id TEXT NOT NULL, class_name TEXT NOT NULL, invite_code TEXT UNIQUE NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW()); CREATE TABLE IF NOT EXISTS science_learners(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), class_id UUID REFERENCES science_classes(id) ON DELETE CASCADE, alias TEXT NOT NULL, UNIQUE(class_id,alias)); CREATE TABLE IF NOT EXISTS science_records(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), class_id UUID REFERENCES science_classes(id) ON DELETE CASCADE, learner_id UUID REFERENCES science_learners(id) ON DELETE CASCADE, topic TEXT NOT NULL, question TEXT NOT NULL, hypothesis TEXT NOT NULL, independent_variable TEXT NOT NULL, dependent_variable TEXT NOT NULL, control_variables TEXT NOT NULL, method TEXT NOT NULL, evidence TEXT NOT NULL, conclusion TEXT NOT NULL, reflection TEXT DEFAULT '', created_at TIMESTAMPTZ DEFAULT NOW())"); dbReady=true; }
+if(db) initDatabase().catch(e=>console.error("database_init_failed",e.message));
 
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
