@@ -38,9 +38,6 @@ for (const field of ['researchQuestion', 'independentVariable', 'dependentVariab
 }
 if (!html.includes('function joinClass()') || !html.includes('function submitCloudRecord()') || !html.includes('function loadMyRecords()')) throw new Error('Student classroom workflow missing');
 if (!html.includes('/api/teacher/login') || !html.includes('/api/teacher/register') || html.includes('id="adminPassword"')) throw new Error('Teacher UI must use independent email/password accounts, not the shared password field');
-if (!upgradeUI.includes('注册成功，已自动登录') || !upgradeUI.includes('注册并进入教师工作台') || !upgradeUI.includes('已自动登录')) throw new Error('Teacher registration must automatically establish a signed-in workspace session');
-if (!upgrade.includes("school,status,reviewed_at) VALUES($1,$2,$3,$4,$5,'approved',NOW())") || !upgrade.includes('if(row.status==="rejected")')) throw new Error('New teacher accounts must be approved on registration; rejected accounts remain blocked');
-if (!server.includes('if(account.rows[0].status==="rejected")')) throw new Error('Teacher authorization must allow immediate access after registration');
 if (!server.includes('app.post("/api/chat/stream"') || !html.includes("fetch('/api/chat/stream'") || !server.includes('X-Accel-Buffering')) throw new Error('Streaming chat endpoint and frontend reader must be connected');
 if (!html.includes('function createClass()') || !html.includes('function viewClassRecords(')) throw new Error('Teacher classroom workflow missing');
 const archiveView = html.slice(html.indexOf('async function viewClassRecords('), html.indexOf('async function teacherLogin('));
@@ -121,6 +118,10 @@ console.log('V5.5: level-four rubric, media, Markdown, navigation, server chat, 
 
 const upgrade = readFileSync(new URL('../upgrade-v56.js', import.meta.url), 'utf8');
 const upgradeUI = readFileSync(new URL('../public/upgrade-v56-ui.js', import.meta.url), 'utf8');
+if (!upgradeUI.includes('注册成功，已自动登录') || !upgradeUI.includes('注册并进入教师工作台') || !upgradeUI.includes('已自动登录')) throw new Error('Teacher registration must automatically establish a signed-in workspace session');
+if (!upgrade.includes("school,status,reviewed_at) VALUES($1,$2,$3,$4,$5,'approved',NOW())") || !upgrade.includes('if(row.status==="rejected")')) throw new Error('New teacher accounts must be approved on registration; rejected accounts remain blocked');
+if (!server.includes('if(account.rows[0].status==="rejected")')) throw new Error('Teacher authorization must allow immediate access after registration');
+
 for (const term of ['L1 追问','L2 给方向','L3 给示例','L4 参考答案','连续2轮','学生尚无可读取的云端结构化探究记录','validateInquiry','insufficient_data','multiple_independent','/api/curriculum','/api/teacher/dashboard','/api/teacher/register','/api/teacher/account/login','/api/admin/teachers','audit_log','mentor_progress']) {
   if (!upgrade.includes(term)) throw new Error('V5.6 backend capability missing: '+term);
 }
