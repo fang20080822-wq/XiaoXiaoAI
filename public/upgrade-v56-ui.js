@@ -39,7 +39,7 @@
     box.append(el('h2','教师账号申请与登录'),el('p','教师使用独立邮箱账号；新账号需管理员审核通过后才能访问班级数据。'));
     const email=el('input');email.type='email';email.id='teacherEmail';email.placeholder='教师工作邮箱';
     const school=el('input');school.id='teacherSchool';school.placeholder='学校 / 机构名称';
-    const password=el('input');password.type='password';password.id='teacherAccountPassword';password.placeholder='至少12位密码';password.autocomplete='new-password';
+    const password=el('input');password.type='password';password.id='teacherAccountPassword';password.placeholder='至少8位密码';password.autocomplete='new-password';
     const actions=el('div',undefined,'actions');
     const register=el('button','提交教师账号申请','btn soft');register.type='button';
     register.addEventListener('click',async()=>{const status=$('teacherAccountStatus');status.textContent='正在提交申请…';try{const d=await api('/api/teacher/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email.value,password:password.value,school:school.value})});status.textContent=d.message;}catch(e){status.textContent=e.message;}});
