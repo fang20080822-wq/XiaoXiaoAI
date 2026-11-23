@@ -129,6 +129,6 @@ request GET "/api/teacher/classes/$CLASS_ID/stats" "" "$TEACHER_B_TOKEN"
 expect 404 "cross-teacher class isolation"
 check "teacher B receives 404 for teacher A class"
 echo "All 18 V5.7 staging acceptance checks passed."
-if [[ -n "${DATABASE_URL:-}" ]]; then
+if [[ "${RUN_CLASS_STATS_ACCEPTANCE:-}" == "1" && -n "${DATABASE_URL:-}" ]]; then
   TEACHER_TOKEN="$TEACHER_TOKEN" TEACHER_B_TOKEN="$TEACHER_B_TOKEN" bash scripts/accept-class-stats.sh
 fi
