@@ -360,14 +360,55 @@ async function ask(){
 }
 $('question').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();ask()}});
 function clearChat(){history=[];$('chatlog').innerHTML='<div class="bubble bot">对话已清空。你有什么新的科学问题？</div>';$('question').value=''}
+
+let studentToken=localStorage.getItem('scienceStudentToken')||'';
+let studentAlias=localStorage.getItem('scienceStudentAlias')||'';
+if(studentToken){$('joinStatus').textContent='已加入班级：'+studentAlias+'。此设备保存学生会话。'}
+async function joinClass(){
+  const inviteCode=$('classInvite').value.trim().toUpperCase(),alias=$('studentAlias').value.trim();
+  if(!$('guardianAck').checked){$('joinStatus').textContent='请先确认已取得教师和监护人必要同意。';return}
+  $('joinStatus').textContent='正在验证邀请码……';
+  try{const r=await fetch('/api/student/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({inviteCode,alias,guardianConsent:true})});const d=await r.json();if(!r.ok)throw new Error(d.error||'加入失败');studentToken=d.token;studentAlias=d.alias;localStorage.setItem('scienceStudentToken',studentToken);localStorage.setItem('scienceStudentAlias',studentAlias);$('joinStatus').textContent='✓ 已加入班级，匿名身份：'+studentAlias+'。';}
+  catch(e){$('joinStatus').textContent=e.message}
+}
+async function submitCloudRecord(){
+  if(!studentToken){$('cloudSaveStatus').textContent='请先使用班级邀请码加入班级。';return}
+  const payload={topic:$('topic').value.trim(),question:$('researchQuestion').value.trim(),hypothesis:$('hypothesis').value.trim(),independentVariable:$('independentVariable').value.trim(),dependentVariable:$('dependentVariable').value.trim(),controlVariables:$('controlVariables').value.trim(),method:$('method').value.trim()||$('observations').value.trim(),evidence:$('evidence').value.trim(),conclusion:$('conclusion').value.trim(),reflection:$('reflection').value.trim()};
+  $('cloudSaveStatus').textContent='正在提交云端档案……';
+  try{const r=await fetch('/api/student/records',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+studentToken},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok)throw new Error(d.error||'提交失败');$('cloudSaveStatus').textContent='✓ 已提交到教师班级档案。记录编号：'+d.record.id;}
+  catch(e){$('cloudSaveStatus').textContent='云端提交失败：'+e.message+' 请先导出本地报告备份。'}
+}
+
 let teacherToken=null;
 function teacherLogout(){teacherToken=null;$('teacherPanel').classList.add('hidden');$('teacherLogout').classList.add('hidden');$('adminPassword').value='';$('studentWork').value='';$('evaluation').textContent='';$('loginMsg').textContent='已安全退出教师工作台。'}
+
+async function createClass(){
+  if(!teacherToken){$('classList').textContent='请先登录教师工作台。';return}
+  const className=$('newClassName').value.trim();if(!className){$('classList').textContent='请先填写班级代号。';return}
+  $('classList').textContent='正在创建班级……';
+  try{const r=await fetch('/api/teacher/classes',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+teacherToken},body:JSON.stringify({className})});const d=await r.json();if(!r.ok)throw new Error(d.error||'创建失败');$('classList').textContent='班级创建成功，邀请码：'+d.class.invite_code+'。请将邀请码提供给学生。';$('newClassName').value='';await loadClasses();}
+  catch(e){$('classList').textContent='创建失败：'+e.message}
+}
+async function loadClasses(){
+  if(!teacherToken){$('classList').textContent='请先登录教师工作台。';return}
+  $('classList').textContent='正在读取班级……';
+  try{const r=await fetch('/api/teacher/classes',{headers:{'Authorization':'Bearer '+teacherToken}});const d=await r.json();if(!r.ok)throw new Error(d.error||'读取失败');const el=$('classList');el.innerHTML='';if(!d.classes.length){el.textContent='暂无班级，请创建第一个班级。';return}
+    d.classes.forEach(c=>{const row=document.createElement('div');row.className='unit';row.style.marginBottom='9px';const title=document.createElement('b');title.textContent=c.class_name+' · 邀请码 '+c.invite_code;const meta=document.createElement('p');meta.className='muted';meta.textContent='学生 '+c.learner_count+' 人 · 探究记录 '+c.record_count+' 份';const btn=document.createElement('button');btn.className='btn soft';btn.textContent='查看学习档案';btn.onclick=()=>viewClassRecords(c.id);row.append(title,meta,btn);el.appendChild(row)});
+  }catch(e){$('classList').textContent='读取失败：'+e.message}
+}
+async function viewClassRecords(classId){
+  $('classRecords').textContent='正在读取学生探究档案……';
+  try{const r=await fetch('/api/teacher/classes/'+encodeURIComponent(classId)+'/records',{headers:{'Authorization':'Bearer '+teacherToken}});const d=await r.json();if(!r.ok)throw new Error(d.error||'读取失败');const box=$('classRecords');box.innerHTML='';if(!d.records.length){box.textContent='这个班级暂时还没有提交记录。';return}
+    d.records.forEach(rec=>{const card=document.createElement('article');card.className='unit';card.style.marginBottom='10px';const head=document.createElement('b');head.textContent=rec.alias+' · '+rec.topic;const date=document.createElement('p');date.className='muted';date.textContent=new Date(rec.created_at).toLocaleString();const body=document.createElement('p');body.textContent='问题：'+rec.question+'\n假设：'+rec.hypothesis+'\n自变量：'+rec.independent_variable+'\n因变量：'+rec.dependent_variable+'\n控制变量：'+rec.control_variables+'\n方法：'+rec.method+'\n证据：'+rec.evidence+'\n结论：'+rec.conclusion+'\n反思：'+rec.reflection;body.style.whiteSpace='pre-wrap';card.append(head,date,body);box.appendChild(card)});
+  }catch(e){$('classRecords').textContent='读取失败：'+e.message}
+}
+
 async function teacherLogin(){
   $('loginMsg').textContent='正在验证身份…';
   try{
     const r=await fetch('/api/teacher/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('adminPassword').value})});
     const d=await r.json();if(!r.ok)throw new Error(d.error||'登录失败');
-    teacherToken=d.token;$('teacherPanel').classList.remove('hidden');$('teacherLogout').classList.remove('hidden');$('adminPassword').value='';$('loginMsg').textContent='✓ 登录成功。教师会话有效期为2小时；关闭页面或退出后需重新登录。'
+    teacherToken=d.token;$('teacherPanel').classList.remove('hidden');loadClasses();$('teacherLogout').classList.remove('hidden');$('adminPassword').value='';$('loginMsg').textContent='✓ 登录成功。教师会话有效期为2小时；关闭页面或退出后需重新登录。'
   }catch(e){$('loginMsg').textContent=e.message}
 }
 async function evaluateWork(){
