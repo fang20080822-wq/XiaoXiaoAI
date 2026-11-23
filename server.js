@@ -214,7 +214,7 @@ app.post("/api/chat",chatLimiter,requireDatabase,async(req,res)=>{
   const mentorMode=typeof req.body?.mode==="string" && Object.hasOwn(MENTOR_MODES,req.body.mode)?req.body.mode:"curiosity";
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId))return res.status(400).json({error:"对话会话标识无效，请刷新页面重试。"});
   if(!message)return res.status(400).json({error:"请输入问题。"});
-  if(message.length>6000)return res.status(400).json({error:"问题过长，请控制在6000字以内。"});
+  if(message.length>6000)return res.status(400).json({error:"问题过长，请控制在20000字以内。"});
   if(looksLikePII(message))return res.status(400).json({error:"检测到可能的个人身份信息。请删除姓名、联系方式、地址、学号等信息后再提问。"});
   try{
     const previous=await db.query("SELECT role,content FROM chat_messages WHERE session_id=$1 ORDER BY created_at DESC LIMIT 8",[sessionId]);
@@ -251,7 +251,7 @@ app.post("/api/teacher/login",loginLimiter,(req,res)=>{
 app.post("/api/teacher/evaluate",apiLimiter,requireTeacher,async(req,res)=>{
   const work=typeof req.body?.work==="string"?req.body.work.trim():"";
   if(!work) return res.status(400).json({error:"请提交匿名作品内容。"});
-  if(work.length>6000) return res.status(400).json({error:"作品内容过长，请控制在6000字以内。"});
+  if(work.length>20000) return res.status(400).json({error:"作品内容过长，请控制在6000字以内。"});
   if(looksLikePII(work)) return res.status(400).json({error:"作品中可能含有个人身份信息，请先去标识化。"});
   if(!API_KEY) return res.json({mode:"offline",answer:"离线演示：教师评价功能尚未连接DeepSeek。请按五项水平4标准人工核查：真实观察与可测量问题；明确假设及依据；一次只改变一个变量并写明控制条件和重复次数；多次真实数据及异常值处理；结论逐条对应证据并说明局限和新问题。缺少材料时标记“尚无证据”，不得推定达标。"});
   try {
