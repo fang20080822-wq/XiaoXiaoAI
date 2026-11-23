@@ -389,6 +389,24 @@ app.get("/api/teacher/classes",apiLimiter,requireTeacher,requireDatabase,async(r
   try{const q=await db.query("SELECT c.id,c.class_name,c.invite_code,c.created_at,COUNT(DISTINCT l.id)::int AS learner_count,COUNT(DISTINCT r.id)::int AS record_count FROM science_classes c LEFT JOIN science_learners l ON l.class_id=c.id LEFT JOIN science_records r ON r.class_id=c.id WHERE c.teacher_id=$1 GROUP BY c.id ORDER BY c.created_at DESC",[teacherId(req)]);await db.query("INSERT INTO audit_log(teacher_id,action,target_type,target_id) VALUES($1,$2,$3,$4)",[teacherId(req),"list_classes","teacher","all"]);res.json({classes:q.rows});}
   catch(e){console.error("class_list_failed",e.message);res.status(500).json({error:"读取班级列表失败。"});}
 });
+app.get("/api/teacher/classes/:id/stats",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
+  try{
+    const own=await db.query("SELECT id FROM science_classes WHERE id=$1 AND teacher_id=$2",[req.params.id,teacherId(req)]);
+    if(!own.rowCount)return res.status(404).json({error:"班级不存在。"});
+    const q=await db.query(`SELECT
+      COUNT(DISTINCT l.id)::int AS learners,
+      COUNT(DISTINCT r.learner_id)::int AS submitted,
+      COUNT(DISTINCT r.id)::int AS records,
+      CASE WHEN COUNT(DISTINCT l.id)=0 THEN 0 ELSE ROUND(COUNT(DISTINCT r.learner_id)::numeric/COUNT(DISTINCT l.id)*100,1) END AS submission_rate,
+      CASE WHEN COUNT(DISTINCT r.id)=0 THEN 0 ELSE ROUND(COUNT(DISTINCT r.id) FILTER (WHERE r.independent_variable ~ '[,，、和以及]' OR r.repetition_count<2 OR r.data_table !~ '[0-9]')::numeric/COUNT(DISTINCT r.id)*100,1) END AS variable_control_error_rate,
+      COUNT(DISTINCT r.id) FILTER (WHERE r.question ~ '为什么|怎样|如何|是否')::int AS question_exploratory,
+      COUNT(DISTINCT r.id) FILTER (WHERE r.question ~ '什么是|是什么|定义')::int AS question_concept,
+      COUNT(DISTINCT r.id) FILTER (WHERE r.question !~ '为什么|怎样|如何|是否|什么是|是什么|定义')::int AS question_other
+      FROM science_classes c LEFT JOIN science_learners l ON l.class_id=c.id LEFT JOIN science_records r ON r.class_id=c.id WHERE c.id=$1 GROUP BY c.id`,[req.params.id]);
+    await db.query("INSERT INTO audit_log(teacher_id,action,target_type,target_id) VALUES($1,$2,$3,$4)",[teacherId(req),"view_class_stats","class",req.params.id]);
+    res.json(q.rows[0]||{learners:0,submitted:0,records:0,submission_rate:0,variable_control_error_rate:0,question_exploratory:0,question_concept:0,question_other:0});
+  }catch(e){console.error("class_stats_failed",e.message);res.status(503).json({error:"班级统计暂不可用。"});}
+});
 app.get("/api/teacher/classes/:id/records",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
   try{const own=await db.query("SELECT id FROM science_classes WHERE id=$1 AND teacher_id=$2",[req.params.id,teacherId(req)]);if(!own.rowCount)return res.status(404).json({error:"班级不存在。"});const q=await db.query("SELECT r.id,l.alias,r.topic,r.question,r.hypothesis,r.independent_variable,r.dependent_variable,r.control_variables,r.method,r.evidence,r.conclusion,r.reflection,r.observed_phenomenon,r.question_boundary,r.measurement_indicator,r.hypothesis_basis,r.expected_result,r.repetition_count,r.control_rationale,r.data_table,r.anomaly_handling,r.evidence_reasoning,r.level,r.level_json,r.created_at FROM science_records r JOIN science_learners l ON l.id=r.learner_id WHERE r.class_id=$1 ORDER BY r.created_at DESC LIMIT 300",[req.params.id]);await db.query("INSERT INTO audit_log(teacher_id,action,target_type,target_id) VALUES($1,$2,$3,$4)",[teacherId(req),"view_class_records","class",req.params.id]);res.json({records:q.rows});}
   catch(e){console.error("record_list_failed",e.message);res.status(500).json({error:"读取探究档案失败。"});}
