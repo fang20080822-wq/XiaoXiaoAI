@@ -100,8 +100,6 @@
     document.querySelectorAll('#teacherPanel button[onclick]').forEach(b=>{if(/createClass|loadClasses|evaluateWork|exportEvaluation/.test(b.getAttribute('onclick')||''))b.hidden=admin;});
     document.querySelectorAll('#teacherPanel h3').forEach(h=>{if(/班级管理与学习档案|学生探究作品评价/.test(h.textContent))h.hidden=admin;});
   }
-  const oldLogin=window.teacherLogin;
-  if(typeof oldLogin==='function')window.teacherLogin=async function(){await oldLogin();applyRoleVisibility((typeof teacherToken!=='undefined'&&teacherToken)||'');setTimeout(()=>{loadAdminReviews();},100);};
   const oldLoad=window.loadClasses;
   if(typeof oldLoad==='function')window.loadClasses=async function(){const v=await oldLoad();loadDashboard();loadAudit();return v;};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{loadCurriculum();addTeacherAccountUI();},{once:true});else{loadCurriculum();addTeacherAccountUI();}
