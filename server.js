@@ -34,6 +34,16 @@ async function initDatabase(){
       "CREATE TABLE IF NOT EXISTS science_learners(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), class_id UUID REFERENCES science_classes(id) ON DELETE CASCADE, alias TEXT NOT NULL, guardian_consent BOOLEAN NOT NULL DEFAULT FALSE, consent_recorded_at TIMESTAMPTZ, UNIQUE(class_id,alias))",
       "ALTER TABLE science_learners ADD COLUMN IF NOT EXISTS guardian_consent BOOLEAN NOT NULL DEFAULT FALSE",
       "ALTER TABLE science_learners ADD COLUMN IF NOT EXISTS consent_recorded_at TIMESTAMPTZ",
+      "ALTER TABLE science_records ADD COLUMN IF NOT EXISTS observed_phenomenon TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE science_records ADD COLUMN IF NOT EXISTS question_boundary TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE science_records ADD COLUMN IF NOT EXISTS measurement_indicator TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE science_records ADD COLUMN IF NOT EXISTS hypothesis_basis TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE science_records ADD COLUMN IF NOT EXISTS expected_result TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE science_records ADD COLUMN IF NOT EXISTS repetition_count INTEGER NOT NULL DEFAULT 0",
+      "ALTER TABLE science_records ADD COLUMN IF NOT EXISTS control_rationale TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE science_records ADD COLUMN IF NOT EXISTS data_table TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE science_records ADD COLUMN IF NOT EXISTS anomaly_handling TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE science_records ADD COLUMN IF NOT EXISTS evidence_reasoning TEXT NOT NULL DEFAULT ''",
       "CREATE TABLE IF NOT EXISTS science_records(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), class_id UUID REFERENCES science_classes(id) ON DELETE CASCADE, learner_id UUID REFERENCES science_learners(id) ON DELETE CASCADE, topic TEXT NOT NULL, question TEXT NOT NULL, hypothesis TEXT NOT NULL, independent_variable TEXT NOT NULL, dependent_variable TEXT NOT NULL, control_variables TEXT NOT NULL, method TEXT NOT NULL, evidence TEXT NOT NULL, conclusion TEXT NOT NULL, reflection TEXT DEFAULT '', created_at TIMESTAMPTZ DEFAULT NOW())",
       "CREATE INDEX IF NOT EXISTS idx_science_classes_teacher_created ON science_classes(teacher_id, created_at DESC)",
       "CREATE INDEX IF NOT EXISTS idx_science_records_learner_created ON science_records(class_id, learner_id, created_at DESC)",
@@ -243,10 +253,10 @@ app.post("/api/teacher/evaluate",apiLimiter,requireTeacher,async(req,res)=>{
   if(!work) return res.status(400).json({error:"请提交匿名作品内容。"});
   if(work.length>6000) return res.status(400).json({error:"作品内容过长，请控制在6000字以内。"});
   if(looksLikePII(work)) return res.status(400).json({error:"作品中可能含有个人身份信息，请先去标识化。"});
-  if(!API_KEY) return res.json({mode:"offline",answer:"离线演示：教师评价功能尚未连接DeepSeek。请依据课程量规人工评价。建议关注：问题是否真实明确；输入数据是否可获得且适当；处理逻辑是否合理；输出是否可验证；是否考虑错误、隐私、公平性和人工复核；是否提出测试与迭代。"});
+  if(!API_KEY) return res.json({mode:"offline",answer:"离线演示：教师评价功能尚未连接DeepSeek。请按五项水平4标准人工核查：真实观察与可测量问题；明确假设及依据；一次只改变一个变量并写明控制条件和重复次数；多次真实数据及异常值处理；结论逐条对应证据并说明局限和新问题。缺少材料时标记“尚无证据”，不得推定达标。"});
   try {
     const answer=await callDeepSeek([
-      {role:"system",content:`你是小学科学探究教师助手。请依据《科学探究能力量规》开展形成性评价，不给分、不计算总分。依次分析六项能力：问题提出（问题是否清晰且可研究）；假设预测（是否提出可检验的预测及理由）；变量控制（自变量、因变量和控制变量是否明确）；实验设计（步骤是否安全、可重复且公平）；证据记录（是否有真实观察、数据、单位和必要的重复测量）；结论反思（结论是否由证据支持，是否说明局限和下一步）。每项给出“当前表现、材料中的具体证据、一个可执行的改进建议”；材料没有提供证据时写“尚无证据”，不得臆测。最后给出整体优势、最优先的一项改进和需要教师核实的问题。`},
+      {role:"system",content:`你是小学科学探究教师助手。严格依据用户提供的《水平4优秀》五项标准开展形成性评价，不给分、不计算总分。必须依次评价：1提出问题：是否来自真实观察，研究边界清楚且有可测量指标；2假设与依据：假设明确可检验，说明依据/经验并写出预期结果；3变量与设计：一次只改变一个自变量，明确因变量、控制条件及理由，说明重复次数；4证据与记录：数据有单位、至少多次记录，能识别异常值并说明保留、复测或排除理由；5解释与反思：结论不超出证据，逐条建立证据—解释—结论联系，指出局限并提出新问题。每一项必须输出“水平4标准、当前证据、达标判断（达到/部分达到/尚无证据）、具体差距、下一步可执行建议”。不得根据计划或空白字段推断实验已实施；没有真实记录就标记“尚无证据”。发现单次测量、无单位、同时改变多个变量、无异常值说明或结论超出数据时明确指出。最后总结最强证据、首要改进和需要教师现场核实的事项。`},
       {role:"user",content:`请对以下已匿名化的学生作品提供评价建议：\n${work}`}
     ],1400);
     res.json({mode:"online",model:MODEL,answer});
@@ -275,14 +285,41 @@ app.post("/api/student/join",apiLimiter,requireDatabase,async(req,res)=>{
   catch(e){console.error("student_join_failed",e.message);res.status(500).json({error:"加入班级失败。"});}
 });
 app.post("/api/student/records",apiLimiter,requireStudent,requireDatabase,async(req,res)=>{
-  const keys=["topic","question","hypothesis","independentVariable","dependentVariable","controlVariables","method","evidence","conclusion","reflection"],d={};
-  for(const k of keys){d[k]=typeof req.body?.[k]==="string"?req.body[k].trim():"";if(d[k].length>(["method","evidence"].includes(k)?5000:1500))return res.status(400).json({error:"记录内容过长，请精简。"});if(looksLikePII(d[k]))return res.status(400).json({error:"检测到可能的个人身份信息，请删除后再提交。"});}
-  if(keys.slice(0,9).some(k=>!d[k]))return res.status(400).json({error:"请完成主题、问题、假设、变量、方法、证据和结论后再提交。"});
-  try{const q=await db.query("INSERT INTO science_records(class_id,learner_id,topic,question,hypothesis,independent_variable,dependent_variable,control_variables,method,evidence,conclusion,reflection) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id,created_at",[req.student.classId,req.student.learnerId,d.topic,d.question,d.hypothesis,d.independentVariable,d.dependentVariable,d.controlVariables,d.method,d.evidence,d.conclusion,d.reflection]);res.status(201).json({saved:true,record:q.rows[0]});}
-  catch(e){console.error("record_save_failed",e.message);res.status(500).json({error:"云端保存失败，请先导出备份。"});}
+  const fields={
+    topic:"topic",question:"question",hypothesis:"hypothesis",
+    independentVariable:"independentVariable",dependentVariable:"dependentVariable",
+    controlVariables:"controlVariables",method:"method",evidence:"evidence",
+    conclusion:"conclusion",reflection:"reflection",
+    observedPhenomenon:"observedPhenomenon",questionBoundary:"questionBoundary",
+    measurementIndicator:"measurementIndicator",hypothesisBasis:"hypothesisBasis",
+    expectedResult:"expectedResult",controlRationale:"controlRationale",
+    dataTable:"dataTable",anomalyHandling:"anomalyHandling",evidenceReasoning:"evidenceReasoning"
+  };
+  const d={};
+  for(const [key,bodyKey] of Object.entries(fields)){
+    d[key]=typeof req.body?.[bodyKey]==="string"?req.body[bodyKey].trim():"";
+    const limit=["method","evidence","dataTable"].includes(key)?5000:1500;
+    if(d[key].length>limit)return res.status(400).json({error:"记录内容过长，请精简。"});
+    if(looksLikePII(d[key]))return res.status(400).json({error:"检测到可能的个人身份信息，请删除后再提交。"});
+  }
+  const repetitions=Number(req.body?.repetitionCount);
+  if(!Number.isInteger(repetitions)||repetitions<2||repetitions>20)return res.status(400).json({error:"重复实验次数须填写2—20次。"});
+  d.repetitionCount=repetitions;
+  const required=["topic","observedPhenomenon","question","questionBoundary","measurementIndicator","hypothesis","hypothesisBasis","expectedResult","independentVariable","dependentVariable","controlVariables","controlRationale","method","evidence","dataTable","anomalyHandling","evidenceReasoning","conclusion","reflection"];
+  if(required.some(k=>!d[k]))return res.status(400).json({error:"请完成五项水平4探究要求后再提交；每个必填项都需要有具体内容。"});
+  const rows=d.dataTable.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  if(rows.length<2)return res.status(400).json({error:"证据记录至少需要两行实际测量记录，请按次数逐行填写。"});
+  if(rows.length>repetitions)return res.status(400).json({error:"数据记录行数不能超过填写的重复实验次数。"});
+  try{
+    const q=await db.query(
+      "INSERT INTO science_records(class_id,learner_id,topic,question,hypothesis,independent_variable,dependent_variable,control_variables,method,evidence,conclusion,reflection,observed_phenomenon,question_boundary,measurement_indicator,hypothesis_basis,expected_result,repetition_count,control_rationale,data_table,anomaly_handling,evidence_reasoning) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING id,created_at",
+      [req.student.classId,req.student.learnerId,d.topic,d.question,d.hypothesis,d.independentVariable,d.dependentVariable,d.controlVariables,d.method,d.evidence,d.conclusion,d.reflection,d.observedPhenomenon,d.questionBoundary,d.measurementIndicator,d.hypothesisBasis,d.expectedResult,d.repetitionCount,d.controlRationale,d.dataTable,d.anomalyHandling,d.evidenceReasoning]
+    );
+    res.status(201).json({saved:true,record:q.rows[0]});
+  }catch(e){console.error("record_save_failed",e.message);res.status(500).json({error:"云端保存失败，请先导出备份。"});}
 });
 app.get("/api/student/records",apiLimiter,requireStudent,requireDatabase,async(req,res)=>{
-  try{const q=await db.query("SELECT id,topic,question,hypothesis,independent_variable,dependent_variable,control_variables,method,evidence,conclusion,reflection,created_at FROM science_records WHERE class_id=$1 AND learner_id=$2 ORDER BY created_at DESC LIMIT 100",[req.student.classId,req.student.learnerId]);res.json({records:q.rows});}
+  try{const q=await db.query("SELECT id,topic,question,hypothesis,independent_variable,dependent_variable,control_variables,method,evidence,conclusion,reflection,observed_phenomenon,question_boundary,measurement_indicator,hypothesis_basis,expected_result,repetition_count,control_rationale,data_table,anomaly_handling,evidence_reasoning,created_at FROM science_records WHERE class_id=$1 AND learner_id=$2 ORDER BY created_at DESC LIMIT 100",[req.student.classId,req.student.learnerId]);res.json({records:q.rows});}
   catch(e){console.error("student_record_list_failed",e.message);res.status(500).json({error:"读取个人探究记录失败。"});}
 });
 app.get("/api/teacher/classes",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
@@ -290,7 +327,7 @@ app.get("/api/teacher/classes",apiLimiter,requireTeacher,requireDatabase,async(r
   catch(e){console.error("class_list_failed",e.message);res.status(500).json({error:"读取班级列表失败。"});}
 });
 app.get("/api/teacher/classes/:id/records",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
-  try{const own=await db.query("SELECT id FROM science_classes WHERE id=$1 AND teacher_id=$2",[req.params.id,teacherId(req)]);if(!own.rowCount)return res.status(404).json({error:"班级不存在。"});const q=await db.query("SELECT r.id,l.alias,r.topic,r.question,r.hypothesis,r.independent_variable,r.dependent_variable,r.control_variables,r.method,r.evidence,r.conclusion,r.reflection,r.created_at FROM science_records r JOIN science_learners l ON l.id=r.learner_id WHERE r.class_id=$1 ORDER BY r.created_at DESC LIMIT 300",[req.params.id]);res.json({records:q.rows});}
+  try{const own=await db.query("SELECT id FROM science_classes WHERE id=$1 AND teacher_id=$2",[req.params.id,teacherId(req)]);if(!own.rowCount)return res.status(404).json({error:"班级不存在。"});const q=await db.query("SELECT r.id,l.alias,r.topic,r.question,r.hypothesis,r.independent_variable,r.dependent_variable,r.control_variables,r.method,r.evidence,r.conclusion,r.reflection,r.observed_phenomenon,r.question_boundary,r.measurement_indicator,r.hypothesis_basis,r.expected_result,r.repetition_count,r.control_rationale,r.data_table,r.anomaly_handling,r.evidence_reasoning,r.created_at FROM science_records r JOIN science_learners l ON l.id=r.learner_id WHERE r.class_id=$1 ORDER BY r.created_at DESC LIMIT 300",[req.params.id]);res.json({records:q.rows});}
   catch(e){console.error("record_list_failed",e.message);res.status(500).json({error:"读取探究档案失败。"});}
 });
 
