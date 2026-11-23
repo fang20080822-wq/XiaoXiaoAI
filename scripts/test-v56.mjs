@@ -1,0 +1,31 @@
+import assert from "node:assert/strict";
+import { CURRICULUM_12, nextHintState, validateInquiry } from "../upgrade-v56.js";
+
+assert.equal(CURRICULUM_12.length,12,"exactly 12 curriculum topics must be mapped");
+assert.ok(CURRICULUM_12.every(x=>x.title&&x.grade&&x.concept&&x.domain),"each topic needs a grade band, core concept and domain");
+
+let state=nextHintState({level:1,streak:0},"直接告诉我答案");
+assert.equal(state.level,2,"first repeated answer request should move from L1 to L2");
+state=nextHintState(state,"答案是什么？");
+assert.equal(state.level,3,"second repeated answer request should move from L2 to L3");
+state=nextHintState(state,"帮我写完答案");
+assert.equal(state.level,3,"repeated answer requests must not reveal L4");
+state=nextHintState({level:1,streak:0},"我发现自变量应该是光照时长，因为这样才能比较不同光照条件对植物的影响");
+assert.equal(state.level,1,"one self-correction round must not promote the learner");
+state=nextHintState(state,"我改成每次只改变光照时长，其他条件保持相同");
+assert.equal(state.level,2,"two consecutive self-correction rounds should promote one level");
+state=nextHintState({level:1,streak:0},"自变量是光照时长，因变量是株高，控制变量是水量和土壤");
+assert.equal(state.level,2,"independently giving a correct direction should promote one level");
+
+const complete={
+ independentVariable:"光照时长",dependentVariable:"植物株高",controlVariables:"水量、土壤、植物种类",
+ measurementIndicator:"株高，单位cm",dataTable:"第1次|10:00|12|cm\n第2次|10:05|13|cm",
+ repetitionCount:2,anomalyHandling:"两次数据接近，未发现明显异常值",
+ evidenceReasoning:"两次测量结果显示第二次株高略高，仍需更长时间观察",
+ conclusion:"在本次观察范围内，光照时长可能与株高变化有关"
+};
+assert.equal(validateInquiry(complete).valid,true,"complete measurable evidence should pass the deterministic checklist");
+const incomplete=validateInquiry({independentVariable:"光照和水量",dataTable:"很好玩"});
+assert.ok(incomplete.issues.some(x=>x.code==="multiple_independent"),"multiple independent variables must be flagged");
+assert.ok(incomplete.issues.some(x=>x.code==="insufficient_data"),"unmeasurable text must not pass evidence validation");
+console.log("V5.6 unit tests passed: scaffold progression, L4 gate, curriculum completeness and deterministic inquiry validation.");

@@ -7,6 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import pg from "pg";
+import { registerV56Routes } from "./upgrade-v56.js";
 
 dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -182,6 +183,8 @@ async function callDeepSeek(messages, maxTokens=900) {
   } finally { clearTimeout(timer); }
 }
 
+registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,ADMIN_PASSWORD,TOKEN_SECRET,signToken,verifyToken,looksLikePII});
+
 app.get("/api/health",async(req,res)=>{
   let database = DATABASE_URL ? (dbReady ? "ready" : "connecting") : "not_configured";
   if(db && !dbReady){
@@ -230,13 +233,14 @@ app.post("/api/chat",chatLimiter,requireDatabase,async(req,res)=>{
     let answer,mode="online",notice;
     if(!API_KEY){answer=offlineTutor(message,topic);mode="offline";}
     else{
-      try{answer=await callDeepSeek([{role:"system",content:SYSTEM_BASE+"\n"+MENTOR_MODES[mentorMode]+"\n"+topicHint},...safeHistory,{role:"user",content:message}],1000);}
+      try{answer=await callDeepSeek([{role:"system",content:SYSTEM_BASE+"\n"+MENTOR_MODES[mentorMode]+"\n"+topicHint+(req.scienceSystemContext||"")},...safeHistory,{role:"user",content:message}],1000);}
       catch(err){answer=offlineTutor(message,topic);mode="offline";notice=err.message;}
     }
+    if(req.scienceHintLevel===4 && !/参考答案/.test(answer))answer="参考答案（仅供参考，请用自己的话复述）\n"+answer+"\n\n请先遮住上面的内容，用自己的话复述你的理解，并说明它和你自己的实验记录有什么联系。";
     if(looksLikePII(answer))answer="这条回答可能包含个人身份信息，为保护隐私已隐藏。请改用匿名信息继续探究。";
     await db.query("INSERT INTO chat_messages(session_id,role,content) VALUES($1,'assistant',$2)",[sessionId,answer]);
     await db.query("DELETE FROM chat_messages WHERE session_id=$1 AND id NOT IN (SELECT id FROM chat_messages WHERE session_id=$1 ORDER BY created_at DESC LIMIT 30)",[sessionId]);
-    res.json({mode,model:MODEL,answer,...(notice?{notice}:{})});
+    res.json({mode,model:MODEL,answer,hintLevel:req.scienceHintLevel||1,qualityCheck:req.scienceQualityCheck||null,...(notice?{notice}:{})});
   }catch(err){console.error("chat_request_failed",err.message);res.status(503).json({mode:"offline",fallback:"offline",error:"对话服务暂不可用，请稍后重试。"});}
 });
 app.post("/api/teacher/login",loginLimiter,(req,res)=>{
@@ -245,7 +249,7 @@ app.post("/api/teacher/login",loginLimiter,(req,res)=>{
   const a=Buffer.from(password),b=Buffer.from(ADMIN_PASSWORD);
   if(a.length!==b.length || !crypto.timingSafeEqual(a,b)) return res.status(401).json({error:"密码不正确。"});
   const teacherId=crypto.createHash("sha256").update(ADMIN_PASSWORD).digest("hex").slice(0,24);
-  const token=signToken({role:"teacher",teacherId,exp:Date.now()+2*60*60*1000});
+  const token=signToken({role:"admin",teacherId,isAdmin:true,exp:Date.now()+2*60*60*1000});
   res.json({token,expiresIn:7200});
 });
 app.post("/api/teacher/evaluate",apiLimiter,requireTeacher,async(req,res)=>{
@@ -325,11 +329,11 @@ app.get("/api/student/records",apiLimiter,requireStudent,requireDatabase,async(r
   catch(e){console.error("student_record_list_failed",e.message);res.status(500).json({error:"读取个人探究记录失败。"});}
 });
 app.get("/api/teacher/classes",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
-  try{const q=await db.query("SELECT c.id,c.class_name,c.invite_code,c.created_at,COUNT(DISTINCT l.id)::int AS learner_count,COUNT(DISTINCT r.id)::int AS record_count FROM science_classes c LEFT JOIN science_learners l ON l.class_id=c.id LEFT JOIN science_records r ON r.class_id=c.id WHERE c.teacher_id=$1 GROUP BY c.id ORDER BY c.created_at DESC",[teacherId(req)]);res.json({classes:q.rows});}
+  try{const q=await db.query("SELECT c.id,c.class_name,c.invite_code,c.created_at,COUNT(DISTINCT l.id)::int AS learner_count,COUNT(DISTINCT r.id)::int AS record_count FROM science_classes c LEFT JOIN science_learners l ON l.class_id=c.id LEFT JOIN science_records r ON r.class_id=c.id WHERE c.teacher_id=$1 GROUP BY c.id ORDER BY c.created_at DESC",[teacherId(req)]);await db.query("INSERT INTO audit_log(teacher_id,action,target_type,target_id) VALUES($1,$2,$3,$4)",[teacherId(req),"list_classes","teacher","all"]);res.json({classes:q.rows});}
   catch(e){console.error("class_list_failed",e.message);res.status(500).json({error:"读取班级列表失败。"});}
 });
 app.get("/api/teacher/classes/:id/records",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
-  try{const own=await db.query("SELECT id FROM science_classes WHERE id=$1 AND teacher_id=$2",[req.params.id,teacherId(req)]);if(!own.rowCount)return res.status(404).json({error:"班级不存在。"});const q=await db.query("SELECT r.id,l.alias,r.topic,r.question,r.hypothesis,r.independent_variable,r.dependent_variable,r.control_variables,r.method,r.evidence,r.conclusion,r.reflection,r.observed_phenomenon,r.question_boundary,r.measurement_indicator,r.hypothesis_basis,r.expected_result,r.repetition_count,r.control_rationale,r.data_table,r.anomaly_handling,r.evidence_reasoning,r.created_at FROM science_records r JOIN science_learners l ON l.id=r.learner_id WHERE r.class_id=$1 ORDER BY r.created_at DESC LIMIT 300",[req.params.id]);res.json({records:q.rows});}
+  try{const own=await db.query("SELECT id FROM science_classes WHERE id=$1 AND teacher_id=$2",[req.params.id,teacherId(req)]);if(!own.rowCount)return res.status(404).json({error:"班级不存在。"});const q=await db.query("SELECT r.id,l.alias,r.topic,r.question,r.hypothesis,r.independent_variable,r.dependent_variable,r.control_variables,r.method,r.evidence,r.conclusion,r.reflection,r.observed_phenomenon,r.question_boundary,r.measurement_indicator,r.hypothesis_basis,r.expected_result,r.repetition_count,r.control_rationale,r.data_table,r.anomaly_handling,r.evidence_reasoning,r.created_at FROM science_records r JOIN science_learners l ON l.id=r.learner_id WHERE r.class_id=$1 ORDER BY r.created_at DESC LIMIT 300",[req.params.id]);await db.query("INSERT INTO audit_log(teacher_id,action,target_type,target_id) VALUES($1,$2,$3,$4)",[teacherId(req),"view_class_records","class",req.params.id]);res.json({records:q.rows});}
   catch(e){console.error("record_list_failed",e.message);res.status(500).json({error:"读取探究档案失败。"});}
 });
 
