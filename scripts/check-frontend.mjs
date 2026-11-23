@@ -65,7 +65,7 @@ console.log('V5.6.3 frontend syntax, API contracts, student-owned chat history a
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const lock = JSON.parse(readFileSync(new URL('../package-lock.json', import.meta.url), 'utf8'));
-if (pkg.version !== '5.7.0' || lock.version !== pkg.version || lock.packages?.['']?.version !== pkg.version) throw new Error('Package and lockfile versions must match V5.7.0');
+if (pkg.version !== '5.7.1' || lock.version !== pkg.version || lock.packages?.['']?.version !== pkg.version) throw new Error('Package and lockfile versions must match V5.7.0');
 if (!server.includes('const APP_VERSION = JSON.parse(readFileSync(new URL("./package.json"') || !server.includes('version:APP_VERSION')) throw new Error('Backend health version must derive from package.json');
 if (!html.includes("fetch('/api/health')") || !html.includes("$('appVersion').textContent='V'+d.version") || !html.includes("document.title='小小AI科学家 V'+d.version")) throw new Error('Page version must be injected from the health endpoint');
 if (/小小AI科学家 V5\\.\\d/.test(html)) throw new Error('Frontend must not hardcode a release version');
@@ -76,7 +76,8 @@ if (!html.includes('preload="metadata"') || !html.includes('data-video-id=') || 
 if (!html.includes('poster="/videos/poster-plant.svg"') || !html.includes('<track kind="captions"')) throw new Error('Course videos need posters and caption tracks');
 if (!server.includes('maxAge:"7d",etag:true,lastModified:true,immutable:false')) throw new Error('Video static assets must support one-week caching and conditional requests');
 if (!html.includes("location.hash=target") || !html.includes("addEventListener('hashchange'")) throw new Error('Tab navigation must be addressable and respond to hash changes');
-if (!html.includes('function renderMarkdown(') || !html.includes("document.createElement('strong')") || !html.includes("document.createElement(type)")) throw new Error('Assistant Markdown must render safe bold text and lists');
+if (!html.includes('function renderMarkdown(') || !html.includes("parent.replaceChildren()") || !html.includes("document.createElement('strong')") || !html.includes("document.createElement(type)")) throw new Error('Assistant Markdown must replace prior streamed content and render safe bold text and lists');
+if (!html.includes("new TextDecoder('utf-8')") || !html.includes('/\\r\\n\\r\\n|\\n\\n|\\r\\r/') || !html.includes('buffer+=decoder.decode()') || !html.includes('meta.done!==true')) throw new Error('Chat SSE parser must handle UTF-8 chunks, CRLF/LF separators, final buffered events and interrupted streams');
 if (!server.includes('CREATE TABLE IF NOT EXISTS messages') || !server.includes('app.get("/api/chat/history/:sessionId",chatLimiter,requireStudent,requireDatabase') || !server.includes('app.delete("/api/chat/history/:sessionId",chatLimiter,requireStudent,requireDatabase') || !server.includes('readSession(db,token)')) throw new Error('Chat history must use database-backed student sessions and the dedicated messages table');
 if (!server.includes('grade:learner.rows[0].grade') || !upgradeModule.includes('学生学段：')) throw new Error('Mentor system context must include the learner grade band');
 if (!server.includes('containsPII(text)') || !server.includes('offlineAnswer(s)')) throw new Error('PII detection and dangerous-experiment offline fallback must be active in chat');
