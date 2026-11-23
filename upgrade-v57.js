@@ -11,7 +11,7 @@ export function registerV57Routes({app,db,apiLimiter,requireTeacher,teacherId,re
           SELECT DISTINCT ON (learner_id) learner_id,level,level_json
           FROM science_records
           WHERE class_id=$1
-          ORDER BY learner_id,created_at DESC,id DESC
+          ORDER BY learner_id,created_at DESC NULLS LAST,id DESC
         ),
         per_learner AS (
           SELECT l.id,l.alias,r.learner_id AS submitted_learner_id,r.level,r.level_json
