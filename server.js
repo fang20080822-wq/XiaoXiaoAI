@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import pg from "pg";
 import { registerV56Routes } from "./upgrade-v56.js";
+import { registerV57Routes } from "./upgrade-v57.js";
 
 dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -184,6 +185,7 @@ async function callDeepSeek(messages, maxTokens=900) {
 }
 
 registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,ADMIN_PASSWORD,TOKEN_SECRET,signToken,verifyToken,looksLikePII});
+registerV57Routes({app,db,apiLimiter,requireTeacher,teacherId,requireDatabase});
 
 app.get("/api/health",async(req,res)=>{
   let database = DATABASE_URL ? (dbReady ? "ready" : "connecting") : "not_configured";
