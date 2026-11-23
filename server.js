@@ -8,6 +8,9 @@ import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import pg from "pg";
 import { registerV56Routes } from "./upgrade-v56.js";
+import { registerV57Routes } from "./upgrade-v57.js";
+import { scoreRecord,validateAlias,containsPII,offlineAnswer } from "./lib/inquiry.js";
+import { readSession,issueSession,hashSessionToken } from "./lib/auth.js";
 
 dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -22,7 +25,9 @@ const ALLOW_ORIGIN = process.env.ALLOW_ORIGIN || "";
 const DATABASE_URL = process.env.DATABASE_URL || "";
 const APP_VERSION = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version;
 const { Pool } = pg;
-const db = DATABASE_URL ? new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false }, max: 5, connectionTimeoutMillis: 5000, idleTimeoutMillis: 30000 }) : null;
+const DB_SSL = process.env.DATABASE_SSL === "false" ? false : { rejectUnauthorized: false };
+const db = DATABASE_URL ? new Pool({ connectionString: DATABASE_URL, ssl: DB_SSL, max: 5, connectionTimeoutMillis: 5000, idleTimeoutMillis: 30000 }) : null;
+app.locals.db = db;
 let dbReady = false;
 let dbInitPromise = null;
 async function initDatabase(){
@@ -49,7 +54,14 @@ async function initDatabase(){
       "CREATE INDEX IF NOT EXISTS idx_science_classes_teacher_created ON science_classes(teacher_id, created_at DESC)",
       "CREATE INDEX IF NOT EXISTS idx_science_records_learner_created ON science_records(class_id, learner_id, created_at DESC)",
       "CREATE TABLE IF NOT EXISTS chat_messages(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), session_id UUID NOT NULL, role TEXT NOT NULL CHECK(role IN ('user','assistant')), content TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW())",
-      "CREATE INDEX IF NOT EXISTS idx_chat_messages_session_created ON chat_messages(session_id, created_at DESC)"
+      "CREATE INDEX IF NOT EXISTS idx_chat_messages_session_created ON chat_messages(session_id, created_at DESC)",
+      "ALTER TABLE science_learners ADD COLUMN IF NOT EXISTS grade TEXT NOT NULL DEFAULT '3-4'",
+      "ALTER TABLE science_records ADD COLUMN IF NOT EXISTS level INTEGER NOT NULL DEFAULT 1 CHECK(level BETWEEN 1 AND 4)",
+      "ALTER TABLE science_records ADD COLUMN IF NOT EXISTS level_json JSONB NOT NULL DEFAULT '{}'::jsonb",
+      "CREATE TABLE IF NOT EXISTS sessions(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),token_hash TEXT UNIQUE NOT NULL,role TEXT NOT NULL CHECK(role IN ('teacher','student','admin')),subject_id TEXT NOT NULL,expires_at TIMESTAMPTZ NOT NULL,created_at TIMESTAMPTZ DEFAULT NOW())",
+      "CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at)",
+      "CREATE TABLE IF NOT EXISTS messages(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),session_id UUID NOT NULL,student_id TEXT NOT NULL DEFAULT '',role TEXT NOT NULL CHECK(role IN ('user','assistant')),content TEXT NOT NULL,mode TEXT NOT NULL DEFAULT 'offline',created_at TIMESTAMPTZ DEFAULT NOW())",
+      "CREATE INDEX IF NOT EXISTS idx_messages_owner_session_time ON messages(student_id,session_id,created_at DESC)"
     ];
     for(const statement of statements) await db.query(statement);
     await db.query("SELECT 1");
@@ -93,8 +105,7 @@ if (ALLOW_ORIGIN) {
 }
 function rateLimitKey(req){
   const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
-  const payload=verifyToken(token);
-  return payload?.role==="student" && payload.learnerId ? "student:"+payload.learnerId : "ip:"+(req.ip||req.socket?.remoteAddress||"unknown");
+  return token ? "student:"+hashSessionToken(token) : "ip:"+(req.ip||req.socket?.remoteAddress||"unknown");
 }
 const apiLimiter = rateLimit({windowMs:60_000,limit:120,standardHeaders:"draft-7",legacyHeaders:false,keyGenerator:rateLimitKey,
   handler:(req,res)=>res.status(429).json({error:"请求过于频繁，请稍后再试。",mode:"offline",fallback:"offline"})});
@@ -135,22 +146,48 @@ function verifyToken(token) {
   if (got.length!==expected.length || !crypto.timingSafeEqual(got,expected)) return false;
   try { const p=JSON.parse(Buffer.from(body,"base64url").toString()); return p.exp>Date.now()?p:false; } catch { return false; }
 }
-function requireTeacher(req,res,next) {
-  const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
-  const payload=verifyToken(token);
-  if(!payload || payload.role!=="teacher") return res.status(401).json({error:"教师身份验证已失效，请重新登录。"});
-  next();
+async function requireTeacher(req,res,next) {
+  try{
+    if(!db)return res.status(503).json({error:"云端数据库尚未配置。"});
+    if(!dbReady)await initDatabase();
+    const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
+    const session=await readSession(db,token);
+    if(!session||session.role!=="teacher")return res.status(401).json({error:"教师身份验证已失效，请重新登录。"});
+    const account=await db.query("SELECT status FROM teachers WHERE id=$1",[session.subjectId]);
+    if(!account.rowCount)return res.status(401).json({error:"教师账号不存在，请重新登录。"});
+    if(account.rows[0].status==="rejected")return res.status(403).json({error:"教师账号未获批准，请联系管理员。"});
+    req.auth=session;next();
+  }catch(error){console.error("teacher_session_read_failed",error.message);res.status(503).json({error:"教师身份验证暂不可用。"});}
 }
-function teacherId(req){const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");return verifyToken(token)?.teacherId||"teacher-default";}
-function requireStudent(req,res,next){const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");const p=verifyToken(token);if(!p||p.role!=="student")return res.status(401).json({error:"学生会话已失效，请重新加入班级。"});req.student=p;next();}
+function teacherId(req){return req.auth?.subjectId||"teacher-default";}
+async function resolveStudentSession(token){
+  if(!token||!db)return null;
+  try{
+    if(!dbReady)await initDatabase();
+    const session=await readSession(db,token);
+    if(!session||session.role!=="student")return null;
+    const learner=await db.query("SELECT id,class_id,grade FROM science_learners WHERE id=$1",[session.subjectId]);
+    if(!learner.rowCount)return null;
+    return {role:"student",learnerId:learner.rows[0].id,classId:learner.rows[0].class_id,grade:learner.rows[0].grade||"3-4"};
+  }catch(error){console.error("chat_student_session_failed",error.message);return null;}
+}
+async function requireStudent(req,res,next){
+  try{
+    const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
+    const student=await resolveStudentSession(token);
+    if(!student)return res.status(401).json({error:"学生会话已失效，请重新加入班级。"});
+    req.student=student;next();
+  }catch(error){console.error("student_session_read_failed",error.message);res.status(503).json({error:"学生身份验证暂不可用。"});}
+}
 async function requireDatabase(req,res,next){if(!db)return res.status(503).json({error:"云端数据库尚未配置。"});if(!dbReady){try{await initDatabase();}catch(e){console.error("database_retry_failed",e.message);return res.status(503).json({error:"云端数据库暂不可用，请稍后重试。"});}}if(!dbReady)return res.status(503).json({error:"云端数据库尚未就绪，请稍后重试。"});next();}
 function looksLikePII(value){
   const text=String(value||"");
   const patterns=[/(?:^|\D)(?:\+?86[- ]?)?1[3-9]\d{9}(?:$|\D)/,/(?:^|\D)\d{17}[\dXx](?:$|\D)/,/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i,/(?:身份证|身份证号|家庭住址|详细地址|银行卡号|密码是|我的学号|住在.{0,12}(?:路|街|号|小区))/ ,/(?:^|[^\d])\d{8,}(?:$|[^\d])/];
-  return patterns.some(pattern=>pattern.test(text));
+  return containsPII(text)||patterns.some(pattern=>pattern.test(text));
 }
 function offlineTutor(message, topic) {
   const s=message;
+  if(/爆炸|燃烧|点燃|火药|烟花|鞭炮|强酸|强碱|硫酸|盐酸|氢氧化钠|漂白剂|农药|汽油|酒精灯|电击|触电|插座|裸露电线|高压|电池短路|吞服|喝下|食用化学品|毒|刀片|针头|自制武器|密闭加热|高温蒸汽/i.test(s))return offlineAnswer(s);
   if(/隐私|安全|个人信息|照片|人脸/.test(s)) return "安全提醒：不要在AI对话中输入姓名、住址、电话、学校班级、密码或人脸等信息。请先征得老师或家长同意。AI回答也需要核查。";
   if(/机器学习|训练|数据|分类/.test(s)) return "离线知识提示：机器学习通常利用样例数据和学习算法寻找规律，再对新数据进行预测。样例不完整或有偏差时，结果可能不可靠。思考：你会怎样补充更有代表性的样例？";
   if(/传感器|植物|温度|光照/.test(s)) return "离线知识提示：传感器可以采集温度、光照等信息，但传感器本身不一定是AI。设计提醒器时，要说明测量指标、提醒条件和误报后的人工复核。";
@@ -183,7 +220,8 @@ async function callDeepSeek(messages, maxTokens=900) {
   } finally { clearTimeout(timer); }
 }
 
-registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,ADMIN_PASSWORD,TOKEN_SECRET,signToken,verifyToken,looksLikePII});
+registerV56Routes({app,db,apiLimiter,loginLimiter,requireTeacher,teacherId,ADMIN_PASSWORD,TOKEN_SECRET,signToken,verifyToken,looksLikePII,resolveStudentSession,initDatabase});
+registerV57Routes({app,db,apiLimiter,requireTeacher,teacherId,requireDatabase});
 
 app.get("/api/health",async(req,res)=>{
   let database = DATABASE_URL ? (dbReady ? "ready" : "connecting") : "not_configured";
@@ -201,16 +239,92 @@ app.get("/api/health",async(req,res)=>{
 app.get("/api/chat/history/:sessionId",chatLimiter,requireStudent,requireDatabase,async(req,res)=>{
   const sessionId=String(req.params.sessionId||"");
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId))return res.status(400).json({error:"对话会话标识无效。"});
-  try{const q=await db.query("SELECT role,content,created_at FROM chat_messages WHERE session_id=$1 AND learner_id=$2 AND class_id=$3 ORDER BY created_at DESC LIMIT 30",[sessionId,req.student.learnerId,req.student.classId]);res.json({messages:q.rows.reverse().filter(m=>!looksLikePII(m.content))});}
+  try{const q=await db.query("SELECT role,content,created_at,mode FROM messages WHERE session_id=$1 AND student_id=$2 ORDER BY created_at DESC LIMIT 30",[sessionId,req.student.learnerId]);res.json({messages:q.rows.reverse().filter(m=>!looksLikePII(m.content))});}
   catch(e){console.error("chat_history_read_failed",e.message);res.status(500).json({error:"读取对话历史失败。"});}
 });
 app.delete("/api/chat/history/:sessionId",chatLimiter,requireStudent,requireDatabase,async(req,res)=>{
   const sessionId=String(req.params.sessionId||"");
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId))return res.status(400).json({error:"对话会话标识无效。"});
-  try{await db.query("DELETE FROM chat_messages WHERE session_id=$1 AND learner_id=$2 AND class_id=$3",[sessionId,req.student.learnerId,req.student.classId]);res.json({cleared:true});}
+  try{await db.query("DELETE FROM messages WHERE session_id=$1 AND student_id=$2",[sessionId,req.student.learnerId]);res.json({cleared:true});}
   catch(e){console.error("chat_history_delete_failed",e.message);res.status(500).json({error:"清除对话历史失败。"});}
 });
-app.post("/api/chat",chatLimiter,requireDatabase,async(req,res)=>{
+async function callDeepSeekStream(messages,onDelta,maxTokens=1000) {
+  if(!API_KEY) throw new Error("DeepSeek API Key尚未配置");
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),35_000);
+  try {
+    const response=await fetch(`${BASE_URL}/chat/completions`,{
+      method:"POST",
+      headers:{"Authorization":`Bearer ${API_KEY}`,"Content-Type":"application/json"},
+      body:JSON.stringify({model:MODEL,messages,stream:true,max_tokens:maxTokens,temperature:0.5,thinking:{type:"disabled"}}),
+      signal:controller.signal
+    });
+    if(!response.ok)throw new Error(`模型服务暂不可用（HTTP ${response.status}）。`);
+    if(!response.body)throw new Error("模型服务未提供流式响应。");
+    const reader=response.body.getReader(),decoder=new TextDecoder();
+    let buffer="",answer="";
+    while(true){
+      const {value,done}=await reader.read();
+      if(done)break;
+      buffer+=decoder.decode(value,{stream:true});
+      const lines=buffer.split(/\r?\n/);buffer=lines.pop()||"";
+      for(const line of lines){
+        if(!line.startsWith("data:"))continue;
+        const raw=line.slice(5).trim();
+        if(!raw||raw==="[DONE]")continue;
+        let data;try{data=JSON.parse(raw)}catch{continue}
+        const delta=data?.choices?.[0]?.delta?.content;
+        if(typeof delta==="string"&&delta){answer+=delta;onDelta(delta)}
+      }
+    }
+    if(!answer.trim())throw new Error("模型暂未生成有效回答。");
+    return answer.trim();
+  } finally {clearTimeout(timer)}
+}
+
+app.post("/api/chat/stream",chatLimiter,async(req,res)=>{
+  const message=typeof req.body?.message==="string"?req.body.message.trim():"";
+  const sessionId=String(req.body?.sessionId||"");
+  const topic=typeof req.body?.topic==="string"?req.body.topic.slice(0,30):"general";
+  const mentorMode=typeof req.body?.mode==="string"&&Object.hasOwn(MENTOR_MODES,req.body.mode)?req.body.mode:"curiosity";
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId))return res.status(400).json({error:"对话会话标识无效，请刷新页面重试。"});
+  if(!message)return res.status(400).json({error:"请输入问题。"});
+  if(message.length>6000)return res.status(400).json({error:"问题过长，请缩短后再试。"});
+  if(looksLikePII(message))return res.status(400).json({error:"检测到可能的个人身份信息，请删除后再提问。"});
+  const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
+  const student=await resolveStudentSession(token);
+  const ownsSession=Boolean(student?.learnerId&&student.classId);
+  const ownerLearnerId=ownsSession?String(student.learnerId):"";
+  const ownerClassId=ownsSession?String(student.classId):"";
+  const headers={"Content-Type":"text/event-stream; charset=utf-8","Cache-Control":"no-cache, no-transform","Connection":"keep-alive","X-Accel-Buffering":"no"};
+  let started=false;
+  const emit=(payload)=>{if(!res.destroyed)res.write("data: "+JSON.stringify(payload)+"\n\n")};
+  try{
+    const previous=ownsSession?await db.query("SELECT role,content FROM messages WHERE session_id=$1 AND student_id=$2 ORDER BY created_at DESC LIMIT 8",[sessionId,ownerLearnerId]):{rows:[]};
+    const history=previous.rows.reverse().filter(m=>!looksLikePII(m.content)).map(m=>({role:m.role,content:m.content.slice(0,1200)}));
+    if(ownsSession)await db.query("INSERT INTO messages(session_id,student_id,role,content,mode) VALUES($1,$2,'user',$3,$4)",[sessionId,ownerLearnerId,message,mentorMode]);
+    const topicHint={ai:"课程主题：认识人工智能。",ml:"课程主题：机器学习。",sensor:"课程主题：智能感知。",safety:"课程主题：AI安全。",design:"课程主题：AI创意设计。"}[topic]||"课程主题：儿童科学探究。";
+    res.writeHead(200,headers);started=true;
+    let answer="",mode="online",notice;
+    if(!API_KEY){answer=offlineTutor(message,topic);mode="offline";emit({delta:answer})}
+    else{
+      try{
+        answer=await callDeepSeekStream([{role:"system",content:SYSTEM_BASE+"\n"+MENTOR_MODES[mentorMode]+"\n"+topicHint+(req.scienceSystemContext||"")},...history,{role:"user",content:message}],delta=>emit({delta}),1000);
+      }catch(error){answer=offlineTutor(message,topic);mode="offline";notice=error.message;emit({delta:answer})}
+    }
+    if(req.scienceHintLevel===4&&!/参考答案/.test(answer))answer="参考答案（仅供参考，请用自己的话复述）\n"+answer+"\n\n请先遮住上面的内容，用自己的话复述你的理解。";
+    if(looksLikePII(answer)){answer="回答可能包含个人信息，已隐藏。请用匿名信息继续。";mode="offline";emit({delta:"\n"+answer})}
+    if(ownsSession)await db.query("INSERT INTO messages(session_id,student_id,role,content,mode) VALUES($1,$2,'assistant',$3,$4)",[sessionId,ownerLearnerId,answer,mentorMode]);
+    emit({done:true,mode,model:MODEL,...(notice?{notice}:{})});
+    res.end();
+  }catch(error){
+    console.error("chat_stream_failed",error.message);
+    if(started){emit({delta:"\n当前服务暂不可用，请稍后重试。"});emit({done:true,mode:"offline",model:MODEL});res.end()}
+    else res.status(503).json({error:"对话服务暂不可用，请稍后重试。",fallback:"offline"});
+  }
+});
+
+app.post("/api/chat",chatLimiter,async(req,res)=>{
   const message=typeof req.body?.message==="string"?req.body.message.trim():"";
   const sessionId=String(req.body?.sessionId||"");
   const topic=typeof req.body?.topic==="string"?req.body.topic.slice(0,30):"general";
@@ -221,15 +335,14 @@ app.post("/api/chat",chatLimiter,requireDatabase,async(req,res)=>{
   if(looksLikePII(message))return res.status(400).json({error:"检测到可能的个人身份信息。请删除姓名、联系方式、地址、学号等信息后再提问。"});
   try{
     const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
-    const student=verifyToken(token);
-    const ownsSession=student?.role==="student" && student.learnerId && student.classId;
+    const student=await resolveStudentSession(token);
+    const ownsSession=Boolean(student?.learnerId && student.classId);
     const ownerLearnerId=ownsSession?String(student.learnerId):"";
-    const ownerClassId=ownsSession?String(student.classId):"";
     const previous=ownsSession
-      ? await db.query("SELECT role,content FROM chat_messages WHERE session_id=$1 AND learner_id=$2 AND class_id=$3 ORDER BY created_at DESC LIMIT 8",[sessionId,ownerLearnerId,ownerClassId])
+      ? await db.query("SELECT role,content FROM messages WHERE session_id=$1 AND student_id=$2 ORDER BY created_at DESC LIMIT 8",[sessionId,ownerLearnerId])
       : {rows:[]};
     const safeHistory=previous.rows.reverse().filter(m=>!looksLikePII(m.content)).map(m=>({role:m.role,content:m.content.slice(0,1200)}));
-    if(ownsSession) await db.query("INSERT INTO chat_messages(session_id,learner_id,class_id,role,content) VALUES($1,$2,$3,'user',$4)",[sessionId,ownerLearnerId,ownerClassId,message]);
+    if(ownsSession) await db.query("INSERT INTO messages(session_id,student_id,role,content,mode) VALUES($1,$2,'user',$3,$4)",[sessionId,ownerLearnerId,message,mentorMode]);
     const topicHint={
       ai:"课程主题：认识人工智能。帮助学生区分人工智能、自动化与普通程序。",
       ml:"课程主题：机器学习。重点解释样例、特征、训练、测试、偏差和预测。",
@@ -246,19 +359,19 @@ app.post("/api/chat",chatLimiter,requireDatabase,async(req,res)=>{
     if(req.scienceHintLevel===4 && !/参考答案/.test(answer))answer="参考答案（仅供参考，请用自己的话复述）\n"+answer+"\n\n请先遮住上面的内容，用自己的话复述你的理解，并说明它和你自己的实验记录有什么联系。";
     if(looksLikePII(answer))answer="这条回答可能包含个人身份信息，为保护隐私已隐藏。请改用匿名信息继续探究。";
     if(ownsSession){
-      await db.query("INSERT INTO chat_messages(session_id,learner_id,class_id,role,content) VALUES($1,$2,$3,'assistant',$4)",[sessionId,ownerLearnerId,ownerClassId,answer]);
-      await db.query("DELETE FROM chat_messages WHERE session_id=$1 AND learner_id=$2 AND class_id=$3 AND id NOT IN (SELECT id FROM chat_messages WHERE session_id=$1 AND learner_id=$2 AND class_id=$3 ORDER BY created_at DESC LIMIT 30)",[sessionId,ownerLearnerId,ownerClassId]);
+      await db.query("INSERT INTO messages(session_id,student_id,role,content,mode) VALUES($1,$2,'assistant',$3,$4)",[sessionId,ownerLearnerId,answer,mentorMode]);
+      await db.query("DELETE FROM messages WHERE session_id=$1 AND student_id=$2 AND id NOT IN (SELECT id FROM messages WHERE session_id=$1 AND student_id=$2 ORDER BY created_at DESC LIMIT 30)",[sessionId,ownerLearnerId]);
     }
     res.json({mode,model:MODEL,answer,hintLevel:req.scienceHintLevel||1,qualityCheck:req.scienceQualityCheck||null,...(notice?{notice}:{})});
   }catch(err){console.error("chat_request_failed",err.message);res.status(503).json({mode:"offline",fallback:"offline",error:"对话服务暂不可用，请稍后重试。"});}
 });
-app.post("/api/teacher/login",loginLimiter,(req,res)=>{
-  if(!ADMIN_PASSWORD || !TOKEN_SECRET) return res.status(503).json({error:"教师端尚未完成安全配置，请管理员设置ADMIN_PASSWORD和TOKEN_SECRET。"});
+app.post("/api/admin/login",loginLimiter,(req,res)=>{
+  if(!ADMIN_PASSWORD || !TOKEN_SECRET) return res.status(503).json({error:"管理员安全配置尚未完成。"});
   const password=typeof req.body?.password==="string"?req.body.password:"";
   const a=Buffer.from(password),b=Buffer.from(ADMIN_PASSWORD);
-  if(a.length!==b.length || !crypto.timingSafeEqual(a,b)) return res.status(401).json({error:"密码不正确。"});
-  const teacherId=crypto.createHash("sha256").update(ADMIN_PASSWORD).digest("hex").slice(0,24);
-  const token=signToken({role:"admin",teacherId,isAdmin:true,exp:Date.now()+2*60*60*1000});
+  if(a.length!==b.length || !crypto.timingSafeEqual(a,b)) return res.status(401).json({error:"管理员密码不正确。"});
+  const adminId=crypto.createHash("sha256").update(ADMIN_PASSWORD).digest("hex").slice(0,24);
+  const token=signToken({role:"admin",teacherId:adminId,isAdmin:true,exp:Date.now()+2*60*60*1000});
   res.json({token,expiresIn:7200});
 });
 app.post("/api/teacher/evaluate",apiLimiter,requireTeacher,async(req,res)=>{
@@ -289,52 +402,38 @@ app.post("/api/teacher/classes",apiLimiter,requireTeacher,requireDatabase,async(
 
 
 app.post("/api/student/join",apiLimiter,requireDatabase,async(req,res)=>{
-  if(!TOKEN_SECRET)return res.status(503).json({error:"学生会话安全配置尚未完成，请联系教师管理员。"});
-  const code=String(req.body?.inviteCode||"").trim().toUpperCase(),alias=String(req.body?.alias||"").trim().slice(0,24);
+
+  const code=String(req.body?.inviteCode||"").trim().toUpperCase(),alias=String(req.body?.alias||"").trim();
+  const aliasCheck=validateAlias(alias);
+  if(!aliasCheck.valid)return res.status(400).json({error:aliasCheck.error});
+  const grade=["3-4","5-6"].includes(String(req.body?.grade||"3-4"))?String(req.body?.grade||"3-4"):"3-4";
   if(!/^[A-F0-9]{8}$/.test(code))return res.status(400).json({error:"邀请码格式不正确。"});
-  if(looksLikePII(alias)||!/^(?:学生|Learner)[A-Z0-9]{1,8}$/i.test(alias))return res.status(400).json({error:"请使用匿名代号，例如学生A，不要使用真实姓名或联系方式。"});
   if(req.body?.guardianConsent!==true)return res.status(400).json({error:"请先确认已取得教师和监护人必要同意。"});
-  try{const c=await db.query("SELECT id FROM science_classes WHERE invite_code=$1",[code]);if(!c.rowCount)return res.status(404).json({error:"邀请码无效。"});const l=await db.query("INSERT INTO science_learners(class_id,alias,guardian_consent,consent_recorded_at) VALUES($1,$2,TRUE,NOW()) ON CONFLICT(class_id,alias) DO UPDATE SET alias=EXCLUDED.alias,guardian_consent=TRUE,consent_recorded_at=NOW() RETURNING id,alias",[c.rows[0].id,alias]);const token=signToken({role:"student",classId:c.rows[0].id,learnerId:l.rows[0].id,exp:Date.now()+30*24*60*60*1000});res.json({token,alias:l.rows[0].alias});}
+  try{const c=await db.query("SELECT id FROM science_classes WHERE invite_code=$1",[code]);if(!c.rowCount)return res.status(404).json({error:"邀请码无效。"});const l=await db.query("INSERT INTO science_learners(class_id,alias,guardian_consent,consent_recorded_at,grade) VALUES($1,$2,TRUE,NOW(),$3) ON CONFLICT(class_id,alias) DO UPDATE SET alias=EXCLUDED.alias,guardian_consent=TRUE,consent_recorded_at=NOW(),grade=EXCLUDED.grade RETURNING id,alias,grade",[c.rows[0].id,alias,grade]);const session=await issueSession(db,{role:"student",subjectId:l.rows[0].id});res.json({token:session.token,alias:l.rows[0].alias,expiresAt:session.expiresAt});}
   catch(e){console.error("student_join_failed",e.message);res.status(500).json({error:"加入班级失败。"});}
 });
 app.post("/api/student/records",apiLimiter,requireStudent,requireDatabase,async(req,res)=>{
-  const fields={
-    topic:"topic",question:"question",hypothesis:"hypothesis",
-    independentVariable:"independentVariable",dependentVariable:"dependentVariable",
-    controlVariables:"controlVariables",method:"method",evidence:"evidence",
-    conclusion:"conclusion",reflection:"reflection",
-    observedPhenomenon:"observedPhenomenon",questionBoundary:"questionBoundary",
-    measurementIndicator:"measurementIndicator",hypothesisBasis:"hypothesisBasis",
-    expectedResult:"expectedResult",controlRationale:"controlRationale",
-    dataTable:"dataTable",anomalyHandling:"anomalyHandling",evidenceReasoning:"evidenceReasoning"
-  };
+  const fields=["topic","question","hypothesis","independentVariable","dependentVariable","controlVariables","method","evidence","conclusion","reflection","observedPhenomenon","questionBoundary","measurementIndicator","hypothesisBasis","expectedResult","controlRationale","dataTable","anomalyHandling","evidenceReasoning"];
   const d={};
-  for(const [key,bodyKey] of Object.entries(fields)){
-    d[key]=typeof req.body?.[bodyKey]==="string"?req.body[bodyKey].trim():"";
-    const limit=["method","evidence","dataTable"].includes(key)?5000:1500;
-    if(d[key].length>limit)return res.status(400).json({error:"记录内容过长，请精简。"});
-    if(looksLikePII(d[key]))return res.status(400).json({error:"检测到可能的个人身份信息，请删除后再提交。"});
+  for(const key of fields){
+    d[key]=typeof req.body?.[key]==="string"?req.body[key].trim():"";
+    if(d[key].length>(["method","evidence","dataTable"].includes(key)?5000:1500))return res.status(400).json({error:"记录内容过长，请精简。"});
+    if(d[key]&&looksLikePII(d[key]))return res.status(400).json({error:"检测到可能的个人身份信息，请删除后再提交。"});
   }
-  const repetitions=Number(req.body?.repetitionCount);
-  if(!Number.isInteger(repetitions)||repetitions<2||repetitions>20)return res.status(400).json({error:"重复实验次数须填写2—20次。"});
-  d.repetitionCount=repetitions;
-  const required=["topic","observedPhenomenon","question","questionBoundary","measurementIndicator","hypothesis","hypothesisBasis","expectedResult","independentVariable","dependentVariable","controlVariables","controlRationale","method","evidence","dataTable","anomalyHandling","evidenceReasoning","conclusion","reflection"];
-  if(required.some(k=>!d[k]))return res.status(400).json({error:"请完成五项水平4探究要求后再提交；每个必填项都需要有具体内容。"});
-  const rows=d.dataTable.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
-  if(rows.length<2)return res.status(400).json({error:"证据记录至少需要两行实际测量记录，请按次数逐行填写。"});
-  if(rows.length>repetitions)return res.status(400).json({error:"数据记录行数不能超过填写的重复实验次数。"});
-  const validRows=rows.every(row=>{const parts=row.split(/[|｜]/).map(x=>x.trim());const numericValue=parts.length>=4?Number(parts[2]):NaN;return parts.length>=4&&parts[0]&&parts[1]&&parts[2].length>0&&Number.isFinite(numericValue)&&parts[3].length>0;});
-  if(!validRows)return res.status(400).json({error:"每行数据请按“第几次｜日期/时间｜数值｜单位”填写，数值必须是数字并注明单位。"});
+  if(!d.topic||!d.question)return res.status(400).json({error:"请先填写实验主题和研究问题。"});
+  const repetition=Number(req.body?.repetitionCount);
+  d.repetitionCount=Number.isInteger(repetition)&&repetition>=1&&repetition<=20?repetition:0;
+  const scored=scoreRecord(d);
   try{
     const q=await db.query(
-      "INSERT INTO science_records(class_id,learner_id,topic,question,hypothesis,independent_variable,dependent_variable,control_variables,method,evidence,conclusion,reflection,observed_phenomenon,question_boundary,measurement_indicator,hypothesis_basis,expected_result,repetition_count,control_rationale,data_table,anomaly_handling,evidence_reasoning) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING id,created_at",
-      [req.student.classId,req.student.learnerId,d.topic,d.question,d.hypothesis,d.independentVariable,d.dependentVariable,d.controlVariables,d.method,d.evidence,d.conclusion,d.reflection,d.observedPhenomenon,d.questionBoundary,d.measurementIndicator,d.hypothesisBasis,d.expectedResult,d.repetitionCount,d.controlRationale,d.dataTable,d.anomalyHandling,d.evidenceReasoning]
+      "INSERT INTO science_records(class_id,learner_id,topic,question,hypothesis,independent_variable,dependent_variable,control_variables,method,evidence,conclusion,reflection,observed_phenomenon,question_boundary,measurement_indicator,hypothesis_basis,expected_result,repetition_count,control_rationale,data_table,anomaly_handling,evidence_reasoning,level,level_json) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24) RETURNING id,created_at",
+      [req.student.classId,req.student.learnerId,d.topic,d.question,d.hypothesis,d.independentVariable,d.dependentVariable,d.controlVariables,d.method,d.evidence,d.conclusion,d.reflection,d.observedPhenomenon,d.questionBoundary,d.measurementIndicator,d.hypothesisBasis,d.expectedResult,d.repetitionCount,d.controlRationale,d.dataTable,d.anomalyHandling,d.evidenceReasoning,scored.level,JSON.stringify(scored)]
     );
-    res.status(201).json({saved:true,record:q.rows[0]});
-  }catch(e){console.error("record_save_failed",e.message);res.status(500).json({error:"云端保存失败，请先导出备份。"});}
+    res.status(201).json({saved:true,record:q.rows[0],level:scored.level,level_json:scored,next_steps:scored.next_steps});
+  }catch(error){console.error("record_save_failed",error.message);res.status(500).json({error:"云端保存失败，请稍后重试。"});}
 });
 app.get("/api/student/records",apiLimiter,requireStudent,requireDatabase,async(req,res)=>{
-  try{const q=await db.query("SELECT id,topic,question,hypothesis,independent_variable,dependent_variable,control_variables,method,evidence,conclusion,reflection,observed_phenomenon,question_boundary,measurement_indicator,hypothesis_basis,expected_result,repetition_count,control_rationale,data_table,anomaly_handling,evidence_reasoning,created_at FROM science_records WHERE class_id=$1 AND learner_id=$2 ORDER BY created_at DESC LIMIT 100",[req.student.classId,req.student.learnerId]);res.json({records:q.rows});}
+  try{const q=await db.query("SELECT id,topic,question,hypothesis,independent_variable,dependent_variable,control_variables,method,evidence,conclusion,reflection,observed_phenomenon,question_boundary,measurement_indicator,hypothesis_basis,expected_result,repetition_count,control_rationale,data_table,anomaly_handling,evidence_reasoning,level,level_json,created_at FROM science_records WHERE class_id=$1 AND learner_id=$2 ORDER BY created_at DESC LIMIT 100",[req.student.classId,req.student.learnerId]);res.json({records:q.rows});}
   catch(e){console.error("student_record_list_failed",e.message);res.status(500).json({error:"读取个人探究记录失败。"});}
 });
 app.get("/api/teacher/classes",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
@@ -342,7 +441,7 @@ app.get("/api/teacher/classes",apiLimiter,requireTeacher,requireDatabase,async(r
   catch(e){console.error("class_list_failed",e.message);res.status(500).json({error:"读取班级列表失败。"});}
 });
 app.get("/api/teacher/classes/:id/records",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
-  try{const own=await db.query("SELECT id FROM science_classes WHERE id=$1 AND teacher_id=$2",[req.params.id,teacherId(req)]);if(!own.rowCount)return res.status(404).json({error:"班级不存在。"});const q=await db.query("SELECT r.id,l.alias,r.topic,r.question,r.hypothesis,r.independent_variable,r.dependent_variable,r.control_variables,r.method,r.evidence,r.conclusion,r.reflection,r.observed_phenomenon,r.question_boundary,r.measurement_indicator,r.hypothesis_basis,r.expected_result,r.repetition_count,r.control_rationale,r.data_table,r.anomaly_handling,r.evidence_reasoning,r.created_at FROM science_records r JOIN science_learners l ON l.id=r.learner_id WHERE r.class_id=$1 ORDER BY r.created_at DESC LIMIT 300",[req.params.id]);await db.query("INSERT INTO audit_log(teacher_id,action,target_type,target_id) VALUES($1,$2,$3,$4)",[teacherId(req),"view_class_records","class",req.params.id]);res.json({records:q.rows});}
+  try{const own=await db.query("SELECT id FROM science_classes WHERE id=$1 AND teacher_id=$2",[req.params.id,teacherId(req)]);if(!own.rowCount)return res.status(404).json({error:"班级不存在。"});const q=await db.query("SELECT r.id,l.alias,r.topic,r.question,r.hypothesis,r.independent_variable,r.dependent_variable,r.control_variables,r.method,r.evidence,r.conclusion,r.reflection,r.observed_phenomenon,r.question_boundary,r.measurement_indicator,r.hypothesis_basis,r.expected_result,r.repetition_count,r.control_rationale,r.data_table,r.anomaly_handling,r.evidence_reasoning,r.level,r.level_json,r.created_at FROM science_records r JOIN science_learners l ON l.id=r.learner_id WHERE r.class_id=$1 ORDER BY r.created_at DESC LIMIT 300",[req.params.id]);await db.query("INSERT INTO audit_log(teacher_id,action,target_type,target_id) VALUES($1,$2,$3,$4)",[teacherId(req),"view_class_records","class",req.params.id]);res.json({records:q.rows});}
   catch(e){console.error("record_list_failed",e.message);res.status(500).json({error:"读取探究档案失败。"});}
 });
 

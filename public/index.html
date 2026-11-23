@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101a3a">
 <meta name="description" content="小小AI科学家：面向青少年的AI科学探究平台，让好奇心成为科学发现的起点。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="小小AI科学家｜AI科学探究平台">
+<meta property="og:description" content="面向青少年的AI科学探究平台，让好奇心成为科学发现的起点。">
+<meta property="og:url" content="https://xiaoxiaai-scientist.onrender.com/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="小小AI科学家｜AI科学探究平台">
+<meta name="twitter:description" content="用观察、实验与证据开启科学探究。">
 <title>小小AI科学家｜AI科学探究平台</title>
 <style>
 :root{--navy:#101a3a;--navy2:#172653;--blue:#3978f6;--cyan:#65d5ff;--violet:#8665f6;--ink:#17233d;--muted:#71809a;--bg:#f5f7fc;--line:#e4e9f3;--surface:#fff;--green:#14845d;--shadow:0 18px 48px rgba(27,43,84,.09);--radius:22px}
@@ -175,7 +182,8 @@ textarea{min-height:105px;resize:vertical}
     <h3>加入班级（学生端）</h3>
     <p class="muted">使用老师提供的邀请码和匿名代号加入。请不要填写真实姓名、学校、电话或其他个人信息。</p>
     <label for="classInvite">班级邀请码</label><input id="classInvite" maxlength="8" placeholder="8位邀请码" autocomplete="off">
-    <label for="studentAlias">匿名代号</label><input id="studentAlias" maxlength="24" placeholder="例如：学生A" autocomplete="off">
+    <label for="studentAlias">匿名代号</label><input id="studentAlias" maxlength="12" placeholder="例如：学生A" autocomplete="off">
+    <label for="studentGrade">学习学段</label><select id="studentGrade"><option value="3-4" selected>三至四年级</option><option value="5-6">五至六年级</option></select>
     <label style="display:flex;gap:9px;align-items:flex-start;font-weight:500"><input id="guardianAck" type="checkbox" style="width:auto;margin-top:6px">我已在教师/监护人指导下参与，且已取得必要的监护人同意。</label>
     <button class="btn primary" onclick="joinClass()">加入班级</button>
     <p id="joinStatus" class="muted" role="status" aria-live="polite">尚未加入班级。</p>
@@ -260,8 +268,8 @@ textarea{min-height:105px;resize:vertical}
 <section id="teacher" class="panel">
   <div class="pageintro"><div class="kicker">TEACHER WORKSPACE</div><h1>教师工作台</h1><p>教师可登录并提交已匿名化的学生探究作品，获取AI辅助评价建议。</p></div>
   <div class="card">
-    <h2>教师身份验证</h2><label for="adminPassword">管理员密码</label><input id="adminPassword" type="password" autocomplete="current-password" placeholder="输入部署时设置的教师专用密码">
-    <div class="actions" style="margin-top:13px"><button class="btn primary" onclick="teacherLogin()">安全登录</button><button id="teacherLogout" class="btn outline hidden" onclick="teacherLogout()">退出教师工作台</button></div><p id="loginMsg" class="muted" role="status" aria-live="polite"></p>
+    <h2>教师身份验证</h2><p class="muted">请使用独立教师账号登录。注册成功后即可进入教师工作台。</p>
+    <div class="actions" style="margin-top:13px"><button id="teacherLogout" class="btn outline hidden" onclick="teacherLogout()">退出教师工作台</button></div><p id="loginMsg" class="muted" role="status" aria-live="polite"></p>
     <div id="teacherPanel" class="hidden">
       <hr style="border:0;border-top:1px solid var(--line);margin:22px 0">
 
@@ -273,20 +281,20 @@ textarea{min-height:105px;resize:vertical}
 
       <h3>学生探究作品评价</h3><label for="studentWork">学生作品（请先去除个人身份信息）</label><textarea id="studentWork" maxlength="20000" placeholder="粘贴匿名化的学生探究记录……"></textarea>
       <div class="sample-card" style="margin-top:12px"><span class="sample-tag">SCIENCE INQUIRY COMPETENCY RUBRIC</span><h3>科学探究能力量规</h3><p>提出问题 · 假设与依据 · 变量与设计 · 证据与记录 · 解释与反思</p><p>逐项对照水平4优秀标准：真实观察、可测量边界、明确依据、单一变量、多次记录、异常值处理、证据支持结论。</p></div>
-      <div class="sample-card" style="margin-top:12px"><span class="sample-tag">LEVEL 4 · EXCELLENT</span><h3>五项水平4优秀验收标准</h3><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;text-align:left"><thead><tr><th style="padding:10px;border-bottom:1px solid var(--line)">维度</th><th style="padding:10px;border-bottom:1px solid var(--line)">水平4优秀标准</th></tr></thead><tbody>
-<tr><td style="padding:10px;border-bottom:1px solid var(--line)">提出问题</td><td style="padding:10px;border-bottom:1px solid var(--line)">来自真实观察，边界清晰、可测量</td></tr>
-<tr><td style="padding:10px;border-bottom:1px solid var(--line)">假设与依据</td><td style="padding:10px;border-bottom:1px solid var(--line)">假设明确，说明理由或已有经验</td></tr>
-<tr><td style="padding:10px;border-bottom:1px solid var(--line)">变量与设计</td><td style="padding:10px;border-bottom:1px solid var(--line)">只改一个变量，明确控制条件与重复次数</td></tr>
-<tr><td style="padding:10px;border-bottom:1px solid var(--line)">证据与记录</td><td style="padding:10px;border-bottom:1px solid var(--line)">数据可测量，有多次记录并处理异常值</td></tr>
-<tr><td style="padding:10px">解释与反思</td><td style="padding:10px">结论不超出证据，指出局限与新问题</td></tr>
-</tbody></table></div><p>AI反馈必须逐项引用学生作品中的证据；没有真实记录时标记“尚无证据”，不能把实验计划当作实验结果。</p></div>
+      <div class="sample-card" style="margin-top:12px"><span class="sample-tag">INQUIRY RUBRIC · L1—L4</span><h3>五项探究能力四级量规</h3><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;text-align:left"><thead><tr><th style="padding:10px;border-bottom:1px solid var(--line)">维度</th><th style="padding:10px;border-bottom:1px solid var(--line)">L1 起步</th><th style="padding:10px;border-bottom:1px solid var(--line)">L2 发展</th><th style="padding:10px;border-bottom:1px solid var(--line)">L3 熟练</th><th style="padding:10px;border-bottom:1px solid var(--line)">L4 优秀</th></tr></thead><tbody>
+<tr><td style="padding:10px;border-bottom:1px solid var(--line)">提出问题</td><td style="padding:10px;border-bottom:1px solid var(--line)">说出感兴趣的现象</td><td style="padding:10px;border-bottom:1px solid var(--line)">提出相关问题</td><td style="padding:10px;border-bottom:1px solid var(--line)">问题具体，范围清楚</td><td style="padding:10px;border-bottom:1px solid var(--line)">问题可测量，边界清晰</td></tr>
+<tr><td style="padding:10px;border-bottom:1px solid var(--line)">假设与依据</td><td style="padding:10px;border-bottom:1px solid var(--line)">表达初步猜想</td><td style="padding:10px;border-bottom:1px solid var(--line)">提出可检验猜想</td><td style="padding:10px;border-bottom:1px solid var(--line)">说明猜想依据</td><td style="padding:10px;border-bottom:1px solid var(--line)">依据充分，预测明确</td></tr>
+<tr><td style="padding:10px;border-bottom:1px solid var(--line)">变量与设计</td><td style="padding:10px;border-bottom:1px solid var(--line)">列出材料或步骤</td><td style="padding:10px;border-bottom:1px solid var(--line)">指出要改变的条件</td><td style="padding:10px;border-bottom:1px solid var(--line)">区分改变、观察和控制条件</td><td style="padding:10px;border-bottom:1px solid var(--line)">单一变量，控制条件明确</td></tr>
+<tr><td style="padding:10px;border-bottom:1px solid var(--line)">证据与记录</td><td style="padding:10px;border-bottom:1px solid var(--line)">记录观察现象</td><td style="padding:10px;border-bottom:1px solid var(--line)">记录测量结果</td><td style="padding:10px;border-bottom:1px solid var(--line)">多次记录，数据较完整</td><td style="padding:10px;border-bottom:1px solid var(--line)">数据真实，处理异常值</td></tr>
+<tr><td style="padding:10px">解释与反思</td><td style="padding:10px">说出实验发现</td><td style="padding:10px">用结果回答问题</td><td style="padding:10px">结论对应数据</td><td style="padding:10px">说明局限，提出新问题</td></tr>
+</tbody></table></div><p>L1也能提交，系统会标注当前水平。</p><p>AI反馈须引用作品证据；没有真实记录时标记“尚无证据”。</p></div>
       <div class="actions" style="margin-top:14px"><button class="btn primary" id="evaluateBtn" onclick="evaluateWork()">生成评价建议</button><button class="btn outline" onclick="exportEvaluation()">导出评价建议</button></div><div id="evaluation" class="result" style="margin-top:14px" aria-live="polite"></div>
     </div>
   </div>
   <div class="notice">AI评价仅提供形成性反馈建议，不能代替教师专业判断。不要提交学生姓名、联系方式、学校班级等可识别信息。</div>
 </section>
 </main>
-<footer class="footer">小小AI科学家 <span id="appVersion">正在读取版本…</span> · 让好奇心成为科学发现的起点<br>AI用于启发和辅助学习，重要信息请核查，实验请在成人指导下安全开展。</footer>
+<footer class="footer">小小AI科学家 <span id="appVersion">正在读取版本…</span> · 让好奇心成为科学发现的起点<br>AI用于启发和辅助学习，重要信息请核查，实验请在成人指导下安全开展。<br><a href="/privacy">隐私政策</a> · <a href="/terms">使用条款</a> · <a href="/data-policy">数据处理说明</a> · 备案信息以实际审批为准</footer>
 
 <script>
 const $=id=>document.getElementById(id);
@@ -407,12 +415,25 @@ async function ask(){
   bubble(q,'user');$('question').value='';$('sendBtn').disabled=true;$('sendBtn').textContent='AI思考中…';
   const wait=document.createElement('div');wait.className='bubble bot';wait.textContent='导师正在思考……';$('chatlog').appendChild(wait);$('chatlog').scrollTop=$('chatlog').scrollHeight;
   try{
-    const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json',...(studentToken?{'Authorization':'Bearer '+studentToken}:{})},body:JSON.stringify({message:q,sessionId:chatSessionId,mode:mentorMode,topic:'青少年科学探究'})});
-    const d=await r.json();wait.remove();
-    if(r.status===429){bubble(d.answer||'当前对话次数已达上限，请稍后重试。已有对话已保存在服务器。','bot');return}
-    if(!r.ok)throw new Error(d.error||'服务暂不可用');
-    const suffix=d.mode==='offline'?'\n\n（离线规则提示，并非实时大模型回答）'+(d.notice?' 原因：'+d.notice:''):'\n\n（DeepSeek 实时回答 · '+mode.label+'）';
-    bubble(d.answer+suffix,'bot');
+    const r=await fetch('/api/chat/stream',{method:'POST',headers:{'Content-Type':'application/json',...(studentToken?{'Authorization':'Bearer '+studentToken}:{})},body:JSON.stringify({message:q,sessionId:chatSessionId,mode:mentorMode,topic:'青少年科学探究'})});
+    if(r.status===429){const d=await r.json();wait.remove();bubble(d.answer||'当前对话次数已达上限，请稍后重试。','bot');return}
+    if(!r.ok||!r.body){const d=await r.json().catch(()=>({}));throw new Error(d.error||'服务暂不可用')}
+    wait.remove();
+    const answerBubble=document.createElement('div');answerBubble.className='bubble bot';$('chatlog').appendChild(answerBubble);
+    const reader=r.body.getReader(),decoder=new TextDecoder();let buffer='',answer='',meta={};
+    while(true){
+      const part=await reader.read();if(part.done)break;
+      buffer+=decoder.decode(part.value,{stream:true});
+      const events=buffer.split(/\n\n/);buffer=events.pop()||'';
+      for(const event of events){
+        const line=event.split(/\r?\n/).find(x=>x.startsWith('data:'));if(!line)continue;
+        let payload;try{payload=JSON.parse(line.slice(5).trim())}catch{continue}
+        if(typeof payload.delta==='string'){answer+=payload.delta;renderMarkdown(answerBubble,answer);$('chatlog').scrollTop=$('chatlog').scrollHeight}
+        if(payload.done)meta=payload;
+      }
+    }
+    const suffix=meta.mode==='offline'?'\n\n（离线规则提示，并非实时大模型回答）'+(meta.notice?' 原因：'+meta.notice:''):'\n\n（DeepSeek 实时回答 · '+mode.label+'）';
+    renderMarkdown(answerBubble,answer+suffix);
   }catch(e){wait.remove();bubble('暂时无法获得AI回答：'+e.message,'bot')}
   finally{$('sendBtn').disabled=false;$('sendBtn').textContent='发送问题 →'}
 }
@@ -426,7 +447,7 @@ async function joinClass(){
   const inviteCode=$('classInvite').value.trim().toUpperCase(),alias=$('studentAlias').value.trim();
   if(!$('guardianAck').checked){$('joinStatus').textContent='请先确认已取得教师和监护人必要同意。';return}
   $('joinStatus').textContent='正在验证邀请码……';
-  try{const r=await fetch('/api/student/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({inviteCode,alias,guardianConsent:true})});const d=await r.json();if(!r.ok)throw new Error(d.error||'加入失败');studentToken=d.token;studentAlias=d.alias;localStorage.setItem('scienceStudentToken',studentToken);localStorage.setItem('scienceStudentAlias',studentAlias);$('joinStatus').textContent='✓ 已加入班级，匿名身份：'+studentAlias+'。';await restoreChat();}
+  try{const r=await fetch('/api/student/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({inviteCode,alias,grade:$('studentGrade').value,guardianConsent:true})});const d=await r.json();if(!r.ok)throw new Error(d.error||'加入失败');studentToken=d.token;studentAlias=d.alias;localStorage.setItem('scienceStudentToken',studentToken);localStorage.setItem('scienceStudentAlias',studentAlias);$('joinStatus').textContent='✓ 已加入班级，匿名身份：'+studentAlias+'。';await restoreChat();}
   catch(e){$('joinStatus').textContent=e.message}
 }
 async function loadMyRecords(){
@@ -439,14 +460,23 @@ async function loadMyRecords(){
 }
 async function submitCloudRecord(){
   if(!studentToken){$('cloudSaveStatus').textContent='请先使用班级邀请码加入班级。';return}
-  const d=currentLab();const required=['topic','observedPhenomenon','researchQuestion','questionBoundary','measurementIndicator','hypothesis','hypothesisBasis','expectedResult','independentVariable','dependentVariable','controlVariables','controlRationale','method','dataTable','evidence','anomalyHandling','evidenceReasoning','conclusion','reflection'];const missing=required.find(k=>!d[k]);if(missing){$('cloudSaveStatus').textContent='尚未达到水平4提交条件：请补全所有探究栏目。';return}if(!Number.isInteger(d.repetitionCount)||d.repetitionCount<2||d.repetitionCount>20){$('cloudSaveStatus').textContent='重复实验次数须填写2—20次。';return}const dataRows=d.dataTable.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);if(dataRows.length<2){$('cloudSaveStatus').textContent='至少填写两行真实测量数据后才能提交。';return}if(!dataRows.every(row=>{const parts=row.split(/[|｜]/).map(x=>x.trim());return parts.length>=4&&parts[0]&&parts[1]&&parts[2].length>0&&Number.isFinite(Number(parts[2]))&&parts[3]})){$('cloudSaveStatus').textContent='数据请按“第几次｜日期/时间｜数值｜单位”逐行填写。';return}const payload={topic:d.topic,observedPhenomenon:d.observedPhenomenon,question:d.researchQuestion,questionBoundary:d.questionBoundary,measurementIndicator:d.measurementIndicator,hypothesis:d.hypothesis,hypothesisBasis:d.hypothesisBasis,expectedResult:d.expectedResult,independentVariable:d.independentVariable,dependentVariable:d.dependentVariable,controlVariables:d.controlVariables,controlRationale:d.controlRationale,repetitionCount:d.repetitionCount,method:d.method,dataTable:d.dataTable,evidence:d.evidence,anomalyHandling:d.anomalyHandling,evidenceReasoning:d.evidenceReasoning,conclusion:d.conclusion,reflection:d.reflection};
+  const d=currentLab();
+  const topic=String(d.topic||'').trim(),question=String(d.researchQuestion||'').trim();
+  if(!topic||!question){$('cloudSaveStatus').textContent='请先填写实验主题和研究问题，即可提交。';return}
+  const payload={topic,question,observedPhenomenon:d.observedPhenomenon||'',questionBoundary:d.questionBoundary||'',measurementIndicator:d.measurementIndicator||'',hypothesis:d.hypothesis||'',hypothesisBasis:d.hypothesisBasis||'',expectedResult:d.expectedResult||'',independentVariable:d.independentVariable||'',dependentVariable:d.dependentVariable||'',controlVariables:d.controlVariables||'',controlRationale:d.controlRationale||'',repetitionCount:d.repetitionCount||0,method:d.method||'',dataTable:d.dataTable||'',evidence:d.evidence||'',anomalyHandling:d.anomalyHandling||'',evidenceReasoning:d.evidenceReasoning||'',conclusion:d.conclusion||'',reflection:d.reflection||''};
   $('cloudSaveStatus').textContent='正在提交云端档案……';
-  try{const r=await fetch('/api/student/records',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+studentToken},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok)throw new Error(d.error||'提交失败');$('cloudSaveStatus').textContent='✓ 已提交到教师班级档案。记录编号：'+d.record.id;}
-  catch(e){$('cloudSaveStatus').textContent='云端提交失败：'+e.message+' 请先导出本地报告备份。'}
+  try{
+    const r=await fetch('/api/student/records',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+studentToken},body:JSON.stringify(payload)});
+    const result=await r.json();if(!r.ok)throw new Error(result.error||'提交失败');
+    const level=Math.max(1,Math.min(4,Number(result.level)||1));
+    const tips=Array.isArray(result.next_steps)?result.next_steps.slice(0,3).map(x=>x.suggestion||('请补充：'+(x.missing||[]).join('、'))).join('；'):'';
+    $('cloudSaveStatus').textContent='✓ 已提交。当前探究水平：L'+level+'。'+(tips?' 下一步：'+tips:'');
+    await loadMyRecords();
+  }catch(e){$('cloudSaveStatus').textContent='云端提交失败：'+e.message+' 请先导出本地报告备份。'}
 }
 
 let teacherToken=null;
-function teacherLogout(){teacherToken=null;$('teacherPanel').classList.add('hidden');$('teacherLogout').classList.add('hidden');$('adminPassword').value='';$('studentWork').value='';$('evaluation').textContent='';$('loginMsg').textContent='已安全退出教师工作台。'}
+function teacherLogout(){teacherToken=null;window.teacherToken=null;$('teacherPanel').classList.add('hidden');$('teacherLogout').classList.add('hidden');$('studentWork').value='';$('evaluation').textContent='';if($('teacherAccountPassword'))$('teacherAccountPassword').value='';if($('teacherEmail'))$('teacherEmail').value='';if($('teacherSchool'))$('teacherSchool').value='';$('loginMsg').textContent='已安全退出教师工作台。'}
 
 async function createClass(){
   if(!teacherToken){$('classList').textContent='请先登录教师工作台。';return}
@@ -474,14 +504,6 @@ async function viewClassRecords(classId){
   }catch(e){$('classRecords').textContent='读取失败：'+e.message}
 }
 
-async function teacherLogin(){
-  $('loginMsg').textContent='正在验证身份…';
-  try{
-    const r=await fetch('/api/teacher/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('adminPassword').value})});
-    const d=await r.json();if(!r.ok)throw new Error(d.error||'登录失败');
-    teacherToken=d.token;$('teacherPanel').classList.remove('hidden');$('teacherLogout').classList.remove('hidden');$('adminPassword').value='';$('loginMsg').textContent='✓ 登录成功。教师会话有效期为2小时；关闭页面或退出后需重新登录。'
-  }catch(e){$('loginMsg').textContent=e.message}
-}
 async function evaluateWork(){
   const work=$('studentWork').value.trim();if(!work){$('evaluation').textContent='请先填写已匿名化的学生作品。';return}
   if(!teacherToken){$('evaluation').textContent='教师会话已失效，请重新登录。';return}

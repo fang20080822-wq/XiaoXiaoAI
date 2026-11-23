@@ -1,0 +1,45 @@
+name: Test
+on:
+  pull_request:
+  push:
+    branches: [main, "feature/**"]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: xiaoxiao_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d xiaoxiao_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/xiaoxiao_test
+      DATABASE_SSL: "false"
+      TOKEN_SECRET: ci-only-token-secret-do-not-use-in-production
+      ADMIN_PASSWORD: ci-only-admin-password
+      PORT: "3000"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - run: npm ci
+      - name: Install SQLite CLI
+        run: sudo apt-get update && sudo apt-get install -y sqlite3
+      - run: npm test
+      - name: SQLite legacy migration and idempotency
+        run: bash scripts/test-sqlite-migration.sh
+      - name: PostgreSQL end-to-end acceptance (18 checks)
+        run: bash scripts/ci-integration.sh

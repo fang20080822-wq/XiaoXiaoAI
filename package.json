@@ -1,12 +1,12 @@
 {
   "name": "little-ai-scientists",
-  "version": "5.6.3",
+  "version": "5.7.0",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node --check server.js && node --check upgrade-v56.js && node --check public/upgrade-v56-ui.js && node scripts/check-frontend.mjs && node scripts/test-v56.mjs"
+    "test": "node --check server.js && node --check lib/auth.js && node --check lib/inquiry.js && node --check upgrade-v56.js && node --check upgrade-v57.js && node --check public/upgrade-v56-ui.js && bash -n scripts/accept-v57.sh && bash -n migrations/apply-v57-sqlite.sh && bash -n scripts/test-sqlite-migration.sh && node scripts/check-frontend.mjs && node scripts/test-v56.mjs && node scripts/test-v57.mjs"
   },
   "engines": {
     "node": ">=20"
