@@ -3,10 +3,13 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS teachers (
   id TEXT PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL DEFAULT '',
   pw_hash TEXT NOT NULL DEFAULT '',
   salt TEXT NOT NULL DEFAULT '',
   school TEXT NOT NULL DEFAULT '',
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  reviewed_at TEXT
 );
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
