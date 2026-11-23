@@ -27,6 +27,7 @@ const APP_VERSION = JSON.parse(readFileSync(new URL("./package.json", import.met
 const { Pool } = pg;
 const DB_SSL = process.env.DATABASE_SSL === "false" ? false : { rejectUnauthorized: false };
 const db = DATABASE_URL ? new Pool({ connectionString: DATABASE_URL, ssl: DB_SSL, max: 5, connectionTimeoutMillis: 5000, idleTimeoutMillis: 30000 }) : null;
+app.locals.db = db;
 let dbReady = false;
 let dbInitPromise = null;
 async function initDatabase(){
