@@ -476,7 +476,7 @@ async function submitCloudRecord(){
 }
 
 let teacherToken=null;
-function teacherLogout(){teacherToken=null;$('teacherPanel').classList.add('hidden');$('teacherLogout').classList.add('hidden');$('studentWork').value='';$('evaluation').textContent='';$('loginMsg').textContent='已安全退出教师工作台。'}
+function teacherLogout(){teacherToken=null;window.teacherToken=null;$('teacherPanel').classList.add('hidden');$('teacherLogout').classList.add('hidden');$('studentWork').value='';$('evaluation').textContent='';if($('teacherAccountPassword'))$('teacherAccountPassword').value='';if($('teacherEmail'))$('teacherEmail').value='';if($('teacherSchool'))$('teacherSchool').value='';$('loginMsg').textContent='已安全退出教师工作台。'}
 
 async function createClass(){
   if(!teacherToken){$('classList').textContent='请先登录教师工作台。';return}
