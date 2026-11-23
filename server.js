@@ -220,7 +220,7 @@ app.post("/api/chat",chatLimiter,requireDatabase,async(req,res)=>{
   if(message.length>6000)return res.status(400).json({error:"问题过长，请控制在20000字以内。"});
   if(looksLikePII(message))return res.status(400).json({error:"检测到可能的个人身份信息。请删除姓名、联系方式、地址、学号等信息后再提问。"});
   try{
-    const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");
+    const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
     const student=verifyToken(token);
     const ownsSession=student?.role==="student" && student.learnerId && student.classId;
     const ownerLearnerId=ownsSession?String(student.learnerId):"";
