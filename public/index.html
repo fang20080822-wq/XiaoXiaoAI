@@ -193,13 +193,13 @@ textarea{min-height:105px;resize:vertical}
     <label for="hypothesis">04 · 我的假设</label><textarea id="hypothesis" maxlength="3000" placeholder="如果……那么……（写出可以通过观察或测量检验的预测）。"></textarea>
     <label for="hypothesisBasis">假设依据（为什么这样预测）</label><textarea id="hypothesisBasis" maxlength="1500" placeholder="依据来自刚才的观察、学过的科学知识或已有生活经验；写明具体理由。"></textarea>
     <label for="expectedResult">预期结果（我预计会观察到什么）</label><textarea id="expectedResult" maxlength="1000" placeholder="写出结果的方向、数值范围或可观察变化；不要把预期当成实验结果。"></textarea>
-    <label for="independentVariable">04 · 自变量（我主动改变什么）</label><input id="independentVariable" maxlength="500" placeholder="例如：光照时间">
-    <label for="dependentVariable">05 · 因变量（我观察或测量什么）</label><input id="dependentVariable" maxlength="500" placeholder="例如：植物高度">
+    <label for="independentVariable">05 · 自变量（我主动改变什么）</label><input id="independentVariable" maxlength="500" placeholder="例如：光照时间">
+    <label for="dependentVariable">06 · 因变量（我观察或测量什么）</label><input id="dependentVariable" maxlength="500" placeholder="例如：植物高度">
     <label for="controlVariables">07 · 控制变量（哪些条件保持相同）</label><textarea id="controlVariables" maxlength="1500" placeholder="列出所有需要保持相同的条件，例如植物种类、土壤、水量、容器大小。"></textarea>
     <label for="controlRationale">为什么要控制这些条件</label><textarea id="controlRationale" maxlength="1200" placeholder="说明如果这些条件发生变化，会怎样影响结果，为什么必须保持相同。"></textarea>
     <label for="repetitionCount">重复实验次数（至少2次）</label><input id="repetitionCount" type="number" min="2" max="20" step="1" value="3" placeholder="建议3次或更多">
-    <label for="method">07 · 实验方法与步骤</label><textarea id="method" maxlength="5000" placeholder="写下材料、步骤和安全注意事项；记录你实际做了什么。"></textarea>
-    <label for="dataTable">08 · 多次测量数据表（每次一行）</label><textarea id="dataTable" maxlength="5000" placeholder="至少填写2行真实测量记录，建议格式：第1次｜日期/时间｜测量值｜单位\n第2次｜日期/时间｜测量值｜单位\n第3次｜日期/时间｜测量值｜单位"></textarea>
+    <label for="method">08 · 实验方法与步骤</label><textarea id="method" maxlength="5000" placeholder="写下材料、步骤和安全注意事项；记录你实际做了什么。"></textarea>
+    <label for="dataTable">09 · 多次测量数据表（每次一行）</label><textarea id="dataTable" maxlength="5000" placeholder="至少填写2行真实测量记录，建议格式：第1次｜日期/时间｜测量值｜单位\n第2次｜日期/时间｜测量值｜单位\n第3次｜日期/时间｜测量值｜单位"></textarea>
     <label for="evidence">补充观察与证据说明</label><textarea id="evidence" maxlength="5000" placeholder="记录测量工具、测量方法、观察到的现象及数据来源；只写实际发生的内容。"></textarea>
     <label for="anomalyHandling">异常值检查与处理</label><textarea id="anomalyHandling" maxlength="1500" placeholder="说明是否有明显异常值；若有，记录原始值、可能原因，以及保留/复测/排除的理由。若没有，也要写明检查方法。"></textarea>
     <label for="evidenceReasoning">证据如何支持或不支持假设</label><textarea id="evidenceReasoning" maxlength="1500" placeholder="引用具体测量记录，解释它与假设的关系；区分观察事实和自己的解释。"></textarea>
@@ -397,10 +397,10 @@ const mentorModes={
   create:{label:'创意设计',hint:'从真实需求出发，提出方案、预测可能的问题，并设计测试方法。',prompt:'请采用创意设计方式：引导学生说明需求、约束、设计方案、测试指标和迭代方向，鼓励多种方案比较。'}
 };
 function setMentorMode(){const m=mentorModes[$('mentorMode').value]||mentorModes.curiosity;$('mentorHint').textContent='导师提示：'+m.hint}
-function useLabContext(){const d=currentLab();if(!d.topic&&!d.researchQuestion&&!d.hypothesis&&!d.method&&!d.evidence&&!d.conclusion){$('question').value='我还没有填写实验记录，请帮我想一个适合入门的科学探究问题。';tab('assistant');return}const context='请按水平4优秀五项标准分析这份实验记录，并提出下一步探究建议：\n真实观察：'+d.observedPhenomenon+'\n研究问题：'+d.researchQuestion+'\n问题边界：'+d.questionBoundary+'\n可测量指标：'+d.measurementIndicator+'\n假设：'+d.hypothesis+'\n假设依据：'+d.hypothesisBasis+'\n预期结果：'+d.expectedResult+'\n自变量：'+d.independentVariable+'；因变量：'+d.dependentVariable+'；控制变量：'+d.controlVariables+'\n控制理由：'+d.controlRationale+'\n重复次数：'+d.repetitionCount+'\n实验方法：'+d.method+'\n多次数据：'+d.dataTable+'\n补充证据：'+d.evidence+'\n异常值处理：'+d.anomalyHandling+'\n证据解释：'+d.evidenceReasoning+'\n结论：'+d.conclusion+'\n反思：'+d.reflection;$('question').value=context.slice(0,1200);tab('assistant');$('question').focus()}
+function useLabContext(){const d=currentLab();if(!d.topic&&!d.researchQuestion&&!d.hypothesis&&!d.method&&!d.evidence&&!d.conclusion){$('question').value='我还没有填写实验记录，请帮我想一个适合入门的科学探究问题。';tab('assistant');return}const context='请按水平4优秀五项标准分析这份实验记录，并提出下一步探究建议：\n真实观察：'+d.observedPhenomenon+'\n研究问题：'+d.researchQuestion+'\n问题边界：'+d.questionBoundary+'\n可测量指标：'+d.measurementIndicator+'\n假设：'+d.hypothesis+'\n假设依据：'+d.hypothesisBasis+'\n预期结果：'+d.expectedResult+'\n自变量：'+d.independentVariable+'；因变量：'+d.dependentVariable+'；控制变量：'+d.controlVariables+'\n控制理由：'+d.controlRationale+'\n重复次数：'+d.repetitionCount+'\n实验方法：'+d.method+'\n多次数据：'+d.dataTable+'\n补充证据：'+d.evidence+'\n异常值处理：'+d.anomalyHandling+'\n证据解释：'+d.evidenceReasoning+'\n结论：'+d.conclusion+'\n反思：'+d.reflection;$('question').value=context.slice(0,6000);tab('assistant');$('question').focus()}
 async function ask(){
   const q=$('question').value.trim();if(!q)return;
-  if(q.length>1200){$('mode').textContent='问题不能超过1200字。';return}
+  if(q.length>6000){$('mode').textContent='问题不能超过6000字。';return}
   const mode=mentorModes[$('mentorMode').value]||mentorModes.curiosity,mentorMode=$('mentorMode').value;
   bubble(q,'user');$('question').value='';$('sendBtn').disabled=true;$('sendBtn').textContent='AI思考中…';
   const wait=document.createElement('div');wait.className='bubble bot';wait.textContent='导师正在思考……';$('chatlog').appendChild(wait);$('chatlog').scrollTop=$('chatlog').scrollHeight;
