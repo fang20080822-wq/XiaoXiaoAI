@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import {hashPassword,verifyPassword} from "./lib/auth.js";
+import {hashPassword,verifyPassword,issueSession} from "./lib/auth.js";
 
 export const CURRICULUM_12 = [
   {id:"plant-water",title:"植物怎样喝水",grade:"3—4年级",concept:"植物吸收与运输水分",domain:"生命科学",question:"不同条件会怎样影响植物吸水？"},
@@ -193,8 +193,8 @@ export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,AD
       }
       if(!valid)return res.status(401).json({error:"邮箱或密码不正确。"});
       if(row.status!=="approved")return res.status(403).json({error:row.status==="pending"?"账号正在等待管理员审核。":"账号未获批准，请联系管理员。"});
-      const token=signToken({role:"teacher",teacherId:row.id,accountTeacher:true,exp:Date.now()+8*60*60*1000});
-      res.json({token,expiresIn:28800,teacher:{email:row.email,school:row.school}});
+      const session=await issueSession(db,{role:"teacher",subjectId:row.id});
+      res.json({token:session.token,expiresIn:28800,teacher:{email:row.email,school:row.school}});
     } catch(error){console.error("teacher_account_login_failed",error.message);res.status(503).json({error:"教师登录暂不可用。"});}
   });
   app.get("/api/admin/teachers",apiLimiter,requireAdmin,async(req,res)=>{
