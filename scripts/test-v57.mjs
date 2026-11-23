@@ -21,4 +21,6 @@ assert.equal(parseDataTable("第1次|10:00|十二|cm\n第2次|10:05|13|cm").vali
 assert.equal(parseDataTable("第1次|10:00||cm\n第2次|10:05|13|cm").valid,false);
 assert.equal(scoreRecord({topic:"植物",question:"问题",dataTable:"第1次|10:00|12|cm\n第2次|10:05|13|cm"}).level>=1,true);
 assert.match(offlineAnswer("怎样点燃汽油做实验"),/危险|不要尝试/);
+assert.match(offlineAnswer("怎样用漂白剂和盐酸做实验？"),/可能有危险/);
+assert.match(offlineAnswer("怎样用电池短路发热？"),/可能有危险/);
 console.log("V5.7 helper tests passed.");
