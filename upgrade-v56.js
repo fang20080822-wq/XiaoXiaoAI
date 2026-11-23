@@ -68,7 +68,12 @@ export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,AD
       "CREATE TABLE IF NOT EXISTS audit_log(id BIGSERIAL PRIMARY KEY,teacher_id TEXT NOT NULL,action TEXT NOT NULL,target_type TEXT NOT NULL DEFAULT '',target_id TEXT NOT NULL DEFAULT '',created_at TIMESTAMPTZ DEFAULT NOW())",
       "CREATE INDEX IF NOT EXISTS idx_audit_log_teacher_time ON audit_log(teacher_id,created_at DESC)",
       "CREATE TABLE IF NOT EXISTS mentor_progress(session_id UUID PRIMARY KEY,level INTEGER NOT NULL DEFAULT 1,streak INTEGER NOT NULL DEFAULT 0,updated_at TIMESTAMPTZ DEFAULT NOW())",
-      "ALTER TABLE mentor_progress ADD COLUMN IF NOT EXISTS last_prompt TEXT NOT NULL DEFAULT ''"
+      "ALTER TABLE mentor_progress ADD COLUMN IF NOT EXISTS last_prompt TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE mentor_progress ADD COLUMN IF NOT EXISTS learner_id TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE mentor_progress ADD COLUMN IF NOT EXISTS class_id TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS learner_id TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS class_id TEXT NOT NULL DEFAULT ''",
+      "CREATE INDEX IF NOT EXISTS idx_chat_messages_owner_session ON chat_messages(learner_id,class_id,session_id,created_at DESC)"
     ];
     for (const statement of sql) await db.query(statement);
     ready = true;
@@ -103,9 +108,16 @@ export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,AD
       const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
       const student=verifyToken(token);
       const sessionId=String(req.body?.sessionId||"");
-      const stateQ=await db.query("SELECT level,streak,last_prompt FROM mentor_progress WHERE session_id=$1",[sessionId]);
-      const state=nextHintState(stateQ.rows[0]||{},String(req.body?.message||""));
-      await db.query("INSERT INTO mentor_progress(session_id,level,streak,last_prompt) VALUES($1,$2,$3,$4) ON CONFLICT(session_id) DO UPDATE SET level=EXCLUDED.level,streak=EXCLUDED.streak,last_prompt=EXCLUDED.last_prompt,updated_at=NOW()",[sessionId,state.level,state.streak,state.last_prompt]);
+      const isStudent=student?.role==="student" && student.learnerId && student.classId;
+      let state;
+      if(isStudent){
+        const ownerLearnerId=String(student.learnerId),ownerClassId=String(student.classId);
+        const stateQ=await db.query("SELECT level,streak,last_prompt FROM mentor_progress WHERE session_id=$1 AND learner_id=$2 AND class_id=$3",[sessionId,ownerLearnerId,ownerClassId]);
+        state=nextHintState(stateQ.rows[0]||{},String(req.body?.message||""));
+        await db.query("INSERT INTO mentor_progress(session_id,learner_id,class_id,level,streak,last_prompt) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(session_id) DO UPDATE SET learner_id=EXCLUDED.learner_id,class_id=EXCLUDED.class_id,level=EXCLUDED.level,streak=EXCLUDED.streak,last_prompt=EXCLUDED.last_prompt,updated_at=NOW()",[sessionId,ownerLearnerId,ownerClassId,state.level,state.streak,state.last_prompt]);
+      } else {
+        state=nextHintState({},String(req.body?.message||""));
+      }
       let recordContext="该学生尚无可读取的云端结构化探究记录。不要假设其已完成实验。";
       if(student?.role==="student" && student.learnerId && student.classId) {
         const q=await db.query("SELECT topic,observed_phenomenon,question,question_boundary,measurement_indicator,hypothesis,hypothesis_basis,expected_result,independent_variable,dependent_variable,control_variables,control_rationale,repetition_count,method,data_table,evidence,anomaly_handling,evidence_reasoning,conclusion,reflection,created_at FROM science_records WHERE learner_id=$1 AND class_id=$2 ORDER BY created_at DESC LIMIT 1",[student.learnerId,student.classId]);

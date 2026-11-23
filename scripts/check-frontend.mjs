@@ -3,6 +3,7 @@ import vm from 'node:vm';
 
 const html = readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
 const server = readFileSync(new URL('../server.js', import.meta.url), 'utf8');
+const upgradeModule = readFileSync(new URL('../upgrade-v56.js', import.meta.url), 'utf8');
 
 const openTag = '<script>';
 const closeTag = '</script>';
@@ -52,11 +53,11 @@ if (!html.includes('科学探究能力量规')) throw new Error('Science inquiry
 if (html.includes('六维100分评审量规') || html.includes('技术深度与工程') || html.includes('未成年人合规')) throw new Error('Legacy competition scoring rubric must be removed from teacher UI');
 for (const term of ['提出问题','假设与依据','变量与设计','证据与记录','解释与反思']) if (!html.includes(term)) throw new Error('Inquiry rubric dimension missing: '+term);
 if (html.includes('DEEPSEEK_API_KEY=')) throw new Error('Possible API key assignment found in public frontend');
-console.log('V5.6.1 frontend syntax, six modules, API contracts, and frontend secret scan passed.');
+console.log('V5.6.2 frontend syntax, API contracts, student-owned chat history and frontend secret scan passed.');
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const lock = JSON.parse(readFileSync(new URL('../package-lock.json', import.meta.url), 'utf8'));
-if (pkg.version !== '5.6.1' || lock.version !== pkg.version || lock.packages?.['']?.version !== pkg.version) throw new Error('Package and lockfile versions must match V5.6.1');
+if (pkg.version !== '5.6.2' || lock.version !== pkg.version || lock.packages?.['']?.version !== pkg.version) throw new Error('Package and lockfile versions must match V5.6.2');
 if (!server.includes('const APP_VERSION = JSON.parse(readFileSync(new URL("./package.json"') || !server.includes('version:APP_VERSION')) throw new Error('Backend health version must derive from package.json');
 if (!html.includes("fetch('/api/health')") || !html.includes("$('appVersion').textContent='V'+d.version") || !html.includes("document.title='小小AI科学家 V'+d.version")) throw new Error('Page version must be injected from the health endpoint');
 if (/小小AI科学家 V5\\.\\d/.test(html)) throw new Error('Frontend must not hardcode a release version');
@@ -68,9 +69,11 @@ if (!html.includes('poster="/videos/poster-plant.svg"') || !html.includes('<trac
 if (!server.includes('maxAge:"7d",etag:true,lastModified:true,immutable:false')) throw new Error('Video static assets must support one-week caching and conditional requests');
 if (!html.includes("location.hash=target") || !html.includes("addEventListener('hashchange'")) throw new Error('Tab navigation must be addressable and respond to hash changes');
 if (!html.includes('function renderMarkdown(') || !html.includes("document.createElement('strong')") || !html.includes("document.createElement(type)")) throw new Error('Assistant Markdown must render safe bold text and lists');
-if (!server.includes('CREATE TABLE IF NOT EXISTS chat_messages') || !server.includes('app.get("/api/chat/history/:sessionId"') || !server.includes('app.delete("/api/chat/history/:sessionId"')) throw new Error('Server-side chat history storage and retrieval missing');
+if (!server.includes('CREATE TABLE IF NOT EXISTS chat_messages') || !upgradeModule.includes('ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS learner_id') || !upgradeModule.includes('ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS class_id') || !server.includes('app.get("/api/chat/history/:sessionId",chatLimiter,requireStudent,requireDatabase') || !server.includes('app.delete("/api/chat/history/:sessionId",chatLimiter,requireStudent,requireDatabase')) throw new Error('Chat history routes must require authenticated student sessions');
 const chatRoute=server.slice(server.indexOf('app.post("/api/chat"'),server.indexOf('app.post("/api/teacher/login"'));
-if (chatRoute.includes('req.body?.history') || !chatRoute.includes('SELECT role,content FROM chat_messages') || !chatRoute.includes('INSERT INTO chat_messages')) throw new Error('Chat must read prior history only from the database and persist new turns');
+if (chatRoute.includes('req.body?.history') || !chatRoute.includes('WHERE session_id=$1 AND learner_id=$2 AND class_id=$3') || !chatRoute.includes('INSERT INTO chat_messages(session_id,learner_id,class_id,role,content)')) throw new Error('Chat history must be scoped to the authenticated learner and class');
+if (!server.includes('replace(/^Bearer\\s+/i')) throw new Error('Chat route must correctly parse Bearer student tokens');
+if (!html.includes("localStorage.getItem('scienceStudentToken')") || !html.includes("headers:{'Authorization':'Bearer '+token}")) throw new Error('Chat history restore and deletion must send the student token');
 if (!server.includes('limit:30') || !server.includes('limit:120') || !server.includes('req.ip||req.socket?.remoteAddress') || !server.includes('"student:"+payload.learnerId')) throw new Error('Rate limits must use student token first, IP fallback, 30 chat/minute and 120 API/minute');
 if (!server.includes('本分钟对话次数已达上限') || !server.includes('fallback:"offline"') || !html.includes('r.status===429')) throw new Error('HTTP 429 must return and display a graceful offline fallback');
 if (!server.includes('function looksLikePII') || !server.includes('looksLikePII(alias)') || !server.includes('looksLikePII(d[key])') || !server.includes('looksLikePII(work)') || !server.includes('looksLikePII(message)')) throw new Error('PII screening must cover chat, alias, all inquiry fields and teacher studentWork');
