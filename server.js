@@ -9,7 +9,7 @@ import dotenv from "dotenv";
 import pg from "pg";
 import { registerV56Routes } from "./upgrade-v56.js";
 import { registerV57Routes } from "./upgrade-v57.js";
-import { scoreRecord,validateAlias } from "./lib/inquiry.js";
+import { scoreRecord,validateAlias,containsPII,offlineAnswer } from "./lib/inquiry.js";
 import { readSession,issueSession } from "./lib/auth.js";
 
 dotenv.config();
@@ -177,10 +177,11 @@ async function requireDatabase(req,res,next){if(!db)return res.status(503).json(
 function looksLikePII(value){
   const text=String(value||"");
   const patterns=[/(?:^|\D)(?:\+?86[- ]?)?1[3-9]\d{9}(?:$|\D)/,/(?:^|\D)\d{17}[\dXx](?:$|\D)/,/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i,/(?:身份证|身份证号|家庭住址|详细地址|银行卡号|密码是|我的学号|住在.{0,12}(?:路|街|号|小区))/ ,/(?:^|[^\d])\d{8,}(?:$|[^\d])/];
-  return patterns.some(pattern=>pattern.test(text));
+  return containsPII(text)||patterns.some(pattern=>pattern.test(text));
 }
 function offlineTutor(message, topic) {
   const s=message;
+  if(/爆炸|燃烧|点燃|强酸|强碱|电击|触电|毒|吞服|高压|自制武器/i.test(s))return offlineAnswer(s);
   if(/隐私|安全|个人信息|照片|人脸/.test(s)) return "安全提醒：不要在AI对话中输入姓名、住址、电话、学校班级、密码或人脸等信息。请先征得老师或家长同意。AI回答也需要核查。";
   if(/机器学习|训练|数据|分类/.test(s)) return "离线知识提示：机器学习通常利用样例数据和学习算法寻找规律，再对新数据进行预测。样例不完整或有偏差时，结果可能不可靠。思考：你会怎样补充更有代表性的样例？";
   if(/传感器|植物|温度|光照/.test(s)) return "离线知识提示：传感器可以采集温度、光照等信息，但传感器本身不一定是AI。设计提醒器时，要说明测量指标、提醒条件和误报后的人工复核。";
