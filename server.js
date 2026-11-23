@@ -7,7 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import pg from "pg";
-import { registerV56Routes } from "./upgrade-v56.js";
+import { registerV56Routes, scoreInquiryRecord } from "./upgrade-v56.js";
 
 dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -254,6 +254,53 @@ app.post("/api/chat",chatLimiter,requireDatabase,async(req,res)=>{
     }
     res.json({mode,model:MODEL,answer,hintLevel:req.scienceHintLevel||1,qualityCheck:req.scienceQualityCheck||null,...(notice?{notice}:{})});
   }catch(err){console.error("chat_request_failed",err.message);res.status(503).json({mode:"offline",fallback:"offline",error:"对话服务暂不可用，请稍后重试。"});}
+});
+app.post("/api/chat/stream",chatLimiter,requireDatabase,async(req,res)=>{
+  const message=typeof req.body?.message==="string"?req.body.message.trim():"";
+  const sessionId=String(req.body?.sessionId||"");
+  const topic=typeof req.body?.topic==="string"?req.body.topic.slice(0,30):"general";
+  const mentorMode=typeof req.body?.mode==="string"&&Object.hasOwn(MENTOR_MODES,req.body.mode)?req.body.mode:"curiosity";
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId))return res.status(400).json({error:"对话会话标识无效，请刷新页面重试。"});
+  if(!message)return res.status(400).json({error:"请输入问题。"});
+  if(message.length>6000)return res.status(400).json({error:"问题过长，请控制在6000字以内。"});
+  if(looksLikePII(message))return res.status(400).json({error:"检测到可能的个人身份信息，请删除后再提问。"});
+  const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");
+  const student=verifyToken(token),ownsSession=student?.role==="student"&&student.learnerId&&student.classId;
+  const ownerLearnerId=ownsSession?String(student.learnerId):"",ownerClassId=ownsSession?String(student.classId):"";
+  try{
+    const previous=ownsSession?await db.query("SELECT role,content FROM chat_messages WHERE session_id=$1 AND learner_id=$2 AND class_id=$3 ORDER BY created_at DESC LIMIT 8",[sessionId,ownerLearnerId,ownerClassId]):{rows:[]};
+    const history=previous.rows.reverse().filter(m=>!looksLikePII(m.content)).map(m=>({role:m.role,content:m.content.slice(0,1200)}));
+    if(ownsSession)await db.query("INSERT INTO chat_messages(session_id,learner_id,class_id,role,content) VALUES($1,$2,$3,'user',$4)",[sessionId,ownerLearnerId,ownerClassId,message]);
+    const topicHint={ai:"课程主题：认识人工智能。帮助学生区分人工智能、自动化与普通程序。",ml:"课程主题：机器学习。重点解释样例、特征、训练、测试、偏差和预测。",sensor:"课程主题：智能感知。重点解释传感器、输入—处理—输出与误报。",safety:"课程主题：AI安全。重点解释隐私、事实核查、偏见、版权和人工监督。",design:"课程主题：AI创意设计。引导学生说明需求、输入、处理、输出、风险、测试和迭代。"}[topic]||"课程主题：儿童科学探究。";
+    const messages=[{role:"system",content:SYSTEM_BASE+"\\n"+MENTOR_MODES[mentorMode]+"\\n"+topicHint+(req.scienceSystemContext||"")},...history,{role:"user",content:message}];
+    res.writeHead(200,{"Content-Type":"text/event-stream; charset=utf-8","Cache-Control":"no-cache, no-transform","Connection":"keep-alive","X-Accel-Buffering":"no"});
+    const send=obj=>res.write("data: "+JSON.stringify(obj)+"\\n\\n");
+    let full="",mode="online",notice;
+    if(!API_KEY){full=offlineTutor(message,topic);mode="offline";for(const part of full.match(/[\\s\\S]{1,24}/g)||[])send({delta:part});}
+    else{
+      const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),35000);
+      try{
+        const upstream=await fetch(`${BASE_URL}/chat/completions`,{method:"POST",headers:{"Authorization":`Bearer ${API_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({model:MODEL,messages,stream:true,max_tokens:1000,temperature:0.5,thinking:{type:"disabled"}}),signal:controller.signal});
+        if(!upstream.ok)throw new Error("模型服务暂不可用（HTTP "+upstream.status+"）。");
+        const decoder=new TextDecoder();let buffer="";
+        for await(const chunk of upstream.body){
+          buffer+=decoder.decode(chunk,{stream:true});
+          const lines=buffer.split("\\n");buffer=lines.pop()||"";
+          for(const line of lines){if(!line.startsWith("data:"))continue;const payload=line.slice(5).trim();if(!payload||payload==="[DONE]")continue;
+            try{const delta=JSON.parse(payload).choices?.[0]?.delta?.content||"";if(delta){full+=delta;send({delta});}}catch{}}
+        }
+        if(buffer.startsWith("data:")){const payload=buffer.slice(5).trim();if(payload&&payload!=="[DONE]"){try{const delta=JSON.parse(payload).choices?.[0]?.delta?.content||"";if(delta){full+=delta;send({delta});}}catch{}}}
+      }catch(error){mode="offline";notice=error.message;full=offlineTutor(message,topic);send({reset:true});for(const part of full.match(/[\\s\\S]{1,24}/g)||[])send({delta:part});}
+      finally{clearTimeout(timer);}
+    }
+    if(req.scienceHintLevel===4&&!/参考答案/.test(full))full="参考答案（仅供参考，请用自己的话复述）\\n"+full+"\\n\\n请用自己的话复述你的理解。";
+    if(looksLikePII(full))full="这条回答可能包含个人身份信息，为保护隐私已隐藏。请改用匿名信息继续探究。";
+    if(ownsSession){
+      await db.query("INSERT INTO chat_messages(session_id,learner_id,class_id,role,content) VALUES($1,$2,$3,'assistant',$4)",[sessionId,ownerLearnerId,ownerClassId,full]);
+      await db.query("DELETE FROM chat_messages WHERE session_id=$1 AND learner_id=$2 AND class_id=$3 AND id NOT IN (SELECT id FROM chat_messages WHERE session_id=$1 AND learner_id=$2 AND class_id=$3 ORDER BY created_at DESC LIMIT 30)",[sessionId,ownerLearnerId,ownerClassId]);
+    }
+    send({done:true,mode,model:MODEL,hintLevel:req.scienceHintLevel||1,qualityCheck:req.scienceQualityCheck||null,...(notice?{notice}:{})});res.end();
+  }catch(error){console.error("chat_stream_failed",error.message);if(!res.headersSent)return res.status(503).json({error:"流式对话暂不可用，请稍后重试。"});res.end();}
 });
 app.post("/api/teacher/login",loginLimiter,(req,res)=>{
   if(!ADMIN_PASSWORD || !TOKEN_SECRET) return res.status(503).json({error:"教师端尚未完成安全配置，请管理员设置ADMIN_PASSWORD和TOKEN_SECRET。"});
