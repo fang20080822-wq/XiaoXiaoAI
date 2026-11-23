@@ -331,7 +331,7 @@ let history=[];
 function bubble(t,who){const d=document.createElement('div');d.className='bubble '+who;d.textContent=t;$('chatlog').appendChild(d);$('chatlog').scrollTop=$('chatlog').scrollHeight}
 function quickAsk(q){$('question').value=q;ask()}
 async function health(){
-  try{const r=await fetch('/api/health');const d=await r.json();const online=Boolean(d.aiConfigured);$('healthDot').classList.toggle('live',online);$('healthShort').textContent=online?'AI服务已配置':'AI服务待配置';$('mode').textContent=online?'AI服务已配置，可以向真实AI科学导师提问。':'AI服务尚未配置，请检查服务器端 DeepSeek API Key。';$('mode').className='notice '+(online?'ok':'')}
+  try{const r=await fetch('/api/health');const d=await r.json();const online=Boolean(d.aiConfigured);$('healthDot').classList.toggle('live',online);$('healthShort').textContent=online?'AI服务已配置':'AI服务待配置';$('mode').textContent=(online?'AI服务已配置。':'AI服务未配置，当前使用离线规则提示。')+' 云端学习档案：'+(d.database==='ready'?'已连接':d.database==='connecting'?'正在连接':'未连接')+'。';$('mode').className='notice '+(d.database==='ready'?'ok':'')}
   catch(e){$('healthShort').textContent='服务连接异常';$('mode').textContent='暂时无法连接服务，请稍后刷新页面。';$('mode').className='notice bad'}
 }
 health();
