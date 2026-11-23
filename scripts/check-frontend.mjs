@@ -90,6 +90,7 @@ for (const field of ['observedPhenomenon','questionBoundary','measurementIndicat
 if (!html.includes("if(!topic||!question)") || !server.includes('scoreRecord(d)') || !inquiryModule.includes('parseDataTable')) throw new Error('Students must be able to submit with topic and question only; evidence quality is evaluated separately');
 for (const term of ['真实观察','问题边界','可测量指标','假设依据','预期结果','控制理由','异常值处理','证据解释']) if (!server.includes(term) && !html.includes(term)) throw new Error('Level-four rubric requirement missing: '+term);
 if (!server.includes('五项标准') || !server.includes('尚无证据')) throw new Error('Teacher evaluation must use five level-four dimensions and avoid inferring evidence');
+if (!html.includes('L1 起步') || !html.includes('L2 发展') || !html.includes('L3 熟练') || !html.includes('L4 优秀') || !html.includes('L1也能提交')) throw new Error('Student-facing rubric must show five dimensions across L1-L4 and allow L1 submissions');
 if (!server.includes('q.rows.reverse().filter(m=>!looksLikePII(m.content))') || !server.includes('if(looksLikePII(answer))')) throw new Error('Chat history responses and stored AI answers must also be screened for PII');
 if (!html.includes('示例探究记录 · 只读') || !html.includes('示例班级 · 只读') || !html.includes('data-course="plant"') || !html.includes('scienceSelectedCourse')) throw new Error('Homepage must include read-only sample work/class and a default selected course');
 const routeDefinitions = [
