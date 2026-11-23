@@ -11,7 +11,13 @@ command -v curl >/dev/null || { echo "curl is required"; exit 2; }
 command -v jq >/dev/null || { echo "jq is required"; exit 2; }
 BASE_URL="${BASE_URL%/}"
 TMP="$(mktemp)"
-trap 'rm -f "$TMP"' EXIT
+cleanup() {
+  if [[ -n "${CLASS_ID:-}" && -n "${TEACHER_TOKEN:-}" ]]; then
+    curl -sS -X DELETE "$BASE_URL/api/teacher/classes/$CLASS_ID" -H "Authorization: Bearer $TEACHER_TOKEN" >/dev/null || true
+  fi
+  rm -f "$TMP"
+}
+trap cleanup EXIT
 PASS=0
 fail(){ echo "FAIL: $1"; echo "$RESP" | jq . 2>/dev/null || echo "$RESP"; exit 1; }
 check(){ PASS=$((PASS+1)); echo "PASS $PASS/18: $1"; }
