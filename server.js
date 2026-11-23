@@ -249,7 +249,7 @@ app.post("/api/teacher/login",loginLimiter,(req,res)=>{
   const a=Buffer.from(password),b=Buffer.from(ADMIN_PASSWORD);
   if(a.length!==b.length || !crypto.timingSafeEqual(a,b)) return res.status(401).json({error:"密码不正确。"});
   const teacherId=crypto.createHash("sha256").update(ADMIN_PASSWORD).digest("hex").slice(0,24);
-  const token=signToken({role:"teacher",teacherId,isAdmin:true,exp:Date.now()+2*60*60*1000});
+  const token=signToken({role:"admin",teacherId,isAdmin:true,exp:Date.now()+2*60*60*1000});
   res.json({token,expiresIn:7200});
 });
 app.post("/api/teacher/evaluate",apiLimiter,requireTeacher,async(req,res)=>{
