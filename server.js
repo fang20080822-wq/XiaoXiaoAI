@@ -275,8 +275,10 @@ app.post("/api/chat/stream",chatLimiter,requireDatabase,async(req,res)=>{
     const messages=[{role:"system",content:SYSTEM_BASE+"\n"+MENTOR_MODES[mentorMode]+"\n"+topicHint+(req.scienceSystemContext||"")},...history,{role:"user",content:message}];
     res.writeHead(200,{"Content-Type":"text/event-stream; charset=utf-8","Cache-Control":"no-cache, no-transform","Connection":"keep-alive","X-Accel-Buffering":"no"});
     const send=obj=>res.write("data: "+JSON.stringify(obj)+"\n\n");
-    let full="",mode="online",notice;
-    if(!API_KEY){full=offlineTutor(message,topic);mode="offline";for(const part of full.match(/[\s\S]{1,24}/g)||[])send({delta:part});}
+    const prefix=req.scienceHintLevel===4?"参考答案（仅供参考，请用自己的话复述）\\n":"";
+    let full=prefix,mode="online",notice;
+    if(prefix)send({delta:prefix});
+    if(!API_KEY){const answer=offlineTutor(message,topic);full+=answer;mode="offline";for(const part of answer.match(/[\s\S]{1,24}/g)||[])send({delta:part});}
     else{
       const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),35000);
       try{
@@ -290,11 +292,11 @@ app.post("/api/chat/stream",chatLimiter,requireDatabase,async(req,res)=>{
             try{const delta=JSON.parse(payload).choices?.[0]?.delta?.content||"";if(delta){full+=delta;send({delta});}}catch{}}
         }
         if(buffer.startsWith("data:")){const payload=buffer.slice(5).trim();if(payload&&payload!=="[DONE]"){try{const delta=JSON.parse(payload).choices?.[0]?.delta?.content||"";if(delta){full+=delta;send({delta});}}catch{}}}
-      }catch(error){mode="offline";notice=error.message;full=offlineTutor(message,topic);send({reset:true});for(const part of full.match(/[\s\S]{1,24}/g)||[])send({delta:part});}
+      }catch(error){mode="offline";notice=error.message;const answer=offlineTutor(message,topic);full=prefix+answer;send({reset:true});for(const part of full.match(/[\s\S]{1,24}/g)||[])send({delta:part});}
       finally{clearTimeout(timer);}
     }
-    if(req.scienceHintLevel===4&&!/参考答案/.test(full))full="参考答案（仅供参考，请用自己的话复述）\\n"+full+"\\n\\n请用自己的话复述你的理解。";
-    if(looksLikePII(full))full="这条回答可能包含个人身份信息，为保护隐私已隐藏。请改用匿名信息继续探究。";
+    if(req.scienceHintLevel===4&&!/请用自己的话复述/.test(full))full+="\\n\\n请用自己的话复述你的理解。";
+    if(looksLikePII(full)){full="这条回答可能包含个人身份信息，为保护隐私已隐藏。请改用匿名信息继续探究。";send({reset:true});send({delta:full});}
     if(ownsSession){
       await db.query("INSERT INTO chat_messages(session_id,learner_id,class_id,role,content) VALUES($1,$2,$3,'assistant',$4)",[sessionId,ownerLearnerId,ownerClassId,full]);
       await db.query("DELETE FROM chat_messages WHERE session_id=$1 AND learner_id=$2 AND class_id=$3 AND id NOT IN (SELECT id FROM chat_messages WHERE session_id=$1 AND learner_id=$2 AND class_id=$3 ORDER BY created_at DESC LIMIT 30)",[sessionId,ownerLearnerId,ownerClassId]);
