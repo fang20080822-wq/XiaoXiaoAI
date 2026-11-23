@@ -46,8 +46,16 @@ if (!html.includes('小小AI科学家 V5.3') || !html.includes('小小AI科学�
 for (const file of ['public/videos/video1.mp4.mp4', 'public/videos/video2.mp4.mp4', 'public/videos/video3.mp4.mp4']) {
   if (!existsSync(new URL('../' + file, import.meta.url))) throw new Error('Course video asset missing: ' + file);
 }
-for (const route of ['/api/student/records', '/api/teacher/classes/:id/records', '/api/teacher/classes']) {
-  if ((server.match(new RegExp(route.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length !== 1) throw new Error('Expected exactly one backend route: ' + route);
+const routeDefinitions = [
+  ['post', '/api/teacher/classes'],
+  ['get', '/api/student/records'],
+  ['post', '/api/student/records'],
+  ['get', '/api/teacher/classes/:id/records']
+];
+for (const [method, route] of routeDefinitions) {
+  const escaped = route.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
+  const pattern = new RegExp('app\\\\.' + method + '\\\\("' + escaped + '"', 'g');
+  if ((server.match(pattern) || []).length !== 1) throw new Error('Expected exactly one ' + method.toUpperCase() + ' route: ' + route);
 }
 if (!server.includes('connectionTimeoutMillis: 5000') || !server.includes('for(const statement of statements) await db.query(statement)')) throw new Error('Database initialization must be bounded and sequential');
 if (!server.includes('await db.query("SELECT 1")') || !server.includes('database = "unavailable"')) throw new Error('Health check must probe database connectivity');
