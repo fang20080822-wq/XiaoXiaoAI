@@ -155,8 +155,9 @@ async function requireTeacher(req,res,next) {
 }
 function teacherId(req){return req.auth?.subjectId||"teacher-default";}
 async function resolveStudentSession(token){
-  if(!token||!db||!dbReady)return null;
+  if(!token||!db)return null;
   try{
+    if(!dbReady)await initDatabase();
     const session=await readSession(db,token);
     if(!session||session.role!=="student")return null;
     const learner=await db.query("SELECT id,class_id FROM science_learners WHERE id=$1",[session.subjectId]);
