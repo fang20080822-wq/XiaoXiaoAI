@@ -414,7 +414,7 @@ async function deleteClass(classId,className){
 }
 async function viewClassRecords(classId){
   $('classRecords').textContent='正在读取学生探究档案……';
-  try{const r=await fetch('/api/teacher/classes/'+encodeURIComponent(classId)+'/records',{headers:{'Authorization':'Bearer '+teacherToken}});const d=await r.json();if(!r.ok)throw new Error(d.error||'读取失败');const box=$('classRecords');box.innerHTML='';if(!d.records.length){box.textContent='这个班级暂时还没有提交记录。';return}
+  try{const r=await fetch('/api/teacher/classes/'+encodeURIComponent(classId)+'/records',{headers:{'Authorization':'Bearer '+teacherToken}});const d=await r.json();if(!r.ok)throw new Error(d.error||'读取失败');const box=$('classRecords');box.innerHTML='';await loadClasses();if(!d.records.length){box.textContent='这个班级暂时还没有提交记录。';return}
     d.records.forEach(rec=>{const card=document.createElement('article');card.className='unit';card.style.marginBottom='10px';const head=document.createElement('b');head.textContent=rec.alias+' · '+rec.topic;const date=document.createElement('p');date.className='muted';date.textContent=new Date(rec.created_at).toLocaleString();const body=document.createElement('p');body.textContent='问题：'+rec.question+'\n假设：'+rec.hypothesis+'\n自变量：'+rec.independent_variable+'\n因变量：'+rec.dependent_variable+'\n控制变量：'+rec.control_variables+'\n方法：'+rec.method+'\n证据：'+rec.evidence+'\n结论：'+rec.conclusion+'\n反思：'+rec.reflection;body.style.whiteSpace='pre-wrap';card.append(head,date,body);box.appendChild(card)});
   }catch(e){$('classRecords').textContent='读取失败：'+e.message}
 }
