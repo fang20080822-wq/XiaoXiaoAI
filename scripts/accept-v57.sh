@@ -3,9 +3,9 @@
 # Run only against a staging deployment; it creates a class, learner and record.
 set -euo pipefail
 : "${BASE_URL:?Set BASE_URL, e.g. https://staging.example.com}"
-: "${TEACHER_EMAIL:?Set an approved TEACHER_EMAIL}"
+: "${TEACHER_EMAIL:?Set a registered TEACHER_EMAIL}"
 : "${TEACHER_PASSWORD:?Set TEACHER_PASSWORD}"
-: "${TEACHER_B_EMAIL:?Set a second approved teacher for isolation testing}"
+: "${TEACHER_B_EMAIL:?Set a second registered teacher for isolation testing}"
 : "${TEACHER_B_PASSWORD:?Set TEACHER_B_PASSWORD}"
 command -v curl >/dev/null || { echo "curl is required"; exit 2; }
 command -v jq >/dev/null || { echo "jq is required"; exit 2; }
@@ -59,7 +59,7 @@ request POST /api/teacher/login "$(jq -nc --arg e "$TEACHER_EMAIL" --arg p "$TEA
 expect 200 "teacher account login"
 TEACHER_TOKEN="$(jq -r '.token // empty' <<<"$RESP")"
 [[ -n "$TEACHER_TOKEN" ]] || fail "teacher token missing"
-check "approved teacher email/password login"
+check "registered teacher email/password login"
 # 7 teacher dashboard
 request GET /api/teacher/dashboard "" "$TEACHER_TOKEN"
 expect 200 "teacher dashboard"
