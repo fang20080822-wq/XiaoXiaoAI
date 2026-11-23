@@ -264,7 +264,7 @@ app.post("/api/chat/stream",chatLimiter,requireDatabase,async(req,res)=>{
   if(!message)return res.status(400).json({error:"请输入问题。"});
   if(message.length>6000)return res.status(400).json({error:"问题过长，请控制在6000字以内。"});
   if(looksLikePII(message))return res.status(400).json({error:"检测到可能的个人身份信息，请删除后再提问。"});
-  const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");
+  const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
   const student=verifyToken(token),ownsSession=student?.role==="student"&&student.learnerId&&student.classId;
   const ownerLearnerId=ownsSession?String(student.learnerId):"",ownerClassId=ownsSession?String(student.classId):"";
   try{
@@ -272,11 +272,11 @@ app.post("/api/chat/stream",chatLimiter,requireDatabase,async(req,res)=>{
     const history=previous.rows.reverse().filter(m=>!looksLikePII(m.content)).map(m=>({role:m.role,content:m.content.slice(0,1200)}));
     if(ownsSession)await db.query("INSERT INTO chat_messages(session_id,learner_id,class_id,role,content) VALUES($1,$2,$3,'user',$4)",[sessionId,ownerLearnerId,ownerClassId,message]);
     const topicHint={ai:"课程主题：认识人工智能。帮助学生区分人工智能、自动化与普通程序。",ml:"课程主题：机器学习。重点解释样例、特征、训练、测试、偏差和预测。",sensor:"课程主题：智能感知。重点解释传感器、输入—处理—输出与误报。",safety:"课程主题：AI安全。重点解释隐私、事实核查、偏见、版权和人工监督。",design:"课程主题：AI创意设计。引导学生说明需求、输入、处理、输出、风险、测试和迭代。"}[topic]||"课程主题：儿童科学探究。";
-    const messages=[{role:"system",content:SYSTEM_BASE+"\\n"+MENTOR_MODES[mentorMode]+"\\n"+topicHint+(req.scienceSystemContext||"")},...history,{role:"user",content:message}];
+    const messages=[{role:"system",content:SYSTEM_BASE+"\n"+MENTOR_MODES[mentorMode]+"\n"+topicHint+(req.scienceSystemContext||"")},...history,{role:"user",content:message}];
     res.writeHead(200,{"Content-Type":"text/event-stream; charset=utf-8","Cache-Control":"no-cache, no-transform","Connection":"keep-alive","X-Accel-Buffering":"no"});
-    const send=obj=>res.write("data: "+JSON.stringify(obj)+"\\n\\n");
+    const send=obj=>res.write("data: "+JSON.stringify(obj)+"\n\n");
     let full="",mode="online",notice;
-    if(!API_KEY){full=offlineTutor(message,topic);mode="offline";for(const part of full.match(/[\\s\\S]{1,24}/g)||[])send({delta:part});}
+    if(!API_KEY){full=offlineTutor(message,topic);mode="offline";for(const part of full.match(/[\s\S]{1,24}/g)||[])send({delta:part});}
     else{
       const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),35000);
       try{
@@ -285,12 +285,12 @@ app.post("/api/chat/stream",chatLimiter,requireDatabase,async(req,res)=>{
         const decoder=new TextDecoder();let buffer="";
         for await(const chunk of upstream.body){
           buffer+=decoder.decode(chunk,{stream:true});
-          const lines=buffer.split("\\n");buffer=lines.pop()||"";
+          const lines=buffer.split("\n");buffer=lines.pop()||"";
           for(const line of lines){if(!line.startsWith("data:"))continue;const payload=line.slice(5).trim();if(!payload||payload==="[DONE]")continue;
             try{const delta=JSON.parse(payload).choices?.[0]?.delta?.content||"";if(delta){full+=delta;send({delta});}}catch{}}
         }
         if(buffer.startsWith("data:")){const payload=buffer.slice(5).trim();if(payload&&payload!=="[DONE]"){try{const delta=JSON.parse(payload).choices?.[0]?.delta?.content||"";if(delta){full+=delta;send({delta});}}catch{}}}
-      }catch(error){mode="offline";notice=error.message;full=offlineTutor(message,topic);send({reset:true});for(const part of full.match(/[\\s\\S]{1,24}/g)||[])send({delta:part});}
+      }catch(error){mode="offline";notice=error.message;full=offlineTutor(message,topic);send({reset:true});for(const part of full.match(/[\s\S]{1,24}/g)||[])send({delta:part});}
       finally{clearTimeout(timer);}
     }
     if(req.scienceHintLevel===4&&!/参考答案/.test(full))full="参考答案（仅供参考，请用自己的话复述）\\n"+full+"\\n\\n请用自己的话复述你的理解。";
