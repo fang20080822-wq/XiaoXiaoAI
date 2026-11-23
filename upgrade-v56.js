@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import {hashPassword,verifyPassword} from "./lib/auth.js";
 
 export const CURRICULUM_12 = [
   {id:"plant-water",title:"植物怎样喝水",grade:"3—4年级",concept:"植物吸收与运输水分",domain:"生命科学",question:"不同条件会怎样影响植物吸水？"},
@@ -64,7 +65,9 @@ export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,AD
   async function ensureTables() {
     if (ready) return;
     const sql = [
-      "CREATE TABLE IF NOT EXISTS teachers(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),email TEXT UNIQUE NOT NULL,password_hash TEXT NOT NULL,school TEXT NOT NULL DEFAULT '',status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),created_at TIMESTAMPTZ DEFAULT NOW(),reviewed_at TIMESTAMPTZ)",
+      "CREATE TABLE IF NOT EXISTS teachers(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),email TEXT UNIQUE NOT NULL,password_hash TEXT NOT NULL DEFAULT '',pw_hash TEXT NOT NULL DEFAULT '',salt TEXT NOT NULL DEFAULT '',school TEXT NOT NULL DEFAULT '',status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),created_at TIMESTAMPTZ DEFAULT NOW(),reviewed_at TIMESTAMPTZ)",
+      "ALTER TABLE teachers ADD COLUMN IF NOT EXISTS pw_hash TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE teachers ADD COLUMN IF NOT EXISTS salt TEXT NOT NULL DEFAULT ''",
       "CREATE TABLE IF NOT EXISTS audit_log(id BIGSERIAL PRIMARY KEY,teacher_id TEXT NOT NULL,action TEXT NOT NULL,target_type TEXT NOT NULL DEFAULT '',target_id TEXT NOT NULL DEFAULT '',created_at TIMESTAMPTZ DEFAULT NOW())",
       "CREATE INDEX IF NOT EXISTS idx_audit_log_teacher_time ON audit_log(teacher_id,created_at DESC)",
       "CREATE TABLE IF NOT EXISTS mentor_progress(session_id UUID PRIMARY KEY,level INTEGER NOT NULL DEFAULT 1,streak INTEGER NOT NULL DEFAULT 0,updated_at TIMESTAMPTZ DEFAULT NOW())",
@@ -160,10 +163,9 @@ export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,AD
       const email=String(req.body?.email||"").trim().toLowerCase();
       const password=String(req.body?.password||"");
       const school=String(req.body?.school||"").trim().slice(0,120);
-      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length<12 || password.length>128 || !school) return res.status(400).json({error:"请填写有效邮箱、学校/机构；密码须至少12位。"});
-      const salt=crypto.randomBytes(16).toString("hex");
-      const hash=crypto.scryptSync(password,salt,64).toString("hex");
-      await db.query("INSERT INTO teachers(email,password_hash,school) VALUES($1,$2,$3)",[email,salt+":"+hash,school]);
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length<8 || password.length>128 || !school) return res.status(400).json({error:"请填写有效邮箱、学校/机构；密码须至少8位。"});
+      const credential=hashPassword(password);
+      await db.query("INSERT INTO teachers(email,password_hash,pw_hash,salt,school) VALUES($1,$2,$3,$4,$5)",[email,"pbkdf2:"+credential.salt+":"+credential.hash,credential.hash,credential.salt,school]);
       res.status(201).json({status:"pending",message:"申请已提交，管理员审核通过后即可登录。"});
     } catch(error){if(error.code==="23505")return res.status(409).json({error:"该邮箱已注册。"});console.error("teacher_register_failed",error.message);res.status(503).json({error:"教师注册暂不可用。"});}
   });
@@ -171,15 +173,28 @@ export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,AD
     try {
       await ensureTables();
       const email=String(req.body?.email||"").trim().toLowerCase(),password=String(req.body?.password||"");
-      const q=await db.query("SELECT id,password_hash,status FROM teachers WHERE email=$1",[email]);
+      const q=await db.query("SELECT id,email,school,password_hash,pw_hash,salt,status FROM teachers WHERE email=$1",[email]);
       if(!q.rows[0])return res.status(401).json({error:"邮箱或密码不正确。"});
-      const [salt,stored]=q.rows[0].password_hash.split(":");
-      const candidate=crypto.scryptSync(password,salt,64);
-      if(!stored || !crypto.timingSafeEqual(candidate,Buffer.from(stored,"hex")))return res.status(401).json({error:"邮箱或密码不正确。"});
-      if(q.rows[0].status!=="approved")return res.status(403).json({error:q.rows[0].status==="pending"?"账号正在等待管理员审核。":"账号未获批准，请联系管理员。"});
-      const id=q.rows[0].id;
-      const token=signToken({role:"teacher",teacherId:id,accountTeacher:true,exp:Date.now()+2*60*60*1000});
-      res.json({token,expiresIn:7200});
+      const row=q.rows[0];
+      let valid=false;
+      if(row.pw_hash && row.salt) valid=verifyPassword(password,row.salt,row.pw_hash);
+      else if(row.password_hash?.startsWith("pbkdf2:")){
+        const parts=row.password_hash.split(":");
+        valid=verifyPassword(password,parts[1],parts[2]);
+      } else if(row.password_hash?.includes(":")){
+        const [legacySalt,legacyHash]=row.password_hash.split(":");
+        const candidate=crypto.scryptSync(password,legacySalt,64);
+        const expected=Buffer.from(legacyHash||"","hex");
+        valid=expected.length===candidate.length&&crypto.timingSafeEqual(candidate,expected);
+        if(valid){
+          const upgraded=hashPassword(password);
+          await db.query("UPDATE teachers SET pw_hash=$1,salt=$2,password_hash=$3 WHERE id=$4",[upgraded.hash,upgraded.salt,"pbkdf2:"+upgraded.salt+":"+upgraded.hash,row.id]);
+        }
+      }
+      if(!valid)return res.status(401).json({error:"邮箱或密码不正确。"});
+      if(row.status!=="approved")return res.status(403).json({error:row.status==="pending"?"账号正在等待管理员审核。":"账号未获批准，请联系管理员。"});
+      const token=signToken({role:"teacher",teacherId:row.id,accountTeacher:true,exp:Date.now()+8*60*60*1000});
+      res.json({token,expiresIn:28800,teacher:{email:row.email,school:row.school}});
     } catch(error){console.error("teacher_account_login_failed",error.message);res.status(503).json({error:"教师登录暂不可用。"});}
   });
   app.get("/api/admin/teachers",apiLimiter,requireAdmin,async(req,res)=>{
