@@ -219,7 +219,7 @@ async function callDeepSeek(messages, maxTokens=900) {
   } finally { clearTimeout(timer); }
 }
 
-registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,ADMIN_PASSWORD,TOKEN_SECRET,signToken,verifyToken,looksLikePII,resolveStudentSession,initDatabase});
+registerV56Routes({app,db,apiLimiter,loginLimiter,requireTeacher,teacherId,ADMIN_PASSWORD,TOKEN_SECRET,signToken,verifyToken,looksLikePII,resolveStudentSession,initDatabase});
 registerV57Routes({app,db,apiLimiter,requireTeacher,teacherId,requireDatabase});
 
 app.get("/api/health",async(req,res)=>{
