@@ -113,4 +113,12 @@ for (const term of ['12个主题课程地图','课标映射','教师账号申请
 if (!server.includes('registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,ADMIN_PASSWORD,TOKEN_SECRET,signToken,verifyToken,looksLikePII})')) throw new Error('V5.6 backend module is not registered');
 if (!server.includes('req.scienceSystemContext||"")') || !server.includes('qualityCheck:req.scienceQualityCheck||null')) throw new Error('Adaptive mentor context and rule engine output are not wired to chat');
 if (!html.includes('/upgrade-v56-ui.js')) throw new Error('V5.6.1 frontend module is not loaded');
+
+if (!server.includes('app.post("/api/chat/stream"')) || !html.includes("fetch('/api/chat/stream'")) throw new Error('SSE chat route and frontend integration missing');
+if (!html.includes('studentGrade') || !server.includes("ADD COLUMN IF NOT EXISTS grade TEXT")) throw new Error('Student grade collection and persistence missing');
+if (!server.includes('scoreInquiryRecord(d)') || !server.includes('ADD COLUMN IF NOT EXISTS level_json')) throw new Error('Rule-based progressive record scoring missing');
+if (!server.includes('app.get("/api/teacher/classes/:id/stats"')) throw new Error('Per-class teacher statistics route missing');
+if (!upgrade.includes('app.get("/privacy"') || !upgrade.includes('app.get("/terms"') || !upgrade.includes('app.get("/data-policy"')) throw new Error('Required legal pages are not registered');
+if (!html.includes('科学探究能力量规（5维 × 4级）') || html.includes('尚未达到水平4提交条件')) throw new Error('Progressive rubric and non-L4-gated submit UI missing');
+
 console.log('V5.6 scaffold levels, student-record context, deterministic rule engine, 12-topic curriculum, dashboard, teacher accounts and audit-log checks passed.');
