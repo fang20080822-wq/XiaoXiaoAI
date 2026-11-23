@@ -51,7 +51,7 @@ export function nextHintState(previous = {}, message = "") {
   const asksAnswer = /(直接告诉我答案|给我答案|答案是什么|帮我写完)/.test(text);
   if (selfCorrection) { streak += 1; if (streak >= 2) { level = Math.min(4,level+1); streak = 0; } }
   else if (correctDirection) { level = Math.min(4,level+1); streak = 0; }
-  else if (asksAnswer) { streak = 0; }
+  else if (asksAnswer) { level = Math.min(3,level+1); streak = 0; }
   else { streak = 0; }
   return {level,streak,instruction:LEVEL_TEXT[level],selfCorrection,asksAnswer};
 }
