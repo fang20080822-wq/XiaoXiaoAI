@@ -52,11 +52,11 @@ if (!html.includes('科学探究能力量规')) throw new Error('Science inquiry
 if (html.includes('六维100分评审量规') || html.includes('技术深度与工程') || html.includes('未成年人合规')) throw new Error('Legacy competition scoring rubric must be removed from teacher UI');
 for (const term of ['提出问题','假设与依据','变量与设计','证据与记录','解释与反思']) if (!html.includes(term)) throw new Error('Inquiry rubric dimension missing: '+term);
 if (html.includes('DEEPSEEK_API_KEY=')) throw new Error('Possible API key assignment found in public frontend');
-console.log('V5.6 frontend syntax, six modules, API contracts, and frontend secret scan passed.');
+console.log('V5.6.1 frontend syntax, six modules, API contracts, and frontend secret scan passed.');
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const lock = JSON.parse(readFileSync(new URL('../package-lock.json', import.meta.url), 'utf8'));
-if (pkg.version !== '5.6.0' || lock.version !== pkg.version || lock.packages?.['']?.version !== pkg.version) throw new Error('Package and lockfile versions must match V5.6.0');
+if (pkg.version !== '5.6.1' || lock.version !== pkg.version || lock.packages?.['']?.version !== pkg.version) throw new Error('Package and lockfile versions must match V5.6.1');
 if (!server.includes('const APP_VERSION = JSON.parse(readFileSync(new URL("./package.json"') || !server.includes('version:APP_VERSION')) throw new Error('Backend health version must derive from package.json');
 if (!html.includes("fetch('/api/health')") || !html.includes("$('appVersion').textContent='V'+d.version") || !html.includes("document.title='小小AI科学家 V'+d.version")) throw new Error('Page version must be injected from the health endpoint');
 if (/小小AI科学家 V5\\.\\d/.test(html)) throw new Error('Frontend must not hardcode a release version');
@@ -102,9 +102,9 @@ for (const term of ['L1 追问','L2 给方向','L3 给示例','L4 参考答案',
 }
 if (!upgrade.includes('SELECT topic,observed_phenomenon,question') || !upgrade.includes('FROM science_records WHERE learner_id=$1 AND class_id=$2 ORDER BY created_at DESC LIMIT 1')) throw new Error('AI must automatically read the latest structured inquiry record for the authenticated student');
 for (const term of ['12个主题课程地图','课标映射','教师账号申请与登录','班级学习数据看板','我的操作审计记录','/api/teacher/dashboard','/api/admin/teachers']) {
-  if (!upgradeUI.includes(term)) throw new Error('V5.6 frontend capability missing: '+term);
+  if (!upgradeUI.includes(term)) throw new Error('V5.6.1 frontend capability missing: '+term);
 }
 if (!server.includes('registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,ADMIN_PASSWORD,TOKEN_SECRET,signToken,verifyToken,looksLikePII})')) throw new Error('V5.6 backend module is not registered');
 if (!server.includes('req.scienceSystemContext||"")') || !server.includes('qualityCheck:req.scienceQualityCheck||null')) throw new Error('Adaptive mentor context and rule engine output are not wired to chat');
-if (!html.includes('/upgrade-v56-ui.js')) throw new Error('V5.6 frontend module is not loaded');
+if (!html.includes('/upgrade-v56-ui.js')) throw new Error('V5.6.1 frontend module is not loaded');
 console.log('V5.6 scaffold levels, student-record context, deterministic rule engine, 12-topic curriculum, dashboard, teacher accounts and audit-log checks passed.');
