@@ -233,7 +233,7 @@ app.post("/api/chat",chatLimiter,requireDatabase,async(req,res)=>{
     let answer,mode="online",notice;
     if(!API_KEY){answer=offlineTutor(message,topic);mode="offline";}
     else{
-      try{answer=await callDeepSeek([{role:"system",content:SYSTEM_BASE+"\n"+MENTOR_MODES[mentorMode]+"\n"+topicHint},...safeHistory,{role:"user",content:message}],1000);}
+      try{answer=await callDeepSeek([{role:"system",content:SYSTEM_BASE+"\n"+MENTOR_MODES[mentorMode]+"\n"+topicHint+(req.scienceSystemContext||"")},...safeHistory,{role:"user",content:message}],1000);}
       catch(err){answer=offlineTutor(message,topic);mode="offline";notice=err.message;}
     }
     if(looksLikePII(answer))answer="这条回答可能包含个人身份信息，为保护隐私已隐藏。请改用匿名信息继续探究。";
