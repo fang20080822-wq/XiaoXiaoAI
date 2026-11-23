@@ -114,7 +114,7 @@ if (!server.includes('registerV56Routes({app,db,apiLimiter,requireTeacher,teache
 if (!server.includes('req.scienceSystemContext||"")') || !server.includes('qualityCheck:req.scienceQualityCheck||null')) throw new Error('Adaptive mentor context and rule engine output are not wired to chat');
 if (!html.includes('/upgrade-v56-ui.js')) throw new Error('V5.6.1 frontend module is not loaded');
 
-if (!server.includes('app.post("/api/chat/stream"')) || !html.includes("fetch('/api/chat/stream'")) throw new Error('SSE chat route and frontend integration missing');
+if (!server.includes('app.post("/api/chat/stream"') || !html.includes("fetch('/api/chat/stream'")) throw new Error('SSE chat route and frontend integration missing');
 if (!html.includes('studentGrade') || !server.includes("ADD COLUMN IF NOT EXISTS grade TEXT")) throw new Error('Student grade collection and persistence missing');
 if (!server.includes('scoreInquiryRecord(d)') || !server.includes('ADD COLUMN IF NOT EXISTS level_json')) throw new Error('Rule-based progressive record scoring missing');
 if (!server.includes('app.get("/api/teacher/classes/:id/stats"')) throw new Error('Per-class teacher statistics route missing');
