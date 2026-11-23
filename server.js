@@ -164,9 +164,9 @@ async function resolveStudentSession(token){
     return {role:"student",learnerId:learner.rows[0].id,classId:learner.rows[0].class_id};
   }catch(error){console.error("chat_student_session_failed",error.message);return null;}
 }
-async async function requireStudent(req,res,next){
+async function requireStudent(req,res,next){
   try{
-    const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");
+    const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
     const student=await resolveStudentSession(token);
     if(!student)return res.status(401).json({error:"学生会话已失效，请重新加入班级。"});
     req.student=student;next();
