@@ -18,7 +18,7 @@ for (const id of ['home', 'learn', 'assistant', 'lab', 'quiz', 'teacher']) {
   const sectionPattern = new RegExp('<section\\s+id="' + id + '"\\s+class="panel(?:\\s+active)?"');
   if (!sectionPattern.test(html)) throw new Error('Missing application section: ' + id);
 }
-for (const route of ['/api/health', '/api/chat', '/api/teacher/login', '/api/teacher/evaluate']) {
+for (const route of ['/api/health', '/api/chat', '/api/teacher/account/login', '/api/teacher/evaluate']) {
   if (!html.includes(route)) throw new Error('Frontend no longer calls expected API route: ' + route);
   if (!server.includes(route)) throw new Error('Backend route missing: ' + route);
 }
@@ -33,6 +33,8 @@ for (const field of ['researchQuestion', 'independentVariable', 'dependentVariab
   if (!html.includes('id="' + field + '"')) throw new Error('Structured inquiry field missing: ' + field);
 }
 if (!html.includes('function joinClass()') || !html.includes('function submitCloudRecord()') || !html.includes('function loadMyRecords()')) throw new Error('Student classroom workflow missing');
+if (!html.includes('/api/teacher/account/login') || !html.includes('/api/teacher/register') || html.includes('id="adminPassword"')) throw new Error('Teacher UI must use independent email/password accounts, not the shared password field');
+if (!server.includes('app.post("/api/chat/stream"') || !html.includes("fetch('/api/chat/stream'") || !server.includes('X-Accel-Buffering')) throw new Error('Streaming chat endpoint and frontend reader must be connected');
 if (!html.includes('function createClass()') || !html.includes('function viewClassRecords(')) throw new Error('Teacher classroom workflow missing');
 const archiveView = html.slice(html.indexOf('async function viewClassRecords('), html.indexOf('async function teacherLogin('));
 if (!archiveView.includes('await loadClasses()')) throw new Error('Opening a class archive must refresh live student and record counts');
