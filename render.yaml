@@ -14,16 +14,6 @@ services:
         fromDatabase:
           name: xiaoxia-scientist-learning-db
           property: connectionString
-      - key: DEEPSEEK_API_KEY
-        sync: false
-      - key: ADMIN_PASSWORD
-        sync: false
-      - key: TOKEN_SECRET
-        generateValue: true
-      - key: DEEPSEEK_BASE_URL
-        value: https://api.deepseek.com
-      - key: DEEPSEEK_MODEL
-        value: deepseek-flash
 
 databases:
   - name: xiaoxia-scientist-learning-db
