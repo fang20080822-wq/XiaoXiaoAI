@@ -52,7 +52,7 @@ export function registerV57Routes({app,db,apiLimiter,requireTeacher,teacherId,re
             FROM per_learner
             WHERE submitted_learner_id IS NOT NULL
               AND (
-                COALESCE((level_json->>'evidence_ok')::boolean,FALSE)=FALSE
+                (level_json->>'evidence_ok')::boolean IS FALSE
                 OR level<=2
               )
             ORDER BY completeness,level,alias
