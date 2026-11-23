@@ -268,8 +268,8 @@ textarea{min-height:105px;resize:vertical}
 <section id="teacher" class="panel">
   <div class="pageintro"><div class="kicker">TEACHER WORKSPACE</div><h1>教师工作台</h1><p>教师可登录并提交已匿名化的学生探究作品，获取AI辅助评价建议。</p></div>
   <div class="card">
-    <h2>教师身份验证</h2><label for="teacherEmail">教师邮箱</label><input id="teacherEmail" type="email" autocomplete="username" placeholder="输入注册邮箱"><label for="teacherPassword">登录密码</label><input id="teacherPassword" type="password" autocomplete="current-password" placeholder="至少8位密码"><label for="teacherSchool">学校 / 机构</label><input id="teacherSchool" maxlength="120" placeholder="首次注册时填写">
-    <div class="actions" style="margin-top:13px"><button class="btn primary" onclick="teacherLogin()">邮箱登录</button><button class="btn soft" onclick="teacherRegister()">注册教师账号</button><button id="teacherLogout" class="btn outline hidden" onclick="teacherLogout()">退出教师工作台</button></div><p id="loginMsg" class="muted" role="status" aria-live="polite"></p>
+    <h2>教师身份验证</h2><p class="muted">请使用独立教师账号登录。新账号需完成管理员审核。</p>
+    <div class="actions" style="margin-top:13px"><button id="teacherLogout" class="btn outline hidden" onclick="teacherLogout()">退出教师工作台</button></div><p id="loginMsg" class="muted" role="status" aria-live="polite"></p>
     <div id="teacherPanel" class="hidden">
       <hr style="border:0;border-top:1px solid var(--line);margin:22px 0">
 
@@ -476,7 +476,7 @@ async function submitCloudRecord(){
 }
 
 let teacherToken=null;
-function teacherLogout(){teacherToken=null;$('teacherPanel').classList.add('hidden');$('teacherLogout').classList.add('hidden');$('teacherPassword').value='';$('studentWork').value='';$('evaluation').textContent='';$('loginMsg').textContent='已安全退出教师工作台。'}
+function teacherLogout(){teacherToken=null;$('teacherPanel').classList.add('hidden');$('teacherLogout').classList.add('hidden');$('studentWork').value='';$('evaluation').textContent='';$('loginMsg').textContent='已安全退出教师工作台。'}
 
 async function createClass(){
   if(!teacherToken){$('classList').textContent='请先登录教师工作台。';return}
