@@ -409,14 +409,27 @@ async function ask(){
   const mode=mentorModes[$('mentorMode').value]||mentorModes.curiosity,mentorMode=$('mentorMode').value;
   bubble(q,'user');$('question').value='';$('sendBtn').disabled=true;$('sendBtn').textContent='AI思考中…';
   const wait=document.createElement('div');wait.className='bubble bot';wait.textContent='导师正在思考……';$('chatlog').appendChild(wait);$('chatlog').scrollTop=$('chatlog').scrollHeight;
+  let acc='',bot=null,meta={};
   try{
-    const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json',...(studentToken?{'Authorization':'Bearer '+studentToken}:{})},body:JSON.stringify({message:q,sessionId:chatSessionId,mode:mentorMode,topic:'青少年科学探究'})});
-    const d=await r.json();wait.remove();
-    if(r.status===429){bubble(d.answer||'当前对话次数已达上限，请稍后重试。已有对话已保存在服务器。','bot');return}
-    if(!r.ok)throw new Error(d.error||'服务暂不可用');
-    const suffix=d.mode==='offline'?'\n\n（离线规则提示，并非实时大模型回答）'+(d.notice?' 原因：'+d.notice:''):'\n\n（DeepSeek 实时回答 · '+mode.label+'）';
-    bubble(d.answer+suffix,'bot');
-  }catch(e){wait.remove();bubble('暂时无法获得AI回答：'+e.message,'bot')}
+    const r=await fetch('/api/chat/stream',{method:'POST',headers:{'Content-Type':'application/json',...(studentToken?{'Authorization':'Bearer '+studentToken}:{})},body:JSON.stringify({message:q,sessionId:chatSessionId,mode:mentorMode,topic:'青少年科学探究'})});
+    if(r.status===429){const d=await r.json().catch(()=>({}));wait.remove();bubble(d.answer||'当前对话次数已达上限，请稍后重试。','bot');return}
+    if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'服务暂不可用')}
+    const reader=r.body.getReader(),decoder=new TextDecoder();let buffer='';
+    while(true){
+      const part=await reader.read();if(part.done)break;buffer+=decoder.decode(part.value,{stream:true});
+      const events=buffer.split('\n\n');buffer=events.pop()||'';
+      for(const event of events){
+        const line=event.split('\n').find(x=>x.startsWith('data:'));if(!line)continue;
+        let item;try{item=JSON.parse(line.slice(5).trim())}catch{continue}
+        if(item.reset){acc='';if(bot)bot.textContent='';continue}
+        if(item.delta){if(!bot){wait.remove();bot=document.createElement('div');bot.className='bubble bot';$('chatlog').appendChild(bot)}acc+=item.delta;bot.textContent=acc;$('chatlog').scrollTop=$('chatlog').scrollHeight}
+        if(item.done)meta=item;
+      }
+    }
+    if(!bot){wait.remove();bubble('导师暂未生成有效回答，请稍后重试。','bot');return}
+    const suffix=meta.mode==='offline'?'\n\n（离线规则提示，并非实时大模型回答）'+(meta.notice?' 原因：'+meta.notice:''):'\n\n（DeepSeek 实时回答 · '+mode.label+'）';
+    bot.textContent=acc+suffix;
+  }catch(e){wait.remove();if(bot)bot.remove();bubble('暂时无法获得AI回答：'+e.message,'bot')}
   finally{$('sendBtn').disabled=false;$('sendBtn').textContent='发送问题 →'}
 }
 $('question').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();ask()}});
