@@ -1,12 +1,12 @@
 {
   "name": "little-ai-scientists",
-  "version": "5.5.0",
+  "version": "5.6.0",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node --check server.js && node scripts/check-frontend.mjs"
+    "test": "node --check server.js && node --check upgrade-v56.js && node --check public/upgrade-v56-ui.js && node scripts/check-frontend.mjs"
   },
   "engines": {
     "node": ">=20"
