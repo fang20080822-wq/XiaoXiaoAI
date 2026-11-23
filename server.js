@@ -101,7 +101,7 @@ function requireTeacher(req,res,next) {
 }
 function teacherId(req){const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");return verifyToken(token)?.teacherId||"teacher-default";}
 function requireStudent(req,res,next){const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");const p=verifyToken(token);if(!p||p.role!=="student")return res.status(401).json({error:"学生会话已失效，请重新加入班级。"});req.student=p;next();}
-function requireDatabase(req,res,next){if(!db||!dbReady)return res.status(503).json({error:"云端数据库尚未就绪，请稍后重试。"});next();}
+async function requireDatabase(req,res,next){if(!db)return res.status(503).json({error:"云端数据库尚未配置。"});if(!dbReady){try{await initDatabase();}catch(e){console.error("database_retry_failed",e.message);return res.status(503).json({error:"云端数据库暂不可用，请稍后重试。"});}}if(!dbReady)return res.status(503).json({error:"云端数据库尚未就绪，请稍后重试。"});next();}
 function looksLikePII(text) {
   const patterns=[
     /(?:\+?\d[\d\s-]{7,}\d)/,
@@ -209,6 +209,7 @@ app.post("/api/teacher/classes",apiLimiter,requireTeacher,async(req,res)=>{
 
 
 app.post("/api/student/join",apiLimiter,requireDatabase,async(req,res)=>{
+  if(!TOKEN_SECRET)return res.status(503).json({error:"学生会话安全配置尚未完成，请联系教师管理员。"});
   const code=String(req.body?.inviteCode||"").trim().toUpperCase(),alias=String(req.body?.alias||"").trim().slice(0,24);
   if(!/^[A-F0-9]{8}$/.test(code))return res.status(400).json({error:"邀请码格式不正确。"});
   if(!/^学生[A-Z0-9]{1,8}$/.test(alias))return res.status(400).json({error:"请使用匿名代号，例如学生A，不要使用真实姓名。"});
@@ -222,6 +223,10 @@ app.post("/api/student/records",apiLimiter,requireStudent,requireDatabase,async(
   if(keys.slice(0,9).some(k=>!d[k]))return res.status(400).json({error:"请完成主题、问题、假设、变量、方法、证据和结论后再提交。"});
   try{const q=await db.query("INSERT INTO science_records(class_id,learner_id,topic,question,hypothesis,independent_variable,dependent_variable,control_variables,method,evidence,conclusion,reflection) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id,created_at",[req.student.classId,req.student.learnerId,d.topic,d.question,d.hypothesis,d.independentVariable,d.dependentVariable,d.controlVariables,d.method,d.evidence,d.conclusion,d.reflection]);res.status(201).json({saved:true,record:q.rows[0]});}
   catch(e){console.error("record_save_failed",e.message);res.status(500).json({error:"云端保存失败，请先导出备份。"});}
+});
+app.get("/api/student/records",apiLimiter,requireStudent,requireDatabase,async(req,res)=>{
+  try{const q=await db.query("SELECT id,topic,question,hypothesis,independent_variable,dependent_variable,control_variables,method,evidence,conclusion,reflection,created_at FROM science_records WHERE class_id=$1 AND learner_id=$2 ORDER BY created_at DESC LIMIT 100",[req.student.classId,req.student.learnerId]);res.json({records:q.rows});}
+  catch(e){console.error("student_record_list_failed",e.message);res.status(500).json({error:"读取个人探究记录失败。"});}
 });
 app.get("/api/teacher/classes",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
   try{const q=await db.query("SELECT c.id,c.class_name,c.invite_code,c.created_at,COUNT(DISTINCT l.id)::int AS learner_count,COUNT(DISTINCT r.id)::int AS record_count FROM science_classes c LEFT JOIN science_learners l ON l.class_id=c.id LEFT JOIN science_records r ON r.class_id=c.id WHERE c.teacher_id=$1 GROUP BY c.id ORDER BY c.created_at DESC",[teacherId(req)]);res.json({classes:q.rows});}
