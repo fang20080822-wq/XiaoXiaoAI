@@ -4,7 +4,13 @@ import { CURRICULUM_12, nextHintState, validateInquiry } from "../upgrade-v56.js
 assert.equal(CURRICULUM_12.length,12,"exactly 12 curriculum topics must be mapped");
 assert.ok(CURRICULUM_12.every(x=>x.title&&x.grade&&x.concept&&x.domain),"each topic needs a grade band, core concept and domain");
 
-let state=nextHintState({level:1,streak:0},"直接告诉我答案");
+let repeat=nextHintState({level:1,streak:0,last_prompt:"天空为什么是蓝色的"},"天空为什么是蓝色的？");
+assert.equal(repeat.level,2,"a repeated question should advance from L1 to L2 without revealing the answer");
+repeat=nextHintState({level:repeat.level,streak:repeat.streak,last_prompt:repeat.last_prompt},"天空为什么是蓝色的？");
+assert.equal(repeat.level,3,"a third consecutive identical question should progressively advance to L3");
+repeat=nextHintState({level:repeat.level,streak:repeat.streak,last_prompt:repeat.last_prompt},"天空为什么是蓝色的？");
+assert.equal(repeat.level,3,"repeated questions must never automatically unlock L4");
+\nlet state=nextHintState({level:1,streak:0},"直接告诉我答案");
 assert.equal(state.level,2,"first repeated answer request should move from L1 to L2");
 state=nextHintState(state,"答案是什么？");
 assert.equal(state.level,3,"second repeated answer request should move from L2 to L3");
