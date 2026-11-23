@@ -504,22 +504,6 @@ async function viewClassRecords(classId){
   }catch(e){$('classRecords').textContent='读取失败：'+e.message}
 }
 
-async function teacherLogin(){
-  $('loginMsg').textContent='正在验证教师账号…';
-  try{
-    const r=await fetch('/api/teacher/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:$('teacherEmail').value.trim(),password:$('teacherPassword').value})});
-    const d=await r.json();if(!r.ok)throw new Error(d.error||'登录失败');
-    teacherToken=d.token;$('teacherPanel').classList.remove('hidden');$('teacherLogout').classList.remove('hidden');$('teacherPassword').value='';$('loginMsg').textContent='✓ 登录成功。教师会话有效期为8小时。'
-  }catch(e){$('loginMsg').textContent=e.message}
-}
-async function teacherRegister(){
-  $('loginMsg').textContent='正在提交教师账号申请…';
-  try{
-    const r=await fetch('/api/teacher/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:$('teacherEmail').value.trim(),password:$('teacherPassword').value,school:$('teacherSchool').value.trim()})});
-    const d=await r.json();if(!r.ok)throw new Error(d.error||'注册失败');
-    $('loginMsg').textContent=d.message||'注册申请已提交，请等待审核。';
-  }catch(e){$('loginMsg').textContent=e.message}
-}
 async function evaluateWork(){
   const work=$('studentWork').value.trim();if(!work){$('evaluation').textContent='请先填写已匿名化的学生作品。';return}
   if(!teacherToken){$('evaluation').textContent='教师会话已失效，请重新登录。';return}
