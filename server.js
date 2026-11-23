@@ -150,6 +150,9 @@ async function requireTeacher(req,res,next) {
     const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
     const session=await readSession(db,token);
     if(!session||session.role!=="teacher")return res.status(401).json({error:"教师身份验证已失效，请重新登录。"});
+    const account=await db.query("SELECT status FROM teachers WHERE id=$1",[session.subjectId]);
+    if(!account.rowCount)return res.status(401).json({error:"教师账号不存在，请重新登录。"});
+    if(account.rows[0].status!=="approved")return res.status(403).json({error:"教师账号正在等待管理员审核。"});
     req.auth=session;next();
   }catch(error){console.error("teacher_session_read_failed",error.message);res.status(503).json({error:"教师身份验证暂不可用。"});}
 }
