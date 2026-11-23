@@ -1,7 +1,8 @@
 import express from "express";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import crypto from "node:crypto";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
@@ -18,7 +19,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const TOKEN_SECRET = process.env.TOKEN_SECRET || "";
 const ALLOW_ORIGIN = process.env.ALLOW_ORIGIN || "";
 const DATABASE_URL = process.env.DATABASE_URL || "";
-const APP_VERSION = "5.3.0";
+const APP_VERSION = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version;
 const { Pool } = pg;
 const db = DATABASE_URL ? new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false }, max: 5, connectionTimeoutMillis: 5000, idleTimeoutMillis: 30000 }) : null;
 let dbReady = false;
@@ -35,7 +36,9 @@ async function initDatabase(){
       "ALTER TABLE science_learners ADD COLUMN IF NOT EXISTS consent_recorded_at TIMESTAMPTZ",
       "CREATE TABLE IF NOT EXISTS science_records(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), class_id UUID REFERENCES science_classes(id) ON DELETE CASCADE, learner_id UUID REFERENCES science_learners(id) ON DELETE CASCADE, topic TEXT NOT NULL, question TEXT NOT NULL, hypothesis TEXT NOT NULL, independent_variable TEXT NOT NULL, dependent_variable TEXT NOT NULL, control_variables TEXT NOT NULL, method TEXT NOT NULL, evidence TEXT NOT NULL, conclusion TEXT NOT NULL, reflection TEXT DEFAULT '', created_at TIMESTAMPTZ DEFAULT NOW())",
       "CREATE INDEX IF NOT EXISTS idx_science_classes_teacher_created ON science_classes(teacher_id, created_at DESC)",
-      "CREATE INDEX IF NOT EXISTS idx_science_records_learner_created ON science_records(class_id, learner_id, created_at DESC)"
+      "CREATE INDEX IF NOT EXISTS idx_science_records_learner_created ON science_records(class_id, learner_id, created_at DESC)",
+      "CREATE TABLE IF NOT EXISTS chat_messages(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), session_id UUID NOT NULL, role TEXT NOT NULL CHECK(role IN ('user','assistant')), content TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW())",
+      "CREATE INDEX IF NOT EXISTS idx_chat_messages_session_created ON chat_messages(session_id, created_at DESC)"
     ];
     for(const statement of statements) await db.query(statement);
     await db.query("SELECT 1");
@@ -77,12 +80,16 @@ if (ALLOW_ORIGIN) {
     next();
   });
 }
-const apiLimiter = rateLimit({windowMs: 60_000, limit: 12, standardHeaders: "draft-7", legacyHeaders:false,
-  message:{error:"请求过于频繁，请稍后再试。"}});
-const loginLimiter = rateLimit({windowMs: 15*60_000, limit: 5, standardHeaders:"draft-7", legacyHeaders:false,
-  message:{error:"登录尝试次数过多，请15分钟后再试。"}});
-app.use("/api/chat", apiLimiter);
-app.use("/api/teacher/evaluate", apiLimiter);
+function rateLimitKey(req){
+  const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
+  const payload=verifyToken(token);
+  return payload?.role==="student" && payload.learnerId ? "student:"+payload.learnerId : ipKeyGenerator(req.ip);
+}
+const apiLimiter = rateLimit({windowMs:60_000,limit:120,standardHeaders:"draft-7",legacyHeaders:false,keyGenerator:rateLimitKey,
+  handler:(req,res)=>res.status(429).json({error:"请求过于频繁，请稍后再试。",mode:"offline",fallback:"offline"})});
+const chatLimiter = rateLimit({windowMs:60_000,limit:30,standardHeaders:"draft-7",legacyHeaders:false,keyGenerator:rateLimitKey,
+  handler:(req,res)=>res.status(429).json({error:"本分钟对话次数已达上限。",mode:"offline",fallback:"offline",answer:"当前请求较多，请稍后再试。你可以先整理已有观察和证据；本次对话不会丢失。"})});
+const loginLimiter = rateLimit({windowMs:15*60_000,limit:5,standardHeaders:"draft-7",legacyHeaders:false,message:{error:"登录尝试次数过多，请15分钟后再试。"}});
 
 const SYSTEM_BASE = `你是“小小AI科学家”的儿童科学探究导师，面向8—11岁小学阶段学习者。
 教学原则：
@@ -126,13 +133,10 @@ function requireTeacher(req,res,next) {
 function teacherId(req){const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");return verifyToken(token)?.teacherId||"teacher-default";}
 function requireStudent(req,res,next){const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");const p=verifyToken(token);if(!p||p.role!=="student")return res.status(401).json({error:"学生会话已失效，请重新加入班级。"});req.student=p;next();}
 async function requireDatabase(req,res,next){if(!db)return res.status(503).json({error:"云端数据库尚未配置。"});if(!dbReady){try{await initDatabase();}catch(e){console.error("database_retry_failed",e.message);return res.status(503).json({error:"云端数据库暂不可用，请稍后重试。"});}}if(!dbReady)return res.status(503).json({error:"云端数据库尚未就绪，请稍后重试。"});next();}
-function looksLikePII(text) {
-  const patterns=[
-    /(?:\+?\d[\d\s-]{7,}\d)/,
-    /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i,
-    /(?:身份证|身份证号|家庭住址|详细地址|银行卡号|密码是|我的学号)/,
-  ];
-  return patterns.some(p=>p.test(text));
+function looksLikePII(value){
+  const text=String(value||"");
+  const patterns=[/(?:^|\D)(?:\+?86[- ]?)?1[3-9]\d{9}(?:$|\D)/,/(?:^|\D)\d{17}[\dXx](?:$|\D)/,/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i,/(?:身份证|身份证号|家庭住址|详细地址|银行卡号|密码是|我的学号|住在.{0,12}(?:路|街|号|小区))/ ,/(?:^|[^\d])\d{8,}(?:$|[^\d])/];
+  return patterns.some(pattern=>pattern.test(text));
 }
 function offlineTutor(message, topic) {
   const s=message;
