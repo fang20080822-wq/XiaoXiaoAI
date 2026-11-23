@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# V5.7 staging acceptance: 18 checks. Requires bash, curl, jq.
+# V5.7.1 staging acceptance: 18 checks. Requires bash, curl, jq.
 # Run only against a staging deployment; it creates a class, learner and record.
 set -euo pipefail
 : "${BASE_URL:?Set BASE_URL, e.g. https://staging.example.com}"
@@ -33,8 +33,8 @@ expect(){ [[ "$STATUS" == "$1" ]] || fail "$2 (HTTP $STATUS, expected $1)"; }
 # 1 health/version
 request GET /api/health
 expect 200 "health endpoint"
-[[ "$(jq -r '.ok' <<<"$RESP")" == "true" && "$(jq -r '.version' <<<"$RESP")" == "5.7.0" ]] || fail "health/version payload"
-check "health reports V5.7.0"
+[[ "$(jq -r '.ok' <<<"$RESP")" == "true" && "$(jq -r '.version' <<<"$RESP")" == "5.7.1" ]] || fail "health/version payload"
+check "health reports V5.7.1"
 # 2 privacy page
 request GET /privacy
 expect 200 "privacy page"
