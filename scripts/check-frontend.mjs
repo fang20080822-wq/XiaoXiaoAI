@@ -121,6 +121,8 @@ const upgradeUI = readFileSync(new URL('../public/upgrade-v56-ui.js', import.met
 if (!upgradeUI.includes('注册成功，已自动登录') || !upgradeUI.includes('注册并进入教师工作台') || !upgradeUI.includes('已自动登录')) throw new Error('Teacher registration must automatically establish a signed-in workspace session');
 if (!upgrade.includes("school,status,reviewed_at) VALUES($1,$2,$3,$4,$5,'approved',NOW())") || !upgrade.includes('if(row.status==="rejected")')) throw new Error('New teacher accounts must be approved on registration; rejected accounts remain blocked');
 if (!server.includes('if(account.rows[0].status==="rejected")')) throw new Error('Teacher authorization must allow immediate access after registration');
+if (!upgrade.includes('loginLimiter||apiLimiter') || !server.includes('limit:5')) throw new Error('Teacher registration and login must be rate-limited');
+if (!v57Module.includes('未配置自动定期清理任务') || !v57Module.includes('没有自助删除教师账号的入口')) throw new Error('Privacy policy must disclose actual retention and account deletion limitations');
 
 for (const term of ['L1 追问','L2 给方向','L3 给示例','L4 参考答案','连续2轮','学生尚无可读取的云端结构化探究记录','validateInquiry','insufficient_data','multiple_independent','/api/curriculum','/api/teacher/dashboard','/api/teacher/register','/api/teacher/account/login','/api/admin/teachers','audit_log','mentor_progress']) {
   if (!upgrade.includes(term)) throw new Error('V5.6 backend capability missing: '+term);
