@@ -176,6 +176,7 @@ textarea{min-height:105px;resize:vertical}
     <p class="muted">使用老师提供的邀请码和匿名代号加入。请不要填写真实姓名、学校、电话或其他个人信息。</p>
     <label for="classInvite">班级邀请码</label><input id="classInvite" maxlength="8" placeholder="8位邀请码" autocomplete="off">
     <label for="studentAlias">匿名代号</label><input id="studentAlias" maxlength="24" placeholder="例如：学生A" autocomplete="off">
+    <label for="studentGrade">学段</label><select id="studentGrade"><option value="3-4">3—4年级</option><option value="5-6">5—6年级</option></select>
     <label style="display:flex;gap:9px;align-items:flex-start;font-weight:500"><input id="guardianAck" type="checkbox" style="width:auto;margin-top:6px">我已在教师/监护人指导下参与，且已取得必要的监护人同意。</label>
     <button class="btn primary" onclick="joinClass()">加入班级</button>
     <p id="joinStatus" class="muted" role="status" aria-live="polite">尚未加入班级。</p>
@@ -273,20 +274,22 @@ textarea{min-height:105px;resize:vertical}
 
       <h3>学生探究作品评价</h3><label for="studentWork">学生作品（请先去除个人身份信息）</label><textarea id="studentWork" maxlength="20000" placeholder="粘贴匿名化的学生探究记录……"></textarea>
       <div class="sample-card" style="margin-top:12px"><span class="sample-tag">SCIENCE INQUIRY COMPETENCY RUBRIC</span><h3>科学探究能力量规</h3><p>提出问题 · 假设与依据 · 变量与设计 · 证据与记录 · 解释与反思</p><p>逐项对照水平4优秀标准：真实观察、可测量边界、明确依据、单一变量、多次记录、异常值处理、证据支持结论。</p></div>
-      <div class="sample-card" style="margin-top:12px"><span class="sample-tag">LEVEL 4 · EXCELLENT</span><h3>五项水平4优秀验收标准</h3><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;text-align:left"><thead><tr><th style="padding:10px;border-bottom:1px solid var(--line)">维度</th><th style="padding:10px;border-bottom:1px solid var(--line)">水平4优秀标准</th></tr></thead><tbody>
-<tr><td style="padding:10px;border-bottom:1px solid var(--line)">提出问题</td><td style="padding:10px;border-bottom:1px solid var(--line)">来自真实观察，边界清晰、可测量</td></tr>
-<tr><td style="padding:10px;border-bottom:1px solid var(--line)">假设与依据</td><td style="padding:10px;border-bottom:1px solid var(--line)">假设明确，说明理由或已有经验</td></tr>
-<tr><td style="padding:10px;border-bottom:1px solid var(--line)">变量与设计</td><td style="padding:10px;border-bottom:1px solid var(--line)">只改一个变量，明确控制条件与重复次数</td></tr>
-<tr><td style="padding:10px;border-bottom:1px solid var(--line)">证据与记录</td><td style="padding:10px;border-bottom:1px solid var(--line)">数据可测量，有多次记录并处理异常值</td></tr>
-<tr><td style="padding:10px">解释与反思</td><td style="padding:10px">结论不超出证据，指出局限与新问题</td></tr>
-</tbody></table></div><p>AI反馈必须逐项引用学生作品中的证据；没有真实记录时标记“尚无证据”，不能把实验计划当作实验结果。</p></div>
+      <div class="sample-card" style="margin-top:12px"><span class="sample-tag">SCIENCE INQUIRY COMPETENCY RUBRIC · 4 LEVELS</span><h3>科学探究能力量规（5维 × 4级）</h3>
+<p>提交不设“必须达到L4”的门槛。每个维度独立评价，系统依据学生实际填写内容给出规则评分与下一步建议。</p>
+<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;text-align:left;font-size:13px"><thead><tr><th>维度</th><th>L4 优秀</th><th>L3 良好</th><th>L2 合格</th><th>L1 待改进</th></tr></thead><tbody>
+<tr><td>提出问题</td><td>来自真实观察，边界清晰且可测量</td><td>问题清楚，范围略大</td><td>问题模糊，需要缩小范围</td><td>只有好奇，尚未形成研究问题</td></tr>
+<tr><td>假设与依据</td><td>假设明确，有经验或事实依据</td><td>假设明确，依据较笼统</td><td>假设与问题部分对应</td><td>尚无假设或与问题无关</td></tr>
+<tr><td>变量与设计</td><td>单一变量，控制条件和重复次数明确</td><td>变量基本清楚，控制条件不全</td><td>变量混杂，结果可比性不足</td><td>尚未识别变量</td></tr>
+<tr><td>证据与记录</td><td>可测量数据、多次记录并说明异常值</td><td>有数据，缺少重复或单位</td><td>记录零散，数据不足</td><td>尚无可核验记录</td></tr>
+<tr><td>解释与反思</td><td>结论不超出证据，说明局限与新问题</td><td>结论基本对应证据</td><td>结论与证据联系较弱</td><td>尚未形成证据支持的结论</td></tr>
+</tbody></table></div></div>
       <div class="actions" style="margin-top:14px"><button class="btn primary" id="evaluateBtn" onclick="evaluateWork()">生成评价建议</button><button class="btn outline" onclick="exportEvaluation()">导出评价建议</button></div><div id="evaluation" class="result" style="margin-top:14px" aria-live="polite"></div>
     </div>
   </div>
   <div class="notice">AI评价仅提供形成性反馈建议，不能代替教师专业判断。不要提交学生姓名、联系方式、学校班级等可识别信息。</div>
 </section>
 </main>
-<footer class="footer">小小AI科学家 <span id="appVersion">正在读取版本…</span> · 让好奇心成为科学发现的起点<br>AI用于启发和辅助学习，重要信息请核查，实验请在成人指导下安全开展。</footer>
+<footer class="footer">小小AI科学家 <span id="appVersion">正在读取版本…</span> · 让好奇心成为科学发现的起点<br><a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="/data-policy">未成年人个人信息保护规则</a><br>AI用于启发和辅助学习，重要信息请核查，实验请在成人指导下安全开展。</footer>
 
 <script>
 const $=id=>document.getElementById(id);
@@ -426,7 +429,7 @@ async function joinClass(){
   const inviteCode=$('classInvite').value.trim().toUpperCase(),alias=$('studentAlias').value.trim();
   if(!$('guardianAck').checked){$('joinStatus').textContent='请先确认已取得教师和监护人必要同意。';return}
   $('joinStatus').textContent='正在验证邀请码……';
-  try{const r=await fetch('/api/student/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({inviteCode,alias,guardianConsent:true})});const d=await r.json();if(!r.ok)throw new Error(d.error||'加入失败');studentToken=d.token;studentAlias=d.alias;localStorage.setItem('scienceStudentToken',studentToken);localStorage.setItem('scienceStudentAlias',studentAlias);$('joinStatus').textContent='✓ 已加入班级，匿名身份：'+studentAlias+'。';await restoreChat();}
+  try{const r=await fetch('/api/student/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({inviteCode,alias,grade:$('studentGrade').value,guardianConsent:true})});const d=await r.json();if(!r.ok)throw new Error(d.error||'加入失败');studentToken=d.token;studentAlias=d.alias;localStorage.setItem('scienceStudentToken',studentToken);localStorage.setItem('scienceStudentAlias',studentAlias);$('joinStatus').textContent='✓ 已加入班级，匿名身份：'+studentAlias+'。';await restoreChat();}
   catch(e){$('joinStatus').textContent=e.message}
 }
 async function loadMyRecords(){
@@ -439,9 +442,12 @@ async function loadMyRecords(){
 }
 async function submitCloudRecord(){
   if(!studentToken){$('cloudSaveStatus').textContent='请先使用班级邀请码加入班级。';return}
-  const d=currentLab();const required=['topic','observedPhenomenon','researchQuestion','questionBoundary','measurementIndicator','hypothesis','hypothesisBasis','expectedResult','independentVariable','dependentVariable','controlVariables','controlRationale','method','dataTable','evidence','anomalyHandling','evidenceReasoning','conclusion','reflection'];const missing=required.find(k=>!d[k]);if(missing){$('cloudSaveStatus').textContent='尚未达到水平4提交条件：请补全所有探究栏目。';return}if(!Number.isInteger(d.repetitionCount)||d.repetitionCount<2||d.repetitionCount>20){$('cloudSaveStatus').textContent='重复实验次数须填写2—20次。';return}const dataRows=d.dataTable.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);if(dataRows.length<2){$('cloudSaveStatus').textContent='至少填写两行真实测量数据后才能提交。';return}if(!dataRows.every(row=>{const parts=row.split(/[|｜]/).map(x=>x.trim());return parts.length>=4&&parts[0]&&parts[1]&&parts[2].length>0&&Number.isFinite(Number(parts[2]))&&parts[3]})){$('cloudSaveStatus').textContent='数据请按“第几次｜日期/时间｜数值｜单位”逐行填写。';return}const payload={topic:d.topic,observedPhenomenon:d.observedPhenomenon,question:d.researchQuestion,questionBoundary:d.questionBoundary,measurementIndicator:d.measurementIndicator,hypothesis:d.hypothesis,hypothesisBasis:d.hypothesisBasis,expectedResult:d.expectedResult,independentVariable:d.independentVariable,dependentVariable:d.dependentVariable,controlVariables:d.controlVariables,controlRationale:d.controlRationale,repetitionCount:d.repetitionCount,method:d.method,dataTable:d.dataTable,evidence:d.evidence,anomalyHandling:d.anomalyHandling,evidenceReasoning:d.evidenceReasoning,conclusion:d.conclusion,reflection:d.reflection};
+  const d=currentLab();
+  if(d.topic.trim().length<2){$('cloudSaveStatus').textContent='请至少填写实验主题。';return}
+  if(d.researchQuestion.trim().length<4){$('cloudSaveStatus').textContent='请至少写出研究问题。';return}
+  const payload={topic:d.topic,observedPhenomenon:d.observedPhenomenon,question:d.researchQuestion,questionBoundary:d.questionBoundary,measurementIndicator:d.measurementIndicator,hypothesis:d.hypothesis,hypothesisBasis:d.hypothesisBasis,expectedResult:d.expectedResult,independentVariable:d.independentVariable,dependentVariable:d.dependentVariable,controlVariables:d.controlVariables,controlRationale:d.controlRationale,repetitionCount:Number(d.repetitionCount)||0,method:d.method,dataTable:d.dataTable,evidence:d.evidence,anomalyHandling:d.anomalyHandling,evidenceReasoning:d.evidenceReasoning,conclusion:d.conclusion,reflection:d.reflection};
   $('cloudSaveStatus').textContent='正在提交云端档案……';
-  try{const r=await fetch('/api/student/records',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+studentToken},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok)throw new Error(d.error||'提交失败');$('cloudSaveStatus').textContent='✓ 已提交到教师班级档案。记录编号：'+d.record.id;}
+  try{const r=await fetch('/api/student/records',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+studentToken},body:JSON.stringify(payload)});const result=await r.json();if(!r.ok)throw new Error(result.error||'提交失败');const ev=result.evaluation||{};$('cloudSaveStatus').textContent='✓ 已提交。当前水平：'+(ev.level||'待评估')+'；结构完整度：'+(ev.completeness??0)+'%。下一步：'+(ev.next_steps||[]).join('；');await loadMyRecords();}
   catch(e){$('cloudSaveStatus').textContent='云端提交失败：'+e.message+' 请先导出本地报告备份。'}
 }
 
