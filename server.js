@@ -296,7 +296,7 @@ app.post("/api/chat/stream",chatLimiter,async(req,res)=>{
   try{
     const previous=ownsSession?await db.query("SELECT role,content FROM messages WHERE session_id=$1 AND student_id=$2 ORDER BY created_at DESC LIMIT 8",[sessionId,ownerLearnerId]):{rows:[]};
     const history=previous.rows.reverse().filter(m=>!looksLikePII(m.content)).map(m=>({role:m.role,content:m.content.slice(0,1200)}));
-    if(ownsSession)await db.query("INSERT INTO messages(session_id,student_id,role,content,mode) VALUES($1,$2,'user',$3,'pending')",[sessionId,ownerLearnerId,message]);
+    if(ownsSession)await db.query("INSERT INTO messages(session_id,student_id,role,content,mode) VALUES($1,$2,'user',$3,$4)",[sessionId,ownerLearnerId,message,mentorMode]);
     const topicHint={ai:"课程主题：认识人工智能。",ml:"课程主题：机器学习。",sensor:"课程主题：智能感知。",safety:"课程主题：AI安全。",design:"课程主题：AI创意设计。"}[topic]||"课程主题：儿童科学探究。";
     res.writeHead(200,headers);started=true;
     let answer="",mode="online",notice;
@@ -308,7 +308,7 @@ app.post("/api/chat/stream",chatLimiter,async(req,res)=>{
     }
     if(req.scienceHintLevel===4&&!/参考答案/.test(answer))answer="参考答案（仅供参考，请用自己的话复述）\n"+answer+"\n\n请先遮住上面的内容，用自己的话复述你的理解。";
     if(looksLikePII(answer)){answer="回答可能包含个人信息，已隐藏。请用匿名信息继续。";mode="offline";emit({delta:"\n"+answer})}
-    if(ownsSession)await db.query("INSERT INTO messages(session_id,student_id,role,content,mode) VALUES($1,$2,'assistant',$3,$4)",[sessionId,ownerLearnerId,answer,mode]);
+    if(ownsSession)await db.query("INSERT INTO messages(session_id,student_id,role,content,mode) VALUES($1,$2,'assistant',$3,$4)",[sessionId,ownerLearnerId,answer,mentorMode]);
     emit({done:true,mode,model:MODEL,...(notice?{notice}:{})});
     res.end();
   }catch(error){
@@ -337,7 +337,7 @@ app.post("/api/chat",chatLimiter,async(req,res)=>{
       ? await db.query("SELECT role,content FROM messages WHERE session_id=$1 AND student_id=$2 ORDER BY created_at DESC LIMIT 8",[sessionId,ownerLearnerId])
       : {rows:[]};
     const safeHistory=previous.rows.reverse().filter(m=>!looksLikePII(m.content)).map(m=>({role:m.role,content:m.content.slice(0,1200)}));
-    if(ownsSession) await db.query("INSERT INTO messages(session_id,student_id,role,content,mode) VALUES($1,$2,'user',$3,'pending')",[sessionId,ownerLearnerId,message]);
+    if(ownsSession) await db.query("INSERT INTO messages(session_id,student_id,role,content,mode) VALUES($1,$2,'user',$3,$4)",[sessionId,ownerLearnerId,message,mentorMode]);
     const topicHint={
       ai:"课程主题：认识人工智能。帮助学生区分人工智能、自动化与普通程序。",
       ml:"课程主题：机器学习。重点解释样例、特征、训练、测试、偏差和预测。",
@@ -354,7 +354,7 @@ app.post("/api/chat",chatLimiter,async(req,res)=>{
     if(req.scienceHintLevel===4 && !/参考答案/.test(answer))answer="参考答案（仅供参考，请用自己的话复述）\n"+answer+"\n\n请先遮住上面的内容，用自己的话复述你的理解，并说明它和你自己的实验记录有什么联系。";
     if(looksLikePII(answer))answer="这条回答可能包含个人身份信息，为保护隐私已隐藏。请改用匿名信息继续探究。";
     if(ownsSession){
-      await db.query("INSERT INTO messages(session_id,student_id,role,content,mode) VALUES($1,$2,'assistant',$3,$4)",[sessionId,ownerLearnerId,answer,mode]);
+      await db.query("INSERT INTO messages(session_id,student_id,role,content,mode) VALUES($1,$2,'assistant',$3,$4)",[sessionId,ownerLearnerId,answer,mentorMode]);
       await db.query("DELETE FROM messages WHERE session_id=$1 AND student_id=$2 AND id NOT IN (SELECT id FROM messages WHERE session_id=$1 AND student_id=$2 ORDER BY created_at DESC LIMIT 30)",[sessionId,ownerLearnerId,ownerClassId]);
     }
     res.json({mode,model:MODEL,answer,hintLevel:req.scienceHintLevel||1,qualityCheck:req.scienceQualityCheck||null,...(notice?{notice}:{})});
