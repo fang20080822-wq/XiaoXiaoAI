@@ -61,6 +61,22 @@
       (d.classes||[]).forEach(c=>{
         const item=el('div',undefined,'unit');item.style.marginTop='10px';
         item.append(el('b',c.class_name),el('p','提交率：'+c.submission_rate+'% · 变量控制错误率：'+c.variable_control_error_rate+'%'),el('p','提问类型：探究型 '+c.question_exploratory+' · 概念型 '+c.question_concept+' · 其他 '+c.question_other));
+        const statsButton=el('button','查看本班探究统计','btn soft');statsButton.type='button';
+        const statsPanel=el('div');statsPanel.hidden=true;statsPanel.style.marginTop='10px';
+        statsButton.addEventListener('click',async()=>{
+          statsPanel.hidden=false;statsPanel.replaceChildren(el('p','正在读取本班统计…'));
+          try{
+            const s=await api('/api/teacher/classes/'+encodeURIComponent(c.id)+'/stats');
+            statsPanel.replaceChildren(
+              el('p','学生 '+s.learners+' 人 · 已提交 '+s.submitted+' 份 · 提交率 '+s.submit_rate+'%'),
+              el('p','平均完整度 '+s.completeness+'% · 有效数据记录率 '+s.evidence_rate+'%'),
+              el('p','水平分布：L1 '+s.levels.L1+' · L2 '+s.levels.L2+' · L3 '+s.levels.L3+' · L4 '+s.levels.L4)
+            );
+            const focus=el('p','需要关注：'+((s.focus||[]).map(x=>x.alias+'（L'+x.level+'，完整度'+x.completeness+'%）').join('、')||'暂无'));
+            statsPanel.appendChild(focus);
+          }catch(e){statsPanel.replaceChildren(el('p','班级统计读取失败：'+e.message));}
+        });
+        item.append(statsButton,statsPanel);
         box.appendChild(item);
       });
     }catch(e){box.appendChild(el('p','看板读取失败：'+e.message));}
