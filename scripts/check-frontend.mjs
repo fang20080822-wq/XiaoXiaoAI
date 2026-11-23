@@ -119,7 +119,7 @@ if (!upgrade.includes('SELECT topic,observed_phenomenon,question') || !upgrade.i
 for (const term of ['12个主题课程地图','课标映射','教师账号申请与登录','班级学习数据看板','我的操作审计记录','/api/teacher/dashboard','/api/admin/teachers']) {
   if (!upgradeUI.includes(term)) throw new Error('V5.6.1 frontend capability missing: '+term);
 }
-if (!server.includes('registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,ADMIN_PASSWORD,TOKEN_SECRET,signToken,verifyToken,looksLikePII,resolveStudentSession})')) throw new Error('V5.6 backend module must receive the database-backed student session resolver');
+if (!server.includes('registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,ADMIN_PASSWORD,TOKEN_SECRET,signToken,verifyToken,looksLikePII,resolveStudentSession,initDatabase})')) throw new Error('V5.6 backend module must receive database session and initialization helpers');
 if (!server.includes('req.scienceSystemContext||"")') || !server.includes('qualityCheck:req.scienceQualityCheck||null')) throw new Error('Adaptive mentor context and rule engine output are not wired to chat');
 if (!html.includes('/upgrade-v56-ui.js')) throw new Error('V5.6.1 frontend module is not loaded');
 console.log('V5.6 scaffold levels, student-record context, deterministic rule engine, 12-topic curriculum, dashboard, teacher accounts and audit-log checks passed.');
