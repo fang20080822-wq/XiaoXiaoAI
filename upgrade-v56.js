@@ -60,7 +60,7 @@ export function nextHintState(previous = {}, message = "") {
   return {level,streak,instruction:LEVEL_TEXT[level],selfCorrection,asksAnswer,repeatedPrompt,last_prompt:normalized};
 }
 
-export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,ADMIN_PASSWORD,TOKEN_SECRET,signToken,verifyToken,looksLikePII}) {
+export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,ADMIN_PASSWORD,TOKEN_SECRET,signToken,verifyToken,looksLikePII,resolveStudentSession}) {
   let ready = false;
   async function ensureTables() {
     if (ready) return;
@@ -110,7 +110,7 @@ export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,AD
       await ensureTables();
       if(req.method!=="POST") return next();
       const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
-      const student=verifyToken(token);
+      const student=await resolveStudentSession(token);
       const sessionId=String(req.body?.sessionId||"");
       const isStudent=student?.role==="student" && student.learnerId && student.classId;
       let state;
