@@ -50,7 +50,14 @@ async function initDatabase(){
       "CREATE INDEX IF NOT EXISTS idx_science_classes_teacher_created ON science_classes(teacher_id, created_at DESC)",
       "CREATE INDEX IF NOT EXISTS idx_science_records_learner_created ON science_records(class_id, learner_id, created_at DESC)",
       "CREATE TABLE IF NOT EXISTS chat_messages(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), session_id UUID NOT NULL, role TEXT NOT NULL CHECK(role IN ('user','assistant')), content TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW())",
-      "CREATE INDEX IF NOT EXISTS idx_chat_messages_session_created ON chat_messages(session_id, created_at DESC)"
+      "CREATE INDEX IF NOT EXISTS idx_chat_messages_session_created ON chat_messages(session_id, created_at DESC)",
+      "ALTER TABLE science_learners ADD COLUMN IF NOT EXISTS grade TEXT NOT NULL DEFAULT '3-4'",
+      "ALTER TABLE science_records ADD COLUMN IF NOT EXISTS level INTEGER NOT NULL DEFAULT 1 CHECK(level BETWEEN 1 AND 4)",
+      "ALTER TABLE science_records ADD COLUMN IF NOT EXISTS level_json JSONB NOT NULL DEFAULT '{}'::jsonb",
+      "CREATE TABLE IF NOT EXISTS sessions(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),token_hash TEXT UNIQUE NOT NULL,role TEXT NOT NULL CHECK(role IN ('teacher','student','admin')),subject_id TEXT NOT NULL,expires_at TIMESTAMPTZ NOT NULL,created_at TIMESTAMPTZ DEFAULT NOW())",
+      "CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at)",
+      "CREATE TABLE IF NOT EXISTS messages(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),session_id UUID NOT NULL,student_id TEXT NOT NULL DEFAULT '',role TEXT NOT NULL CHECK(role IN ('user','assistant')),content TEXT NOT NULL,mode TEXT NOT NULL DEFAULT 'offline',created_at TIMESTAMPTZ DEFAULT NOW())",
+      "CREATE INDEX IF NOT EXISTS idx_messages_owner_session_time ON messages(student_id,session_id,created_at DESC)"
     ];
     for(const statement of statements) await db.query(statement);
     await db.query("SELECT 1");
