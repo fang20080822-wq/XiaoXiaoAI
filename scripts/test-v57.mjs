@@ -15,7 +15,7 @@ assert.equal(containsPII("student-A"),false);
 assert.equal(validateAlias("学生A").valid,true);
 assert.equal(validateAlias("三年级一班").valid,false);
 assert.equal(validateAlias("12345678").valid,false);
-assert.equal(validateAlias("wxid_test-user").valid,false);
+assert.equal(validateAlias("wxid_ab12").valid,false);
 assert.equal(parseDataTable("第1次|10:00|12|cm\n第2次|10:05|13|cm").valid,true);
 assert.equal(parseDataTable("第1次|10:00|十二|cm\n第2次|10:05|13|cm").valid,false);
 assert.equal(parseDataTable("第1次|10:00||cm\n第2次|10:05|13|cm").valid,false);
