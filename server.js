@@ -184,6 +184,16 @@ app.post("/api/teacher/evaluate",apiLimiter,requireTeacher,async(req,res)=>{
     res.json({mode:"offline",answer:"AI评价服务暂不可用。请由教师按量规人工评价。"+err.message});
   }
 });
+
+app.post("/api/teacher/classes",apiLimiter,requireTeacher,async(req,res)=>{
+  if(!DATABASE_URL||!dbReady)return res.status(503).json({error:"云端数据库尚未连接，暂不能创建云端班级。"});
+  const className=typeof req.body?.className==="string"?req.body.className.trim().slice(0,60):"";
+  if(!className)return res.status(400).json({error:"请填写班级代号，不要填写真实学校或班级信息。"});
+  const inviteCode=crypto.randomBytes(4).toString("hex").toUpperCase();
+  try{const q=await db.query("INSERT INTO science_classes(teacher_id,class_name,invite_code) VALUES($1,$2,$3) RETURNING id,class_name,invite_code,created_at",[teacherId(req),className,inviteCode]);res.status(201).json({class:q.rows[0]});}
+  catch(e){console.error("class_create_failed",e.message);res.status(500).json({error:"创建班级失败。"});}
+});
+
 app.use(express.static(path.join(__dirname,"public"),{extensions:["html"],fallthrough:true}));
 app.use((req,res)=>{
   if(req.path.startsWith("/api/")) return res.status(404).json({error:"接口不存在。"});
