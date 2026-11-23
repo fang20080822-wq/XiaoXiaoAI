@@ -38,6 +38,9 @@ for (const field of ['researchQuestion', 'independentVariable', 'dependentVariab
 }
 if (!html.includes('function joinClass()') || !html.includes('function submitCloudRecord()') || !html.includes('function loadMyRecords()')) throw new Error('Student classroom workflow missing');
 if (!html.includes('/api/teacher/login') || !html.includes('/api/teacher/register') || html.includes('id="adminPassword"')) throw new Error('Teacher UI must use independent email/password accounts, not the shared password field');
+if (!upgradeUI.includes('注册成功，已自动登录') || !upgradeUI.includes('注册并进入教师工作台') || !upgradeUI.includes('已自动登录')) throw new Error('Teacher registration must automatically establish a signed-in workspace session');
+if (!upgrade.includes("school,status,reviewed_at) VALUES($1,$2,$3,$4,$5,'approved',NOW())") || !upgrade.includes('if(row.status==="rejected")')) throw new Error('New teacher accounts must be approved on registration; rejected accounts remain blocked');
+if (!server.includes('if(account.rows[0].status==="rejected")')) throw new Error('Teacher authorization must allow immediate access after registration');
 if (!server.includes('app.post("/api/chat/stream"') || !html.includes("fetch('/api/chat/stream'") || !server.includes('X-Accel-Buffering')) throw new Error('Streaming chat endpoint and frontend reader must be connected');
 if (!html.includes('function createClass()') || !html.includes('function viewClassRecords(')) throw new Error('Teacher classroom workflow missing');
 const archiveView = html.slice(html.indexOf('async function viewClassRecords('), html.indexOf('async function teacherLogin('));
@@ -122,7 +125,7 @@ for (const term of ['L1 追问','L2 给方向','L3 给示例','L4 参考答案',
   if (!upgrade.includes(term)) throw new Error('V5.6 backend capability missing: '+term);
 }
 if (!upgrade.includes('SELECT topic,observed_phenomenon,question') || !upgrade.includes('FROM science_records WHERE learner_id=$1 AND class_id=$2 ORDER BY created_at DESC LIMIT 1')) throw new Error('AI must automatically read the latest structured inquiry record for the authenticated student');
-for (const term of ['12个主题课程地图','课标映射','教师账号申请与登录','班级学习数据看板','我的操作审计记录','/api/teacher/dashboard','/api/admin/teachers']) {
+for (const term of ['12个主题课程地图','课标映射','教师账号注册与登录','班级学习数据看板','我的操作审计记录','/api/teacher/dashboard','/api/admin/teachers']) {
   if (!upgradeUI.includes(term)) throw new Error('V5.6.1 frontend capability missing: '+term);
 }
 if (!server.includes('registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,ADMIN_PASSWORD,TOKEN_SECRET,signToken,verifyToken,looksLikePII,resolveStudentSession,initDatabase})')) throw new Error('V5.6 backend module must receive database session and initialization helpers');
