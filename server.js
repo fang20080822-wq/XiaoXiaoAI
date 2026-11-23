@@ -301,10 +301,11 @@ app.post("/api/teacher/classes",apiLimiter,requireTeacher,requireDatabase,async(
 app.post("/api/student/join",apiLimiter,requireDatabase,async(req,res)=>{
   if(!TOKEN_SECRET)return res.status(503).json({error:"学生会话安全配置尚未完成，请联系教师管理员。"});
   const code=String(req.body?.inviteCode||"").trim().toUpperCase(),alias=String(req.body?.alias||"").trim().slice(0,24);
+  const grade=["3-4","5-6"].includes(String(req.body?.grade||"3-4"))?String(req.body?.grade||"3-4"):"3-4";
   if(!/^[A-F0-9]{8}$/.test(code))return res.status(400).json({error:"邀请码格式不正确。"});
   if(looksLikePII(alias)||!/^(?:学生|Learner)[A-Z0-9]{1,8}$/i.test(alias))return res.status(400).json({error:"请使用匿名代号，例如学生A，不要使用真实姓名或联系方式。"});
   if(req.body?.guardianConsent!==true)return res.status(400).json({error:"请先确认已取得教师和监护人必要同意。"});
-  try{const c=await db.query("SELECT id FROM science_classes WHERE invite_code=$1",[code]);if(!c.rowCount)return res.status(404).json({error:"邀请码无效。"});const l=await db.query("INSERT INTO science_learners(class_id,alias,guardian_consent,consent_recorded_at) VALUES($1,$2,TRUE,NOW()) ON CONFLICT(class_id,alias) DO UPDATE SET alias=EXCLUDED.alias,guardian_consent=TRUE,consent_recorded_at=NOW() RETURNING id,alias",[c.rows[0].id,alias]);const token=signToken({role:"student",classId:c.rows[0].id,learnerId:l.rows[0].id,exp:Date.now()+30*24*60*60*1000});res.json({token,alias:l.rows[0].alias});}
+  try{const c=await db.query("SELECT id FROM science_classes WHERE invite_code=$1",[code]);if(!c.rowCount)return res.status(404).json({error:"邀请码无效。"});const l=await db.query("INSERT INTO science_learners(class_id,alias,guardian_consent,consent_recorded_at,grade) VALUES($1,$2,TRUE,NOW(),$3) ON CONFLICT(class_id,alias) DO UPDATE SET alias=EXCLUDED.alias,guardian_consent=TRUE,consent_recorded_at=NOW(),grade=EXCLUDED.grade RETURNING id,alias,grade",[c.rows[0].id,alias,grade]);const token=signToken({role:"student",classId:c.rows[0].id,learnerId:l.rows[0].id,exp:Date.now()+30*24*60*60*1000});res.json({token,alias:l.rows[0].alias});}
   catch(e){console.error("student_join_failed",e.message);res.status(500).json({error:"加入班级失败。"});}
 });
 app.post("/api/student/records",apiLimiter,requireStudent,requireDatabase,async(req,res)=>{
