@@ -1,31 +1,76 @@
 export function registerV57Routes({app,db,apiLimiter,requireTeacher,teacherId,requireDatabase}) {
   app.get("/api/teacher/classes/:id/stats",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
     try {
-      const owned=await db.query("SELECT id FROM science_classes WHERE id=$1 AND teacher_id=$2",[req.params.id,teacherId(req)]);
+      const owned=await db.query(
+        "SELECT id FROM science_classes WHERE id=$1 AND teacher_id=$2",
+        [req.params.id,teacherId(req)]
+      );
       if(!owned.rowCount)return res.status(404).json({error:"班级不存在。"});
-      const summary=await db.query(`
-        SELECT COUNT(DISTINCT l.id)::int AS learners,
-          COUNT(DISTINCT r.id)::int AS submitted,
-          COALESCE(ROUND(COUNT(DISTINCT r.learner_id)::numeric*100/NULLIF(COUNT(DISTINCT l.id),0),1),0) AS submit_rate,
-          COALESCE(ROUND(AVG(NULLIF(r.level_json->>'completeness','')::numeric),1),0) AS completeness,
-          COALESCE(ROUND(COUNT(DISTINCT r.id) FILTER (WHERE COALESCE((r.level_json->>'evidence_ok')::boolean,FALSE))::numeric*100/NULLIF(COUNT(DISTINCT r.id),0),1),0) AS evidence_rate,
-          COUNT(DISTINCT r.id) FILTER (WHERE r.level=1)::int AS l1,
-          COUNT(DISTINCT r.id) FILTER (WHERE r.level=2)::int AS l2,
-          COUNT(DISTINCT r.id) FILTER (WHERE r.level=3)::int AS l3,
-          COUNT(DISTINCT r.id) FILTER (WHERE r.level=4)::int AS l4
-        FROM science_classes c
-        LEFT JOIN science_learners l ON l.class_id=c.id
-        LEFT JOIN science_records r ON r.class_id=c.id
-        WHERE c.id=$1 GROUP BY c.id`,[req.params.id]);
-      const focus=await db.query(`
-        SELECT l.alias,COALESCE(NULLIF(r.level_json->>'completeness','')::numeric,0) AS completeness,
-          COALESCE(r.level,1)::int AS level
-        FROM science_learners l
-        LEFT JOIN LATERAL (SELECT level,level_json FROM science_records WHERE learner_id=l.id AND class_id=l.class_id ORDER BY created_at DESC LIMIT 1) r ON TRUE
-        WHERE l.class_id=$1
-        ORDER BY completeness ASC,level ASC,l.alias ASC LIMIT 6`,[req.params.id]);
-      const s=summary.rows[0]||{};
-      res.json({learners:s.learners||0,submitted:s.submitted||0,submit_rate:Number(s.submit_rate||0),completeness:Number(s.completeness||0),evidence_rate:Number(s.evidence_rate||0),levels:{L1:s.l1||0,L2:s.l2||0,L3:s.l3||0,L4:s.l4||0},focus:focus.rows});
+      const result=await db.query(`
+        WITH latest_records AS (
+          SELECT DISTINCT ON (learner_id) learner_id,level,level_json
+          FROM science_records
+          WHERE class_id=$1
+          ORDER BY learner_id,created_at DESC,id DESC
+        ),
+        per_learner AS (
+          SELECT l.id,l.alias,r.learner_id AS submitted_learner_id,r.level,r.level_json
+          FROM science_learners l
+          LEFT JOIN latest_records r ON r.learner_id=l.id
+          WHERE l.class_id=$1
+        ),
+        summary AS (
+          SELECT
+            COUNT(*)::int AS learners,
+            COUNT(*) FILTER (WHERE submitted_learner_id IS NOT NULL)::int AS submitted,
+            COALESCE(ROUND(
+              COUNT(*) FILTER (WHERE submitted_learner_id IS NOT NULL)::numeric*100/NULLIF(COUNT(*),0),1
+            ),0) AS submit_rate,
+            COALESCE(ROUND(
+              AVG(NULLIF(level_json->>'completeness','')::numeric)
+                FILTER (WHERE submitted_learner_id IS NOT NULL),1
+            ),0) AS completeness,
+            COALESCE(ROUND(
+              COUNT(*) FILTER (
+                WHERE submitted_learner_id IS NOT NULL
+                  AND COALESCE((level_json->>'evidence_ok')::boolean,FALSE)
+              )::numeric*100/
+              NULLIF(COUNT(*) FILTER (WHERE submitted_learner_id IS NOT NULL),0),1
+            ),0) AS evidence_rate,
+            COUNT(*) FILTER (WHERE level=1)::int AS l1,
+            COUNT(*) FILTER (WHERE level=2)::int AS l2,
+            COUNT(*) FILTER (WHERE level=3)::int AS l3,
+            COUNT(*) FILTER (WHERE level=4)::int AS l4
+          FROM per_learner
+        ),
+        focus AS (
+          SELECT COALESCE(json_agg(f.alias ORDER BY f.completeness,f.level,f.alias),'[]'::json) AS focus
+          FROM (
+            SELECT alias,
+              COALESCE(NULLIF(level_json->>'completeness','')::numeric,0) AS completeness,
+              level
+            FROM per_learner
+            WHERE submitted_learner_id IS NOT NULL
+              AND (
+                COALESCE((level_json->>'evidence_ok')::boolean,FALSE)=FALSE
+                OR level<=2
+              )
+            ORDER BY completeness,level,alias
+            LIMIT 6
+          ) f
+        )
+        SELECT summary.*,focus.focus FROM summary CROSS JOIN focus
+      `,[req.params.id]);
+      const s=result.rows[0]||{};
+      res.json({
+        learners:Number(s.learners||0),
+        submitted:Number(s.submitted||0),
+        submit_rate:Number(s.submit_rate||0),
+        completeness:Number(s.completeness||0),
+        evidence_rate:Number(s.evidence_rate||0),
+        levels:{L1:Number(s.l1||0),L2:Number(s.l2||0),L3:Number(s.l3||0),L4:Number(s.l4||0)},
+        focus:Array.isArray(s.focus)?s.focus:[]
+      });
     } catch(error) {
       console.error("class_stats_failed",error.message);
       res.status(503).json({error:"班级统计暂不可用。"});
