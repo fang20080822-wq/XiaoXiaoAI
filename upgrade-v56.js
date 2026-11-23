@@ -169,7 +169,7 @@ export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,AD
       res.status(201).json({status:"pending",message:"申请已提交，管理员审核通过后即可登录。"});
     } catch(error){if(error.code==="23505")return res.status(409).json({error:"该邮箱已注册。"});console.error("teacher_register_failed",error.message);res.status(503).json({error:"教师注册暂不可用。"});}
   });
-  app.post("/api/teacher/account/login",apiLimiter,async(req,res)=>{
+  const teacherAccountLogin=async(req,res)=>{
     try {
       await ensureTables();
       const email=String(req.body?.email||"").trim().toLowerCase(),password=String(req.body?.password||"");
@@ -196,7 +196,9 @@ export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,AD
       const session=await issueSession(db,{role:"teacher",subjectId:row.id});
       res.json({token:session.token,expiresIn:28800,teacher:{email:row.email,school:row.school}});
     } catch(error){console.error("teacher_account_login_failed",error.message);res.status(503).json({error:"教师登录暂不可用。"});}
-  });
+  };
+  app.post("/api/teacher/login",apiLimiter,teacherAccountLogin);
+  app.post("/api/teacher/account/login",apiLimiter,teacherAccountLogin);
   app.get("/api/admin/teachers",apiLimiter,requireAdmin,async(req,res)=>{
     try{await ensureTables();const q=await db.query("SELECT id,email,school,status,created_at,reviewed_at FROM teachers ORDER BY created_at DESC");res.json({teachers:q.rows});}
     catch(error){res.status(503).json({error:"教师申请列表暂不可用。"});}
