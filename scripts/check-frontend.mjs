@@ -18,10 +18,11 @@ for (const id of ['home', 'learn', 'assistant', 'lab', 'quiz', 'teacher']) {
   const sectionPattern = new RegExp('<section\\s+id="' + id + '"\\s+class="panel(?:\\s+active)?"');
   if (!sectionPattern.test(html)) throw new Error('Missing application section: ' + id);
 }
-for (const route of ['/api/health', '/api/chat', '/api/teacher/account/login', '/api/teacher/evaluate']) {
+for (const route of ['/api/health', '/api/chat', '/api/teacher/evaluate']) {
   if (!html.includes(route)) throw new Error('Frontend no longer calls expected API route: ' + route);
   if (!server.includes(route)) throw new Error('Backend route missing: ' + route);
 }
+if (!html.includes('/api/teacher/account/login') || !upgradeModule.includes('app.post("/api/teacher/account/login"')) throw new Error('Independent teacher account login route missing');
 if (!server.includes('contentSecurityPolicy:')) throw new Error('Content Security Policy is not configured');
 if (!server.includes('MENTOR_MODES[mentorMode]')) throw new Error('Mentor mode must be selected and enforced by the server');
 if (server.includes('app.get("*",(req,res)=>res.sendFile')) throw new Error('Unknown routes must not silently return the homepage');
