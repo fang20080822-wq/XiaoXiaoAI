@@ -10,7 +10,8 @@ repeat=nextHintState({level:repeat.level,streak:repeat.streak,last_prompt:repeat
 assert.equal(repeat.level,3,"a third consecutive identical question should progressively advance to L3");
 repeat=nextHintState({level:repeat.level,streak:repeat.streak,last_prompt:repeat.last_prompt},"天空为什么是蓝色的？");
 assert.equal(repeat.level,3,"repeated questions must never automatically unlock L4");
-\nlet state=nextHintState({level:1,streak:0},"直接告诉我答案");
+
+let state=nextHintState({level:1,streak:0},"直接告诉我答案");
 assert.equal(state.level,2,"first repeated answer request should move from L1 to L2");
 state=nextHintState(state,"答案是什么？");
 assert.equal(state.level,3,"second repeated answer request should move from L2 to L3");
