@@ -239,7 +239,7 @@ async function callDeepSeekStream(messages,onDelta,maxTokens=1000) {
       const {value,done}=await reader.read();
       if(done)break;
       buffer+=decoder.decode(value,{stream:true});
-      const lines=buffer.split(/\\r?\\n/);buffer=lines.pop()||"";
+      const lines=buffer.split(/\r?\n/);buffer=lines.pop()||"";
       for(const line of lines){
         if(!line.startsWith("data:"))continue;
         const raw=line.slice(5).trim();
@@ -263,14 +263,14 @@ app.post("/api/chat/stream",chatLimiter,requireDatabase,async(req,res)=>{
   if(!message)return res.status(400).json({error:"请输入问题。"});
   if(message.length>6000)return res.status(400).json({error:"问题过长，请缩短后再试。"});
   if(looksLikePII(message))return res.status(400).json({error:"检测到可能的个人身份信息，请删除后再提问。"});
-  const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");
+  const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
   const student=verifyToken(token);
   const ownsSession=student?.role==="student"&&student.learnerId&&student.classId;
   const ownerLearnerId=ownsSession?String(student.learnerId):"";
   const ownerClassId=ownsSession?String(student.classId):"";
   const headers={"Content-Type":"text/event-stream; charset=utf-8","Cache-Control":"no-cache, no-transform","Connection":"keep-alive","X-Accel-Buffering":"no"};
   let started=false;
-  const emit=(payload)=>{if(!res.destroyed)res.write("data: "+JSON.stringify(payload)+"\\n\\n")};
+  const emit=(payload)=>{if(!res.destroyed)res.write("data: "+JSON.stringify(payload)+"\n\n")};
   try{
     const previous=ownsSession?await db.query("SELECT role,content FROM chat_messages WHERE session_id=$1 AND learner_id=$2 AND class_id=$3 ORDER BY created_at DESC LIMIT 8",[sessionId,ownerLearnerId,ownerClassId]):{rows:[]};
     const history=previous.rows.reverse().filter(m=>!looksLikePII(m.content)).map(m=>({role:m.role,content:m.content.slice(0,1200)}));
@@ -281,17 +281,17 @@ app.post("/api/chat/stream",chatLimiter,requireDatabase,async(req,res)=>{
     if(!API_KEY){answer=offlineTutor(message,topic);mode="offline";emit({delta:answer})}
     else{
       try{
-        answer=await callDeepSeekStream([{role:"system",content:SYSTEM_BASE+"\\n"+MENTOR_MODES[mentorMode]+"\\n"+topicHint+(req.scienceSystemContext||"")},...history,{role:"user",content:message}],delta=>emit({delta}),1000);
+        answer=await callDeepSeekStream([{role:"system",content:SYSTEM_BASE+"\n"+MENTOR_MODES[mentorMode]+"\n"+topicHint+(req.scienceSystemContext||"")},...history,{role:"user",content:message}],delta=>emit({delta}),1000);
       }catch(error){answer=offlineTutor(message,topic);mode="offline";notice=error.message;emit({delta:answer})}
     }
-    if(req.scienceHintLevel===4&&!/参考答案/.test(answer))answer="参考答案（仅供参考，请用自己的话复述）\\n"+answer+"\\n\\n请先遮住上面的内容，用自己的话复述你的理解。";
-    if(looksLikePII(answer)){answer="回答可能包含个人信息，已隐藏。请用匿名信息继续。";mode="offline";emit({delta:"\\n"+answer})}
+    if(req.scienceHintLevel===4&&!/参考答案/.test(answer))answer="参考答案（仅供参考，请用自己的话复述）\n"+answer+"\n\n请先遮住上面的内容，用自己的话复述你的理解。";
+    if(looksLikePII(answer)){answer="回答可能包含个人信息，已隐藏。请用匿名信息继续。";mode="offline";emit({delta:"\n"+answer})}
     if(ownsSession)await db.query("INSERT INTO chat_messages(session_id,learner_id,class_id,role,content) VALUES($1,$2,$3,'assistant',$4)",[sessionId,ownerLearnerId,ownerClassId,answer]);
     emit({done:true,mode,model:MODEL,...(notice?{notice}:{})});
     res.end();
   }catch(error){
     console.error("chat_stream_failed",error.message);
-    if(started){emit({delta:"\\n当前服务暂不可用，请稍后重试。"});emit({done:true,mode:"offline",model:MODEL});res.end()}
+    if(started){emit({delta:"\n当前服务暂不可用，请稍后重试。"});emit({done:true,mode:"offline",model:MODEL});res.end()}
     else res.status(503).json({error:"对话服务暂不可用，请稍后重试。",fallback:"offline"});
   }
 });
