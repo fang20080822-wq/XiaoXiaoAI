@@ -46,7 +46,7 @@ export function nextHintState(previous = {}, message = "") {
   let level = Math.max(1,Math.min(4,Number(previous.level)||1));
   let streak = Math.max(0,Number(previous.streak)||0);
   const text = String(message);
-  const selfCorrection = text.length >= 18 && /(我发现|我改成|应该是|因为.*所以|自变量是|因变量是|控制变量是|数据说明)/.test(text);
+  const selfCorrection = text.length >= 18 && /(我发现|我改成|应该是|因为.*所以|数据说明)/.test(text);
   const correctDirection = /(自变量|因变量|控制变量|重复.*次|单位|测量|证据)/.test(text) && text.length >= 12;
   const asksAnswer = /(直接告诉我答案|给我答案|答案是什么|帮我写完)/.test(text);
   if (selfCorrection) { streak += 1; if (streak >= 2) { level = Math.min(4,level+1); streak = 0; } }
