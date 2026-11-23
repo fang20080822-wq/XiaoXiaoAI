@@ -36,6 +36,10 @@ jobs:
           cache: npm
       - run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
       - run: npm ci
+      - name: Install SQLite CLI
+        run: sudo apt-get update && sudo apt-get install -y sqlite3
       - run: npm test
+      - name: SQLite legacy migration and idempotency
+        run: bash scripts/test-sqlite-migration.sh
       - name: PostgreSQL end-to-end acceptance (18 checks)
         run: bash scripts/ci-integration.sh
