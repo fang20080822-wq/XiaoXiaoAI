@@ -360,12 +360,15 @@ app.post("/api/chat",chatLimiter,async(req,res)=>{
   }catch(err){console.error("chat_request_failed",err.message);res.status(503).json({mode:"offline",fallback:"offline",error:"对话服务暂不可用，请稍后重试。"});}
 });
 app.post("/api/teacher/login",loginLimiter,(req,res)=>{
-  if(!ADMIN_PASSWORD || !TOKEN_SECRET) return res.status(503).json({error:"教师端尚未完成安全配置，请管理员设置ADMIN_PASSWORD和TOKEN_SECRET。"});
+  res.status(410).json({error:"教师共享密码登录已停用，请使用教师邮箱账号登录。",replacement:"/api/teacher/account/login"});
+});
+app.post("/api/admin/login",loginLimiter,(req,res)=>{
+  if(!ADMIN_PASSWORD || !TOKEN_SECRET) return res.status(503).json({error:"管理员安全配置尚未完成。"});
   const password=typeof req.body?.password==="string"?req.body.password:"";
   const a=Buffer.from(password),b=Buffer.from(ADMIN_PASSWORD);
-  if(a.length!==b.length || !crypto.timingSafeEqual(a,b)) return res.status(401).json({error:"密码不正确。"});
-  const teacherId=crypto.createHash("sha256").update(ADMIN_PASSWORD).digest("hex").slice(0,24);
-  const token=signToken({role:"admin",teacherId,isAdmin:true,exp:Date.now()+2*60*60*1000});
+  if(a.length!==b.length || !crypto.timingSafeEqual(a,b)) return res.status(401).json({error:"管理员密码不正确。"});
+  const adminId=crypto.createHash("sha256").update(ADMIN_PASSWORD).digest("hex").slice(0,24);
+  const token=signToken({role:"admin",teacherId:adminId,isAdmin:true,exp:Date.now()+2*60*60*1000});
   res.json({token,expiresIn:7200});
 });
 app.post("/api/teacher/evaluate",apiLimiter,requireTeacher,async(req,res)=>{
