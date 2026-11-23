@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import vm from 'node:vm';
 
 const html = readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
@@ -33,8 +33,40 @@ for (const field of ['researchQuestion', 'independentVariable', 'dependentVariab
 }
 if (!html.includes('function joinClass()') || !html.includes('function submitCloudRecord()') || !html.includes('function loadMyRecords()')) throw new Error('Student classroom workflow missing');
 if (!html.includes('function createClass()') || !html.includes('function viewClassRecords(')) throw new Error('Teacher classroom workflow missing');
+const inquiryOrder = ['topic', 'researchQuestion', 'hypothesis', 'independentVariable', 'dependentVariable', 'controlVariables', 'method', 'evidence', 'conclusion', 'reflection'];
+let previousIndex = -1;
+for (const field of inquiryOrder) {
+  const index = html.indexOf('id="' + field + '"');
+  if (index < 0 || index <= previousIndex) throw new Error('Student inquiry fields are missing or out of order: ' + field);
+  previousIndex = index;
+}
+if (html.includes('id="observations"')) throw new Error('Legacy duplicate observations field should not appear in the student form');
+if (!html.includes('d.researchQuestion') || !html.includes('d.evidence') || !html.includes('d.reflection')) throw new Error('AI mentor context must include the complete structured inquiry record');
+
 if (!server.includes('guardian_consent') || !server.includes('req.body?.guardianConsent!==true')) throw new Error('Guardian consent acknowledgement is not enforced');
 if (!server.includes('DATABASE_URL') || !server.includes('science_records')) throw new Error('PostgreSQL learning record storage missing');
 if (!html.includes('六维100分评审量规')) throw new Error('Judges scoring rubric missing');
 if (html.includes('DEEPSEEK_API_KEY=')) throw new Error('Possible API key assignment found in public frontend');
 console.log('V5 frontend syntax, six modules, API contracts, and frontend secret scan passed.');
+
+const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+if (pkg.version !== '5.3.0') throw new Error('package version must match V5.3.0');
+if (!server.includes('const APP_VERSION = "5.3.0"') || !server.includes('version:APP_VERSION')) throw new Error('Backend version and health version are inconsistent');
+if (!html.includes('小小AI科学家 V5.3') || !html.includes('小小AI科学家 V5.3 ·')) throw new Error('Frontend version labels must match V5.3.0');
+for (const file of ['public/videos/video1.mp4.mp4', 'public/videos/video2.mp4.mp4', 'public/videos/video3.mp4.mp4']) {
+  if (!existsSync(new URL('../' + file, import.meta.url))) throw new Error('Course video asset missing: ' + file);
+}
+const routeDefinitions = [
+  ['post', '/api/teacher/classes'],
+  ['get', '/api/student/records'],
+  ['post', '/api/student/records'],
+  ['get', '/api/teacher/classes/:id/records']
+];
+for (const [method, route] of routeDefinitions) {
+  const marker = 'app.' + method + '("' + route + '",';
+  if (server.split(marker).length - 1 !== 1) throw new Error('Expected exactly one ' + method.toUpperCase() + ' route: ' + route);
+}
+if (!server.includes('connectionTimeoutMillis: 5000') || !server.includes('for(const statement of statements) await db.query(statement)')) throw new Error('Database initialization must be bounded and sequential');
+if (!server.includes('await db.query("SELECT 1")') || !server.includes('database = "unavailable"')) throw new Error('Health check must probe database connectivity');
+if (!server.includes('requireTeacher,requireDatabase,async(req,res)=>{')) throw new Error('Teacher class creation must retry database initialization');
+console.log('V5.3 backend hardening, version consistency, database readiness, route uniqueness, and course media checks passed.');

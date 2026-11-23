@@ -18,10 +18,34 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const TOKEN_SECRET = process.env.TOKEN_SECRET || "";
 const ALLOW_ORIGIN = process.env.ALLOW_ORIGIN || "";
 const DATABASE_URL = process.env.DATABASE_URL || "";
+const APP_VERSION = "5.3.0";
 const { Pool } = pg;
-const db = DATABASE_URL ? new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false }, max: 5 }) : null;
+const db = DATABASE_URL ? new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false }, max: 5, connectionTimeoutMillis: 5000, idleTimeoutMillis: 30000 }) : null;
 let dbReady = false;
-async function initDatabase(){ if(!db) return; await db.query("CREATE TABLE IF NOT EXISTS science_classes(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), teacher_id TEXT NOT NULL, class_name TEXT NOT NULL, invite_code TEXT UNIQUE NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW()); CREATE TABLE IF NOT EXISTS science_learners(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), class_id UUID REFERENCES science_classes(id) ON DELETE CASCADE, alias TEXT NOT NULL, guardian_consent BOOLEAN NOT NULL DEFAULT FALSE, consent_recorded_at TIMESTAMPTZ, UNIQUE(class_id,alias)); ALTER TABLE science_learners ADD COLUMN IF NOT EXISTS guardian_consent BOOLEAN NOT NULL DEFAULT FALSE; ALTER TABLE science_learners ADD COLUMN IF NOT EXISTS consent_recorded_at TIMESTAMPTZ; CREATE TABLE IF NOT EXISTS science_records(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), class_id UUID REFERENCES science_classes(id) ON DELETE CASCADE, learner_id UUID REFERENCES science_learners(id) ON DELETE CASCADE, topic TEXT NOT NULL, question TEXT NOT NULL, hypothesis TEXT NOT NULL, independent_variable TEXT NOT NULL, dependent_variable TEXT NOT NULL, control_variables TEXT NOT NULL, method TEXT NOT NULL, evidence TEXT NOT NULL, conclusion TEXT NOT NULL, reflection TEXT DEFAULT '', created_at TIMESTAMPTZ DEFAULT NOW())"); dbReady=true; }
+let dbInitPromise = null;
+async function initDatabase(){
+  if(!db) return false;
+  if(dbReady) return true;
+  if(dbInitPromise) return dbInitPromise;
+  dbInitPromise = (async()=>{
+    const statements = [
+      "CREATE TABLE IF NOT EXISTS science_classes(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), teacher_id TEXT NOT NULL, class_name TEXT NOT NULL, invite_code TEXT UNIQUE NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW())",
+      "CREATE TABLE IF NOT EXISTS science_learners(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), class_id UUID REFERENCES science_classes(id) ON DELETE CASCADE, alias TEXT NOT NULL, guardian_consent BOOLEAN NOT NULL DEFAULT FALSE, consent_recorded_at TIMESTAMPTZ, UNIQUE(class_id,alias))",
+      "ALTER TABLE science_learners ADD COLUMN IF NOT EXISTS guardian_consent BOOLEAN NOT NULL DEFAULT FALSE",
+      "ALTER TABLE science_learners ADD COLUMN IF NOT EXISTS consent_recorded_at TIMESTAMPTZ",
+      "CREATE TABLE IF NOT EXISTS science_records(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), class_id UUID REFERENCES science_classes(id) ON DELETE CASCADE, learner_id UUID REFERENCES science_learners(id) ON DELETE CASCADE, topic TEXT NOT NULL, question TEXT NOT NULL, hypothesis TEXT NOT NULL, independent_variable TEXT NOT NULL, dependent_variable TEXT NOT NULL, control_variables TEXT NOT NULL, method TEXT NOT NULL, evidence TEXT NOT NULL, conclusion TEXT NOT NULL, reflection TEXT DEFAULT '', created_at TIMESTAMPTZ DEFAULT NOW())",
+      "CREATE INDEX IF NOT EXISTS idx_science_classes_teacher_created ON science_classes(teacher_id, created_at DESC)",
+      "CREATE INDEX IF NOT EXISTS idx_science_records_learner_created ON science_records(class_id, learner_id, created_at DESC)"
+    ];
+    for(const statement of statements) await db.query(statement);
+    await db.query("SELECT 1");
+    dbReady = true;
+    return true;
+  })();
+  try { return await dbInitPromise; }
+  catch(error) { dbReady = false; throw error; }
+  finally { dbInitPromise = null; }
+}
 if(db) initDatabase().catch(e=>console.error("database_init_failed",e.message));
 
 app.disable("x-powered-by");
@@ -144,7 +168,19 @@ async function callDeepSeek(messages, maxTokens=900) {
   } finally { clearTimeout(timer); }
 }
 
-app.get("/api/health",(req,res)=>res.json({ok:true,aiConfigured:Boolean(API_KEY),model:MODEL,mode:API_KEY?"online":"offline",version:"5.2.0",database:dbReady?"ready":DATABASE_URL?"connecting":"not_configured",capabilities:{serverSideMentorModes:true,contentSecurityPolicy:true,cloudLearningRecords:dbReady,classroomManagement:dbReady,structuredInquiryRecords:dbReady}}));
+app.get("/api/health",async(req,res)=>{
+  let database = DATABASE_URL ? (dbReady ? "ready" : "connecting") : "not_configured";
+  if(db && !dbReady){
+    try { await initDatabase(); database = "ready"; }
+    catch(error) { database = "unavailable"; console.error("health_database_check_failed",error.message); }
+  }
+  if(db && dbReady){
+    try { await db.query("SELECT 1"); database = "ready"; }
+    catch(error) { database = "unavailable"; dbReady = false; console.error("health_database_probe_failed",error.message); }
+  }
+  const capabilities={serverSideMentorModes:true,contentSecurityPolicy:true,cloudLearningRecords:database==="ready",classroomManagement:database==="ready",structuredInquiryRecords:database==="ready"};
+  res.json({ok:true,version:APP_VERSION,aiConfigured:Boolean(API_KEY),model:MODEL,mode:API_KEY?"online":"offline",database,capabilities});
+});
 app.post("/api/chat",async(req,res)=>{
   const message=typeof req.body?.message==="string"?req.body.message.trim():"";
   const topic=typeof req.body?.topic==="string"?req.body.topic.slice(0,30):"general";
@@ -197,8 +233,7 @@ app.post("/api/teacher/evaluate",apiLimiter,requireTeacher,async(req,res)=>{
   }
 });
 
-app.post("/api/teacher/classes",apiLimiter,requireTeacher,async(req,res)=>{
-  if(!DATABASE_URL||!dbReady)return res.status(503).json({error:"云端数据库尚未连接，暂不能创建云端班级。"});
+app.post("/api/teacher/classes",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
   const className=typeof req.body?.className==="string"?req.body.className.trim().slice(0,60):"";
   if(!className)return res.status(400).json({error:"请填写班级代号，不要填写真实学校或班级信息。"});
   const inviteCode=crypto.randomBytes(4).toString("hex").toUpperCase();
@@ -253,4 +288,9 @@ app.use((req,res)=>{
   return res.status(404).type("text/plain; charset=utf-8").send("页面不存在（404）。请检查网址，或返回小小AI科学家首页。");
 });
 app.use((err,req,res,next)=>{console.error("request_error",err?.message||"unknown");res.status(500).json({error:"服务器内部错误，请稍后重试。"});});
-app.listen(PORT,()=>console.log(`Little AI Scientists V5.2 listening on ${PORT}`));
+const server = app.listen(PORT,()=>console.log(`Little AI Scientists ${APP_VERSION} listening on ${PORT}`));
+for(const signal of ["SIGTERM","SIGINT"]){
+  process.on(signal,()=>{
+    server.close(()=>{ if(db) db.end().finally(()=>process.exit(0)); else process.exit(0); });
+  });
+}
