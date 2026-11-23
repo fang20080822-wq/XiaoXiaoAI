@@ -501,7 +501,7 @@ async function loadClasses(){
 }
 async function deleteClass(classId,className){
   if(!confirm('确定删除班级“'+className+'”及其全部学生档案吗？此操作不可撤销。'))return;
-  try{const r=await fetch('/api/teacher/classes/'+encodeURIComponent(classId),{method:'DELETE',headers:{'Authorization':'Bearer '+teacherToken}});const d=await r.json();if(!r.ok)throw new Error(d.error||'删除失败');$('classRecords').textContent='班级及其档案已删除。';await loadClasses();}
+  try{const r=await fetch('/api/teacher/classes/'+encodeURIComponent(classId),{method:'DELETE',headers:{'Authorization':'Bearer '+teacherToken}});const d=await r.json();if(!r.ok)throw new Error(d.error||'删除失败');$('classRecords').textContent='班级及其档案已删除。';$('classRecordStats').replaceChildren();await loadClasses();}
   catch(e){$('classList').textContent='删除失败：'+e.message}
 }
 function renderClassStats(stats){
