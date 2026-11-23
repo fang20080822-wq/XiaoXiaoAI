@@ -164,15 +164,12 @@ async function resolveStudentSession(token){
     return {role:"student",learnerId:learner.rows[0].id,classId:learner.rows[0].class_id};
   }catch(error){console.error("chat_student_session_failed",error.message);return null;}
 }
-async function requireStudent(req,res,next){
+async async function requireStudent(req,res,next){
   try{
     const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");
-    const session=await readSession(db,token);
-    if(!session||session.role!=="student")return res.status(401).json({error:"学生会话已失效，请重新加入班级。"});
-    const learner=await db.query("SELECT id,class_id FROM science_learners WHERE id=$1",[session.subjectId]);
-    if(!learner.rowCount)return res.status(401).json({error:"学生档案不存在，请重新加入班级。"});
-    req.student={role:"student",learnerId:learner.rows[0].id,classId:learner.rows[0].class_id};
-    next();
+    const student=await resolveStudentSession(token);
+    if(!student)return res.status(401).json({error:"学生会话已失效，请重新加入班级。"});
+    req.student=student;next();
   }catch(error){console.error("student_session_read_failed",error.message);res.status(503).json({error:"学生身份验证暂不可用。"});}
 }
 async function requireDatabase(req,res,next){if(!db)return res.status(503).json({error:"云端数据库尚未配置。"});if(!dbReady){try{await initDatabase();}catch(e){console.error("database_retry_failed",e.message);return res.status(503).json({error:"云端数据库暂不可用，请稍后重试。"});}}if(!dbReady)return res.status(503).json({error:"云端数据库尚未就绪，请稍后重试。"});next();}
