@@ -10,6 +10,7 @@ import pg from "pg";
 import { registerV56Routes } from "./upgrade-v56.js";
 import { registerV57Routes } from "./upgrade-v57.js";
 import { scoreRecord } from "./lib/inquiry.js";
+import { readSession } from "./lib/auth.js";
 
 dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -144,13 +145,15 @@ function verifyToken(token) {
   if (got.length!==expected.length || !crypto.timingSafeEqual(got,expected)) return false;
   try { const p=JSON.parse(Buffer.from(body,"base64url").toString()); return p.exp>Date.now()?p:false; } catch { return false; }
 }
-function requireTeacher(req,res,next) {
-  const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
-  const payload=verifyToken(token);
-  if(!payload || payload.role!=="teacher") return res.status(401).json({error:"教师身份验证已失效，请重新登录。"});
-  next();
+async function requireTeacher(req,res,next) {
+  try{
+    const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");
+    const session=await readSession(db,token);
+    if(!session||session.role!=="teacher")return res.status(401).json({error:"教师身份验证已失效，请重新登录。"});
+    req.auth=session;next();
+  }catch(error){console.error("teacher_session_read_failed",error.message);res.status(503).json({error:"教师身份验证暂不可用。"});}
 }
-function teacherId(req){const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");return verifyToken(token)?.teacherId||"teacher-default";}
+function teacherId(req){return req.auth?.subjectId||"teacher-default";}
 function requireStudent(req,res,next){const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");const p=verifyToken(token);if(!p||p.role!=="student")return res.status(401).json({error:"学生会话已失效，请重新加入班级。"});req.student=p;next();}
 async function requireDatabase(req,res,next){if(!db)return res.status(503).json({error:"云端数据库尚未配置。"});if(!dbReady){try{await initDatabase();}catch(e){console.error("database_retry_failed",e.message);return res.status(503).json({error:"云端数据库暂不可用，请稍后重试。"});}}if(!dbReady)return res.status(503).json({error:"云端数据库尚未就绪，请稍后重试。"});next();}
 function looksLikePII(value){
