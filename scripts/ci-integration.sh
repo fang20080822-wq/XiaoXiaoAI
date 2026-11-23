@@ -43,4 +43,4 @@ register_teacher() {
 register_teacher "$TEACHER_EMAIL" "$TEACHER_PASSWORD"
 register_teacher "$TEACHER_B_EMAIL" "$TEACHER_B_PASSWORD"
 
-bash scripts/accept-v57.sh
+RUN_CLASS_STATS_ACCEPTANCE=1 bash scripts/accept-v57.sh

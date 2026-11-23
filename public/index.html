@@ -278,6 +278,7 @@ textarea{min-height:105px;resize:vertical}
       <div class="actions"><button class="btn primary" onclick="createClass()">创建班级并生成邀请码</button><button class="btn outline" onclick="loadClasses()">刷新班级</button></div>
       <div id="classList" class="muted" role="status" aria-live="polite">登录后可管理班级并查看学生提交的探究档案。</div>
       <div id="classRecords" class="result" style="margin-top:12px"></div>
+      <div id="classRecordStats" class="result" style="margin-top:10px"></div>
 
       <h3>学生探究作品评价</h3><label for="studentWork">学生作品（请先去除个人身份信息）</label><textarea id="studentWork" maxlength="20000" placeholder="粘贴匿名化的学生探究记录……"></textarea>
       <div class="sample-card" style="margin-top:12px"><span class="sample-tag">SCIENCE INQUIRY COMPETENCY RUBRIC</span><h3>科学探究能力量规</h3><p>提出问题 · 假设与依据 · 变量与设计 · 证据与记录 · 解释与反思</p><p>逐项对照水平4优秀标准：真实观察、可测量边界、明确依据、单一变量、多次记录、异常值处理、证据支持结论。</p></div>
@@ -482,7 +483,7 @@ async function submitCloudRecord(){
 }
 
 let teacherToken=null;
-function teacherLogout(){teacherToken=null;window.teacherToken=null;$('teacherPanel').classList.add('hidden');$('teacherLogout').classList.add('hidden');$('studentWork').value='';$('evaluation').textContent='';if($('teacherAccountPassword'))$('teacherAccountPassword').value='';if($('teacherEmail'))$('teacherEmail').value='';if($('teacherSchool'))$('teacherSchool').value='';$('loginMsg').textContent='已安全退出教师工作台。'}
+function teacherLogout(){teacherToken=null;window.teacherToken=null;$('teacherPanel').classList.add('hidden');$('teacherLogout').classList.add('hidden');$('studentWork').value='';$('evaluation').textContent='';$('classRecords').replaceChildren();$('classRecordStats').replaceChildren();if($('teacherAccountPassword'))$('teacherAccountPassword').value='';if($('teacherEmail'))$('teacherEmail').value='';if($('teacherSchool'))$('teacherSchool').value='';$('loginMsg').textContent='已安全退出教师工作台。'}
 
 async function createClass(){
   if(!teacherToken){$('classList').textContent='请先登录教师工作台。';return}
@@ -500,14 +501,68 @@ async function loadClasses(){
 }
 async function deleteClass(classId,className){
   if(!confirm('确定删除班级“'+className+'”及其全部学生档案吗？此操作不可撤销。'))return;
-  try{const r=await fetch('/api/teacher/classes/'+encodeURIComponent(classId),{method:'DELETE',headers:{'Authorization':'Bearer '+teacherToken}});const d=await r.json();if(!r.ok)throw new Error(d.error||'删除失败');$('classRecords').textContent='班级及其档案已删除。';await loadClasses();}
+  try{const r=await fetch('/api/teacher/classes/'+encodeURIComponent(classId),{method:'DELETE',headers:{'Authorization':'Bearer '+teacherToken}});const d=await r.json();if(!r.ok)throw new Error(d.error||'删除失败');$('classRecords').textContent='班级及其档案已删除。';$('classRecordStats').replaceChildren();await loadClasses();}
   catch(e){$('classList').textContent='删除失败：'+e.message}
 }
+function renderClassStats(stats){
+  const box=$('classRecordStats');box.replaceChildren();
+  const title=document.createElement('h3');title.textContent='本班学习概况';box.appendChild(title);
+  const grid=document.createElement('div');grid.style.cssText='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px';
+  const metrics=[
+    ['学生数',String(stats.learners)],
+    ['已提交学生',String(stats.submitted)],
+    ['提交率',Number(stats.submit_rate).toFixed(1)+'%'],
+    ['平均完整度',Number(stats.completeness).toFixed(1)+'%'],
+    ['有效证据率',Number(stats.evidence_rate).toFixed(1)+'%']
+  ];
+  metrics.forEach(([label,value])=>{
+    const cell=document.createElement('div');cell.className='unit';
+    const caption=document.createElement('small');caption.textContent=label;
+    const number=document.createElement('h2');number.textContent=value;
+    cell.append(caption,number);grid.appendChild(cell);
+  });
+  box.appendChild(grid);
+  const levels=stats.levels||{};
+  const distribution=document.createElement('p');
+  distribution.textContent='水平分布：L4 '+(levels.L4||0)+' 人 · L3 '+(levels.L3||0)+' 人 · L2 '+(levels.L2||0)+' 人 · L1 '+(levels.L1||0)+' 人';
+  box.appendChild(distribution);
+  if(Number(stats.learners)===0){
+    const empty=document.createElement('p');empty.textContent='还没有学生加入，把邀请码发给学生吧';box.appendChild(empty);
+  }
+  const focus=Array.isArray(stats.focus)?stats.focus:[];
+  if(focus.length){
+    const line=document.createElement('p');line.textContent='最需要帮助：'+focus.join('、');box.appendChild(line);
+  }
+}
 async function viewClassRecords(classId){
+  const token=teacherToken;
   $('classRecords').textContent='正在读取学生探究档案……';
-  try{const r=await fetch('/api/teacher/classes/'+encodeURIComponent(classId)+'/records',{headers:{'Authorization':'Bearer '+teacherToken}});const d=await r.json();if(!r.ok)throw new Error(d.error||'读取失败');const box=$('classRecords');box.innerHTML='';await loadClasses();if(!d.records.length){box.textContent='这个班级暂时还没有提交记录。';return}
-    d.records.forEach(rec=>{const card=document.createElement('article');card.className='unit';card.style.marginBottom='10px';const head=document.createElement('b');head.textContent=rec.alias+' · '+rec.topic;const date=document.createElement('p');date.className='muted';date.textContent=new Date(rec.created_at).toLocaleString();const body=document.createElement('p');body.textContent='真实观察：'+(rec.observed_phenomenon||'旧记录未采集')+'\n研究问题：'+rec.question+'\n问题边界：'+(rec.question_boundary||'旧记录未采集')+'\n测量指标：'+(rec.measurement_indicator||'旧记录未采集')+'\n假设：'+rec.hypothesis+'\n假设依据：'+(rec.hypothesis_basis||'旧记录未采集')+'\n预期结果：'+(rec.expected_result||'旧记录未采集')+'\n自变量：'+rec.independent_variable+'\n因变量：'+rec.dependent_variable+'\n控制变量：'+rec.control_variables+'\n控制理由：'+(rec.control_rationale||'旧记录未采集')+'\n重复次数：'+(rec.repetition_count||'旧记录未采集')+'\n方法：'+rec.method+'\n多次数据：'+(rec.data_table||'旧记录未采集')+'\n补充证据：'+rec.evidence+'\n异常值处理：'+(rec.anomaly_handling||'旧记录未采集')+'\n证据解释：'+(rec.evidence_reasoning||'旧记录未采集')+'\n结论：'+rec.conclusion+'\n反思：'+rec.reflection;body.style.whiteSpace='pre-wrap';card.append(head,date,body);box.appendChild(card)});
-  }catch(e){$('classRecords').textContent='读取失败：'+e.message}
+  $('classRecordStats').textContent='正在读取本班学习概况……';
+  try{
+    const base='/api/teacher/classes/'+encodeURIComponent(classId);
+    const [recordsResult,statsResult]=await Promise.allSettled([
+      fetch(base+'/records',{headers:{'Authorization':'Bearer '+token}}).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||'读取档案失败');return d;}),
+      fetch(base+'/stats',{headers:{'Authorization':'Bearer '+token}}).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||'读取统计失败');return d;})
+    ]);
+    if(!teacherToken||teacherToken!==token)return;
+    if(statsResult.status==='fulfilled')renderClassStats(statsResult.value);
+    else $('classRecordStats').textContent='班级统计读取失败：'+statsResult.reason.message;
+    if(recordsResult.status!=='fulfilled')throw recordsResult.reason;
+    const d=recordsResult.value,box=$('classRecords');box.replaceChildren();
+    await loadClasses();
+    if(!teacherToken||teacherToken!==token)return;
+    if(!d.records.length){box.textContent='这个班级暂时还没有提交记录。';return;}
+    d.records.forEach(rec=>{
+      const card=document.createElement('article');card.className='unit';card.style.marginBottom='10px';
+      const head=document.createElement('b');head.textContent=rec.alias+' · '+rec.topic;
+      const date=document.createElement('p');date.className='muted';date.textContent=new Date(rec.created_at).toLocaleString();
+      const body=document.createElement('p');
+      body.textContent='真实观察：'+(rec.observed_phenomenon||'旧记录未采集')+'\n研究问题：'+rec.question+'\n问题边界：'+(rec.question_boundary||'旧记录未采集')+'\n测量指标：'+(rec.measurement_indicator||'旧记录未采集')+'\n假设：'+rec.hypothesis+'\n假设依据：'+(rec.hypothesis_basis||'旧记录未采集')+'\n预期结果：'+(rec.expected_result||'旧记录未采集')+'\n自变量：'+rec.independent_variable+'\n因变量：'+rec.dependent_variable+'\n控制变量：'+rec.control_variables+'\n控制理由：'+(rec.control_rationale||'旧记录未采集')+'\n重复次数：'+(rec.repetition_count||'旧记录未采集')+'\n方法：'+rec.method+'\n多次数据：'+(rec.data_table||'旧记录未采集')+'\n补充证据：'+rec.evidence+'\n异常值处理：'+(rec.anomaly_handling||'旧记录未采集')+'\n证据解释：'+(rec.evidence_reasoning||'旧记录未采集')+'\n结论：'+rec.conclusion+'\n反思：'+rec.reflection;
+      body.style.whiteSpace='pre-wrap';card.append(head,date,body);box.appendChild(card);
+    });
+  }catch(e){
+    if(teacherToken===token)$('classRecords').textContent='读取失败：'+e.message;
+  }
 }
 
 async function evaluateWork(){
