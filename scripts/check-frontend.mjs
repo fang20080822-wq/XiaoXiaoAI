@@ -33,6 +33,9 @@ for (const field of ['researchQuestion', 'independentVariable', 'dependentVariab
 }
 if (!html.includes('function joinClass()') || !html.includes('function submitCloudRecord()') || !html.includes('function loadMyRecords()')) throw new Error('Student classroom workflow missing');
 if (!html.includes('function createClass()') || !html.includes('function viewClassRecords(')) throw new Error('Teacher classroom workflow missing');
+const archiveView = html.slice(html.indexOf('async function viewClassRecords('), html.indexOf('async function teacherLogin('));
+if (!archiveView.includes('await loadClasses()')) throw new Error('Opening a class archive must refresh live student and record counts');
+
 const inquiryOrder = ['topic', 'researchQuestion', 'hypothesis', 'independentVariable', 'dependentVariable', 'controlVariables', 'method', 'evidence', 'conclusion', 'reflection'];
 let previousIndex = -1;
 for (const field of inquiryOrder) {
