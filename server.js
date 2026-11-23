@@ -231,13 +231,13 @@ app.get("/api/health",async(req,res)=>{
 app.get("/api/chat/history/:sessionId",chatLimiter,requireStudent,requireDatabase,async(req,res)=>{
   const sessionId=String(req.params.sessionId||"");
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId))return res.status(400).json({error:"对话会话标识无效。"});
-  try{const q=await db.query("SELECT role,content,created_at FROM chat_messages WHERE session_id=$1 AND learner_id=$2 AND class_id=$3 ORDER BY created_at DESC LIMIT 30",[sessionId,req.student.learnerId,req.student.classId]);res.json({messages:q.rows.reverse().filter(m=>!looksLikePII(m.content))});}
+  try{const q=await db.query("SELECT role,content,created_at,mode FROM messages WHERE session_id=$1 AND student_id=$2 ORDER BY created_at DESC LIMIT 30",[sessionId,req.student.learnerId]);res.json({messages:q.rows.reverse().filter(m=>!looksLikePII(m.content))});}
   catch(e){console.error("chat_history_read_failed",e.message);res.status(500).json({error:"读取对话历史失败。"});}
 });
 app.delete("/api/chat/history/:sessionId",chatLimiter,requireStudent,requireDatabase,async(req,res)=>{
   const sessionId=String(req.params.sessionId||"");
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId))return res.status(400).json({error:"对话会话标识无效。"});
-  try{await db.query("DELETE FROM chat_messages WHERE session_id=$1 AND learner_id=$2 AND class_id=$3",[sessionId,req.student.learnerId,req.student.classId]);res.json({cleared:true});}
+  try{await db.query("DELETE FROM messages WHERE session_id=$1 AND student_id=$2",[sessionId,req.student.learnerId]);res.json({cleared:true});}
   catch(e){console.error("chat_history_delete_failed",e.message);res.status(500).json({error:"清除对话历史失败。"});}
 });
 async function callDeepSeekStream(messages,onDelta,maxTokens=1000) {
@@ -292,9 +292,9 @@ app.post("/api/chat/stream",chatLimiter,async(req,res)=>{
   let started=false;
   const emit=(payload)=>{if(!res.destroyed)res.write("data: "+JSON.stringify(payload)+"\n\n")};
   try{
-    const previous=ownsSession?await db.query("SELECT role,content FROM chat_messages WHERE session_id=$1 AND learner_id=$2 AND class_id=$3 ORDER BY created_at DESC LIMIT 8",[sessionId,ownerLearnerId,ownerClassId]):{rows:[]};
+    const previous=ownsSession?await db.query("SELECT role,content FROM messages WHERE session_id=$1 AND student_id=$2 ORDER BY created_at DESC LIMIT 8",[sessionId,ownerLearnerId,ownerClassId]):{rows:[]};
     const history=previous.rows.reverse().filter(m=>!looksLikePII(m.content)).map(m=>({role:m.role,content:m.content.slice(0,1200)}));
-    if(ownsSession)await db.query("INSERT INTO chat_messages(session_id,learner_id,class_id,role,content) VALUES($1,$2,$3,'user',$4)",[sessionId,ownerLearnerId,ownerClassId,message]);
+    if(ownsSession)await db.query("INSERT INTO messages(session_id,student_id,role,content,mode) VALUES($1,$2,'user',$3,'pending')",[sessionId,ownerLearnerId,message]);
     const topicHint={ai:"课程主题：认识人工智能。",ml:"课程主题：机器学习。",sensor:"课程主题：智能感知。",safety:"课程主题：AI安全。",design:"课程主题：AI创意设计。"}[topic]||"课程主题：儿童科学探究。";
     res.writeHead(200,headers);started=true;
     let answer="",mode="online",notice;
@@ -306,7 +306,7 @@ app.post("/api/chat/stream",chatLimiter,async(req,res)=>{
     }
     if(req.scienceHintLevel===4&&!/参考答案/.test(answer))answer="参考答案（仅供参考，请用自己的话复述）\n"+answer+"\n\n请先遮住上面的内容，用自己的话复述你的理解。";
     if(looksLikePII(answer)){answer="回答可能包含个人信息，已隐藏。请用匿名信息继续。";mode="offline";emit({delta:"\n"+answer})}
-    if(ownsSession)await db.query("INSERT INTO chat_messages(session_id,learner_id,class_id,role,content) VALUES($1,$2,$3,'assistant',$4)",[sessionId,ownerLearnerId,ownerClassId,answer]);
+    if(ownsSession)await db.query("INSERT INTO messages(session_id,student_id,role,content,mode) VALUES($1,$2,'assistant',$3,$4)",[sessionId,ownerLearnerId,answer,mode]);
     emit({done:true,mode,model:MODEL,...(notice?{notice}:{})});
     res.end();
   }catch(error){
@@ -332,10 +332,10 @@ app.post("/api/chat",chatLimiter,async(req,res)=>{
     const ownerLearnerId=ownsSession?String(student.learnerId):"";
     const ownerClassId=ownsSession?String(student.classId):"";
     const previous=ownsSession
-      ? await db.query("SELECT role,content FROM chat_messages WHERE session_id=$1 AND learner_id=$2 AND class_id=$3 ORDER BY created_at DESC LIMIT 8",[sessionId,ownerLearnerId,ownerClassId])
+      ? await db.query("SELECT role,content FROM messages WHERE session_id=$1 AND student_id=$2 ORDER BY created_at DESC LIMIT 8",[sessionId,ownerLearnerId,ownerClassId])
       : {rows:[]};
     const safeHistory=previous.rows.reverse().filter(m=>!looksLikePII(m.content)).map(m=>({role:m.role,content:m.content.slice(0,1200)}));
-    if(ownsSession) await db.query("INSERT INTO chat_messages(session_id,learner_id,class_id,role,content) VALUES($1,$2,$3,'user',$4)",[sessionId,ownerLearnerId,ownerClassId,message]);
+    if(ownsSession) await db.query("INSERT INTO messages(session_id,student_id,role,content,mode) VALUES($1,$2,'user',$3,'pending')",[sessionId,ownerLearnerId,message]);
     const topicHint={
       ai:"课程主题：认识人工智能。帮助学生区分人工智能、自动化与普通程序。",
       ml:"课程主题：机器学习。重点解释样例、特征、训练、测试、偏差和预测。",
@@ -352,8 +352,8 @@ app.post("/api/chat",chatLimiter,async(req,res)=>{
     if(req.scienceHintLevel===4 && !/参考答案/.test(answer))answer="参考答案（仅供参考，请用自己的话复述）\n"+answer+"\n\n请先遮住上面的内容，用自己的话复述你的理解，并说明它和你自己的实验记录有什么联系。";
     if(looksLikePII(answer))answer="这条回答可能包含个人身份信息，为保护隐私已隐藏。请改用匿名信息继续探究。";
     if(ownsSession){
-      await db.query("INSERT INTO chat_messages(session_id,learner_id,class_id,role,content) VALUES($1,$2,$3,'assistant',$4)",[sessionId,ownerLearnerId,ownerClassId,answer]);
-      await db.query("DELETE FROM chat_messages WHERE session_id=$1 AND learner_id=$2 AND class_id=$3 AND id NOT IN (SELECT id FROM chat_messages WHERE session_id=$1 AND learner_id=$2 AND class_id=$3 ORDER BY created_at DESC LIMIT 30)",[sessionId,ownerLearnerId,ownerClassId]);
+      await db.query("INSERT INTO messages(session_id,student_id,role,content,mode) VALUES($1,$2,'assistant',$3,$4)",[sessionId,ownerLearnerId,answer,mode]);
+      await db.query("DELETE FROM messages WHERE session_id=$1 AND student_id=$2 AND id NOT IN (SELECT id FROM messages WHERE session_id=$1 AND student_id=$2 ORDER BY created_at DESC LIMIT 30)",[sessionId,ownerLearnerId,ownerClassId]);
     }
     res.json({mode,model:MODEL,answer,hintLevel:req.scienceHintLevel||1,qualityCheck:req.scienceQualityCheck||null,...(notice?{notice}:{})});
   }catch(err){console.error("chat_request_failed",err.message);res.status(503).json({mode:"offline",fallback:"offline",error:"对话服务暂不可用，请稍后重试。"});}
