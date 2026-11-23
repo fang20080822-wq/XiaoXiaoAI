@@ -31,7 +31,7 @@ for (const route of ['/api/teacher/classes', '/api/student/join', '/api/student/
 for (const field of ['researchQuestion', 'independentVariable', 'dependentVariable', 'controlVariables', 'method', 'evidence', 'reflection']) {
   if (!html.includes('id="' + field + '"')) throw new Error('Structured inquiry field missing: ' + field);
 }
-if (!html.includes('function joinClass()') || !html.includes('function submitCloudRecord()')) throw new Error('Student classroom workflow missing');
+if (!html.includes('function joinClass()') || !html.includes('function submitCloudRecord()') || !html.includes('function loadMyRecords()')) throw new Error('Student classroom workflow missing');
 if (!html.includes('function createClass()') || !html.includes('function viewClassRecords(')) throw new Error('Teacher classroom workflow missing');
 if (!server.includes('guardian_consent') || !server.includes('req.body?.guardianConsent!==true')) throw new Error('Guardian consent acknowledgement is not enforced');
 if (!server.includes('DATABASE_URL') || !server.includes('science_records')) throw new Error('PostgreSQL learning record storage missing');
