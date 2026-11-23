@@ -74,6 +74,7 @@ if (chatRoute.includes('req.body?.history') || !chatRoute.includes('SELECT role,
 if (!server.includes('limit:30') || !server.includes('limit:120') || !server.includes('ipKeyGenerator(req.ip)') || !server.includes('"student:"+payload.learnerId')) throw new Error('Rate limits must use student token first, IP fallback, 30 chat/minute and 120 API/minute');
 if (!server.includes('本分钟对话次数已达上限') || !server.includes('fallback:"offline"') || !html.includes('r.status===429')) throw new Error('HTTP 429 must return and display a graceful offline fallback');
 if (!server.includes('function looksLikePII') || !server.includes('looksLikePII(alias)') || !server.includes('looksLikePII(d[k])') || !server.includes('looksLikePII(work)') || !server.includes('looksLikePII(message)')) throw new Error('PII screening must cover chat, alias, all inquiry fields and teacher studentWork');
+if (!server.includes('q.rows.reverse().filter(m=>!looksLikePII(m.content))') || !server.includes('if(looksLikePII(answer))')) throw new Error('Chat history responses and stored AI answers must also be screened for PII');
 if (!html.includes('示例探究记录 · 只读') || !html.includes('示例班级 · 只读') || !html.includes('data-course="plant"') || !html.includes('scienceSelectedCourse')) throw new Error('Homepage must include read-only sample work/class and a default selected course');
 const routeDefinitions = [
   ['post', '/api/teacher/classes'],
