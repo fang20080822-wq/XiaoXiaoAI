@@ -53,9 +53,8 @@ const routeDefinitions = [
   ['get', '/api/teacher/classes/:id/records']
 ];
 for (const [method, route] of routeDefinitions) {
-  const escaped = route.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
-  const pattern = new RegExp('app\\\\.' + method + '\\\\("' + escaped + '"', 'g');
-  if ((server.match(pattern) || []).length !== 1) throw new Error('Expected exactly one ' + method.toUpperCase() + ' route: ' + route);
+  const marker = 'app.' + method + '("' + route + '",';
+  if (server.split(marker).length - 1 !== 1) throw new Error('Expected exactly one ' + method.toUpperCase() + ' route: ' + route);
 }
 if (!server.includes('connectionTimeoutMillis: 5000') || !server.includes('for(const statement of statements) await db.query(statement)')) throw new Error('Database initialization must be bounded and sequential');
 if (!server.includes('await db.query("SELECT 1")') || !server.includes('database = "unavailable"')) throw new Error('Health check must probe database connectivity');
