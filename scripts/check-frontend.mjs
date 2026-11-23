@@ -21,5 +21,9 @@ for (const route of ['/api/health', '/api/chat', '/api/teacher/login', '/api/tea
   if (!html.includes(route)) throw new Error('Frontend no longer calls expected API route: ' + route);
   if (!server.includes(route)) throw new Error('Backend route missing: ' + route);
 }
+if (!server.includes('contentSecurityPolicy:')) throw new Error('Content Security Policy is not configured');
+if (!server.includes('MENTOR_MODES[mentorMode]')) throw new Error('Mentor mode must be selected and enforced by the server');
+if (server.includes('app.get("*",(req,res)=>res.sendFile')) throw new Error('Unknown routes must not silently return the homepage');
+if (!html.includes('mode:mentorMode')) throw new Error('Frontend must send the mentor mode identifier, not a client-built system prompt');
 if (html.includes('DEEPSEEK_API_KEY=')) throw new Error('Possible API key assignment found in public frontend');
 console.log('V5 frontend syntax, six modules, API contracts, and frontend secret scan passed.');
