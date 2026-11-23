@@ -236,6 +236,7 @@ app.post("/api/chat",chatLimiter,requireDatabase,async(req,res)=>{
       try{answer=await callDeepSeek([{role:"system",content:SYSTEM_BASE+"\n"+MENTOR_MODES[mentorMode]+"\n"+topicHint+(req.scienceSystemContext||"")},...safeHistory,{role:"user",content:message}],1000);}
       catch(err){answer=offlineTutor(message,topic);mode="offline";notice=err.message;}
     }
+    if(req.scienceHintLevel===4 && !/参考答案/.test(answer))answer="参考答案（仅供参考，请用自己的话复述）\n"+answer+"\n\n请先遮住上面的内容，用自己的话复述你的理解，并说明它和你自己的实验记录有什么联系。";
     if(looksLikePII(answer))answer="这条回答可能包含个人身份信息，为保护隐私已隐藏。请改用匿名信息继续探究。";
     await db.query("INSERT INTO chat_messages(session_id,role,content) VALUES($1,'assistant',$2)",[sessionId,answer]);
     await db.query("DELETE FROM chat_messages WHERE session_id=$1 AND id NOT IN (SELECT id FROM chat_messages WHERE session_id=$1 ORDER BY created_at DESC LIMIT 30)",[sessionId]);
