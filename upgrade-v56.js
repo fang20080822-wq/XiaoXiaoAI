@@ -49,11 +49,14 @@ export function nextHintState(previous = {}, message = "") {
   const selfCorrection = text.length >= 18 && /(我发现|我改成|应该是|因为.*所以|数据说明)/.test(text);
   const correctDirection = /(自变量|因变量|控制变量|重复.*次|单位|测量|证据)/.test(text) && text.length >= 12;
   const asksAnswer = /(直接告诉我答案|给我答案|答案是什么|帮我写完)/.test(text);
+  const normalized = text.toLowerCase().replace(/[？?。！!，,、\\s]/g,"");
+  const previousPrompt = String(previous.last_prompt||"").toLowerCase().replace(/[？?。！!，,、\\s]/g,"");
+  const repeatedPrompt = normalized.length>=5 && normalized===previousPrompt;
   if (selfCorrection) { streak += 1; if (streak >= 2) { level = Math.min(4,level+1); streak = 0; } }
   else if (correctDirection) { level = Math.min(4,level+1); streak = 0; }
-  else if (asksAnswer) { level = Math.min(3,level+1); streak = 0; }
+  else if (asksAnswer || repeatedPrompt) { level = Math.min(3,level+1); streak = 0; }
   else { streak = 0; }
-  return {level,streak,instruction:LEVEL_TEXT[level],selfCorrection,asksAnswer};
+  return {level,streak,instruction:LEVEL_TEXT[level],selfCorrection,asksAnswer,repeatedPrompt,last_prompt:normalized};
 }
 
 export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,ADMIN_PASSWORD,TOKEN_SECRET,signToken,verifyToken,looksLikePII}) {
@@ -64,7 +67,8 @@ export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,AD
       "CREATE TABLE IF NOT EXISTS teachers(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),email TEXT UNIQUE NOT NULL,password_hash TEXT NOT NULL,school TEXT NOT NULL DEFAULT '',status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),created_at TIMESTAMPTZ DEFAULT NOW(),reviewed_at TIMESTAMPTZ)",
       "CREATE TABLE IF NOT EXISTS audit_log(id BIGSERIAL PRIMARY KEY,teacher_id TEXT NOT NULL,action TEXT NOT NULL,target_type TEXT NOT NULL DEFAULT '',target_id TEXT NOT NULL DEFAULT '',created_at TIMESTAMPTZ DEFAULT NOW())",
       "CREATE INDEX IF NOT EXISTS idx_audit_log_teacher_time ON audit_log(teacher_id,created_at DESC)",
-      "CREATE TABLE IF NOT EXISTS mentor_progress(session_id UUID PRIMARY KEY,level INTEGER NOT NULL DEFAULT 1,streak INTEGER NOT NULL DEFAULT 0,updated_at TIMESTAMPTZ DEFAULT NOW())"
+      "CREATE TABLE IF NOT EXISTS mentor_progress(session_id UUID PRIMARY KEY,level INTEGER NOT NULL DEFAULT 1,streak INTEGER NOT NULL DEFAULT 0,updated_at TIMESTAMPTZ DEFAULT NOW())",
+      "ALTER TABLE mentor_progress ADD COLUMN IF NOT EXISTS last_prompt TEXT NOT NULL DEFAULT ''"
     ];
     for (const statement of sql) await db.query(statement);
     ready = true;
@@ -99,9 +103,9 @@ export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,AD
       const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");
       const student=verifyToken(token);
       const sessionId=String(req.body?.sessionId||"");
-      const stateQ=await db.query("SELECT level,streak FROM mentor_progress WHERE session_id=$1",[sessionId]);
+      const stateQ=await db.query("SELECT level,streak,last_prompt FROM mentor_progress WHERE session_id=$1",[sessionId]);
       const state=nextHintState(stateQ.rows[0]||{},String(req.body?.message||""));
-      await db.query("INSERT INTO mentor_progress(session_id,level,streak) VALUES($1,$2,$3) ON CONFLICT(session_id) DO UPDATE SET level=EXCLUDED.level,streak=EXCLUDED.streak,updated_at=NOW()",[sessionId,state.level,state.streak]);
+      await db.query("INSERT INTO mentor_progress(session_id,level,streak,last_prompt) VALUES($1,$2,$3,$4) ON CONFLICT(session_id) DO UPDATE SET level=EXCLUDED.level,streak=EXCLUDED.streak,last_prompt=EXCLUDED.last_prompt,updated_at=NOW()",[sessionId,state.level,state.streak,state.last_prompt]);
       let recordContext="该学生尚无可读取的云端结构化探究记录。不要假设其已完成实验。";
       if(student?.role==="student" && student.learnerId && student.classId) {
         const q=await db.query("SELECT topic,observed_phenomenon,question,question_boundary,measurement_indicator,hypothesis,hypothesis_basis,expected_result,independent_variable,dependent_variable,control_variables,control_rationale,repetition_count,method,data_table,evidence,anomaly_handling,evidence_reasoning,conclusion,reflection,created_at FROM science_records WHERE learner_id=$1 AND class_id=$2 ORDER BY created_at DESC LIMIT 1",[student.learnerId,student.classId]);
