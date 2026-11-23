@@ -258,7 +258,7 @@ textarea{min-height:105px;resize:vertical}
       <div id="classRecords" class="result" style="margin-top:12px"></div>
 
       <h3>学生探究作品评价</h3><label for="studentWork">学生作品（请先去除个人身份信息）</label><textarea id="studentWork" maxlength="6000" placeholder="粘贴匿名化的学生探究记录……"></textarea>
-      <label for="rubric">评价维度</label><select id="rubric"><option>科学问题、假设、实验设计、证据与表达</option><option>科学思维与探究过程</option><option>课程目标达成情况</option></select>
+      <label for="rubric">评价维度</label><select id="rubric"><option>六维100分评审量规（完整评价）</option><option>教育价值与教学法设计（25分）</option><option>AI技术深度与工程（25分）</option><option>产品完成度与体验（20分）</option><option>学习成效证据（15分）</option><option>未成年人合规（10分）</option><option>可持续与规模化（5分）</option></select>
       <div class="actions" style="margin-top:14px"><button class="btn primary" id="evaluateBtn" onclick="evaluateWork()">生成评价建议</button><button class="btn outline" onclick="exportEvaluation()">导出评价建议</button></div><div id="evaluation" class="result" style="margin-top:14px" aria-live="polite"></div>
     </div>
   </div>
