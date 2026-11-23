@@ -185,30 +185,48 @@ app.get("/api/health",async(req,res)=>{
   const capabilities={serverSideMentorModes:true,contentSecurityPolicy:true,cloudLearningRecords:database==="ready",classroomManagement:database==="ready",structuredInquiryRecords:database==="ready"};
   res.json({ok:true,version:APP_VERSION,aiConfigured:Boolean(API_KEY),model:MODEL,mode:API_KEY?"online":"offline",database,capabilities});
 });
-app.post("/api/chat",async(req,res)=>{
+app.get("/api/chat/history/:sessionId",chatLimiter,requireDatabase,async(req,res)=>{
+  const sessionId=String(req.params.sessionId||"");
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId))return res.status(400).json({error:"对话会话标识无效。"});
+  try{const q=await db.query("SELECT role,content,created_at FROM chat_messages WHERE session_id=$1 ORDER BY created_at DESC LIMIT 30",[sessionId]);res.json({messages:q.rows.reverse()});}
+  catch(e){console.error("chat_history_read_failed",e.message);res.status(500).json({error:"读取对话历史失败。"});}
+});
+app.delete("/api/chat/history/:sessionId",chatLimiter,requireDatabase,async(req,res)=>{
+  const sessionId=String(req.params.sessionId||"");
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId))return res.status(400).json({error:"对话会话标识无效。"});
+  try{await db.query("DELETE FROM chat_messages WHERE session_id=$1",[sessionId]);res.json({cleared:true});}
+  catch(e){console.error("chat_history_delete_failed",e.message);res.status(500).json({error:"清除对话历史失败。"});}
+});
+app.post("/api/chat",chatLimiter,requireDatabase,async(req,res)=>{
   const message=typeof req.body?.message==="string"?req.body.message.trim():"";
+  const sessionId=String(req.body?.sessionId||"");
   const topic=typeof req.body?.topic==="string"?req.body.topic.slice(0,30):"general";
-  const mentorMode=typeof req.body?.mode==="string" && Object.hasOwn(MENTOR_MODES,req.body.mode) ? req.body.mode : "curiosity";
-  const history=Array.isArray(req.body?.history)?req.body.history.slice(-6):[];
-  if(!message) return res.status(400).json({error:"请输入问题。"});
-  if(message.length>1200) return res.status(400).json({error:"问题过长，请控制在1200字以内。"});
-  if(looksLikePII(message)) return res.status(400).json({error:"检测到可能的个人身份信息。请删除姓名、联系方式、地址、学号等信息后再提问。"});
-  if(!API_KEY) return res.json({mode:"offline",answer:offlineTutor(message,topic)});
-  const safeHistory=history.filter(m=>m && ["user","assistant"].includes(m.role) && typeof m.content==="string" && !looksLikePII(m.content))
-    .map(m=>({role:m.role,content:m.content.slice(0,1200)}));
-  const topicHint={
-    ai:"课程主题：认识人工智能。帮助学生区分人工智能、自动化与普通程序。",
-    ml:"课程主题：机器学习。重点解释样例、特征、训练、测试、偏差和预测。",
-    sensor:"课程主题：智能感知。重点解释传感器、输入—处理—输出与误报。",
-    safety:"课程主题：AI安全。重点解释隐私、事实核查、偏见、版权和人工监督。",
-    design:"课程主题：AI创意设计。引导学生说明需求、输入、处理、输出、风险、测试和迭代。"
-  }[topic]||"课程主题：儿童科学探究。";
-  try {
-    const answer=await callDeepSeek([{role:"system",content:SYSTEM_BASE+"\n"+MENTOR_MODES[mentorMode]+"\n"+topicHint},...safeHistory,{role:"user",content:message}],1000);
-    res.json({mode:"online",model:MODEL,answer});
-  } catch(err) {
-    res.json({mode:"offline",answer:offlineTutor(message,topic),notice:err.message});
-  }
+  const mentorMode=typeof req.body?.mode==="string" && Object.hasOwn(MENTOR_MODES,req.body.mode)?req.body.mode:"curiosity";
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId))return res.status(400).json({error:"对话会话标识无效，请刷新页面重试。"});
+  if(!message)return res.status(400).json({error:"请输入问题。"});
+  if(message.length>1200)return res.status(400).json({error:"问题过长，请控制在1200字以内。"});
+  if(looksLikePII(message))return res.status(400).json({error:"检测到可能的个人身份信息。请删除姓名、联系方式、地址、学号等信息后再提问。"});
+  try{
+    const previous=await db.query("SELECT role,content FROM chat_messages WHERE session_id=$1 ORDER BY created_at DESC LIMIT 8",[sessionId]);
+    const safeHistory=previous.rows.reverse().filter(m=>!looksLikePII(m.content)).map(m=>({role:m.role,content:m.content.slice(0,1200)}));
+    await db.query("INSERT INTO chat_messages(session_id,role,content) VALUES($1,'user',$2)",[sessionId,message]);
+    const topicHint={
+      ai:"课程主题：认识人工智能。帮助学生区分人工智能、自动化与普通程序。",
+      ml:"课程主题：机器学习。重点解释样例、特征、训练、测试、偏差和预测。",
+      sensor:"课程主题：智能感知。重点解释传感器、输入—处理—输出与误报。",
+      safety:"课程主题：AI安全。重点解释隐私、事实核查、偏见、版权和人工监督。",
+      design:"课程主题：AI创意设计。引导学生说明需求、输入、处理、输出、风险、测试和迭代。"
+    }[topic]||"课程主题：儿童科学探究。";
+    let answer,mode="online",notice;
+    if(!API_KEY){answer=offlineTutor(message,topic);mode="offline";}
+    else{
+      try{answer=await callDeepSeek([{role:"system",content:SYSTEM_BASE+"\n"+MENTOR_MODES[mentorMode]+"\n"+topicHint},...safeHistory,{role:"user",content:message}],1000);}
+      catch(err){answer=offlineTutor(message,topic);mode="offline";notice=err.message;}
+    }
+    await db.query("INSERT INTO chat_messages(session_id,role,content) VALUES($1,'assistant',$2)",[sessionId,answer]);
+    await db.query("DELETE FROM chat_messages WHERE session_id=$1 AND id NOT IN (SELECT id FROM chat_messages WHERE session_id=$1 ORDER BY created_at DESC LIMIT 30)",[sessionId]);
+    res.json({mode,model:MODEL,answer,...(notice?{notice}:{})});
+  }catch(err){console.error("chat_request_failed",err.message);res.status(503).json({mode:"offline",fallback:"offline",error:"对话服务暂不可用，请稍后重试。"});}
 });
 app.post("/api/teacher/login",loginLimiter,(req,res)=>{
   if(!ADMIN_PASSWORD || !TOKEN_SECRET) return res.status(503).json({error:"教师端尚未完成安全配置，请管理员设置ADMIN_PASSWORD和TOKEN_SECRET。"});
@@ -221,14 +239,13 @@ app.post("/api/teacher/login",loginLimiter,(req,res)=>{
 });
 app.post("/api/teacher/evaluate",apiLimiter,requireTeacher,async(req,res)=>{
   const work=typeof req.body?.work==="string"?req.body.work.trim():"";
-  const rubric=typeof req.body?.rubric==="string"?req.body.rubric.slice(0,1000):"";
   if(!work) return res.status(400).json({error:"请提交匿名作品内容。"});
   if(work.length>6000) return res.status(400).json({error:"作品内容过长，请控制在6000字以内。"});
   if(looksLikePII(work)) return res.status(400).json({error:"作品中可能含有个人身份信息，请先去标识化。"});
   if(!API_KEY) return res.json({mode:"offline",answer:"离线演示：教师评价功能尚未连接DeepSeek。请依据课程量规人工评价。建议关注：问题是否真实明确；输入数据是否可获得且适当；处理逻辑是否合理；输出是否可验证；是否考虑错误、隐私、公平性和人工复核；是否提出测试与迭代。"});
   try {
     const answer=await callDeepSeek([
-      {role:"system",content:`你是小学科学与信息科技课程的教师评价辅助工具。只能依据提交材料中可见证据评价，不得补造课堂实施、学生人数、前后测、访谈、试点数据或运行结果。不能替代教师最终评分。请按以下100分量规逐项给出“建议分数/满分、材料中的证据、扣分理由、下一步可执行改进”；缺乏证据的维度必须标注“证据不足”，不得臆测。维度与权重：教育价值与教学法设计25分；AI技术深度与工程25分；产品完成度与体验20分；学习成效证据15分；未成年人合规10分；可持续与规模化5分。最后给出总分建议、最关键的3项整改和教师必须人工复核的事项。当前教师选择：${rubric}`},
+      {role:"system",content:`你是小学科学探究教师助手。请依据《科学探究能力量规》开展形成性评价，不给分、不计算总分。依次分析六项能力：问题提出（问题是否清晰且可研究）；假设预测（是否提出可检验的预测及理由）；变量控制（自变量、因变量和控制变量是否明确）；实验设计（步骤是否安全、可重复且公平）；证据记录（是否有真实观察、数据、单位和必要的重复测量）；结论反思（结论是否由证据支持，是否说明局限和下一步）。每项给出“当前表现、材料中的具体证据、一个可执行的改进建议”；材料没有提供证据时写“尚无证据”，不得臆测。最后给出整体优势、最优先的一项改进和需要教师核实的问题。`},
       {role:"user",content:`请对以下已匿名化的学生作品提供评价建议：\n${work}`}
     ],1400);
     res.json({mode:"online",model:MODEL,answer});
@@ -251,7 +268,7 @@ app.post("/api/student/join",apiLimiter,requireDatabase,async(req,res)=>{
   if(!TOKEN_SECRET)return res.status(503).json({error:"学生会话安全配置尚未完成，请联系教师管理员。"});
   const code=String(req.body?.inviteCode||"").trim().toUpperCase(),alias=String(req.body?.alias||"").trim().slice(0,24);
   if(!/^[A-F0-9]{8}$/.test(code))return res.status(400).json({error:"邀请码格式不正确。"});
-  if(!/^学生[A-Z0-9]{1,8}$/.test(alias))return res.status(400).json({error:"请使用匿名代号，例如学生A，不要使用真实姓名。"});
+  if(looksLikePII(alias)||!/^(?:学生|Learner)[A-Z0-9]{1,8}$/i.test(alias))return res.status(400).json({error:"请使用匿名代号，例如学生A，不要使用真实姓名或联系方式。"});
   if(req.body?.guardianConsent!==true)return res.status(400).json({error:"请先确认已取得教师和监护人必要同意。"});
   try{const c=await db.query("SELECT id FROM science_classes WHERE invite_code=$1",[code]);if(!c.rowCount)return res.status(404).json({error:"邀请码无效。"});const l=await db.query("INSERT INTO science_learners(class_id,alias,guardian_consent,consent_recorded_at) VALUES($1,$2,TRUE,NOW()) ON CONFLICT(class_id,alias) DO UPDATE SET alias=EXCLUDED.alias,guardian_consent=TRUE,consent_recorded_at=NOW() RETURNING id,alias",[c.rows[0].id,alias]);const token=signToken({role:"student",classId:c.rows[0].id,learnerId:l.rows[0].id,exp:Date.now()+30*24*60*60*1000});res.json({token,alias:l.rows[0].alias});}
   catch(e){console.error("student_join_failed",e.message);res.status(500).json({error:"加入班级失败。"});}
@@ -286,6 +303,7 @@ app.delete("/api/teacher/classes/:id",apiLimiter,requireTeacher,requireDatabase,
   catch(e){console.error("class_delete_failed",e.message);res.status(500).json({error:"删除班级失败。"});}
 });
 
+app.use("/videos",express.static(path.join(__dirname,"public","videos"),{maxAge:"7d",etag:true,lastModified:true,immutable:false,fallthrough:false}));
 app.use(express.static(path.join(__dirname,"public"),{extensions:["html"],fallthrough:true}));
 app.use((req,res)=>{
   if(req.path.startsWith("/api/")) return res.status(404).json({error:"接口不存在。"});
