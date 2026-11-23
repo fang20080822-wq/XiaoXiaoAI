@@ -393,8 +393,13 @@ async function loadClasses(){
   if(!teacherToken){$('classList').textContent='请先登录教师工作台。';return}
   $('classList').textContent='正在读取班级……';
   try{const r=await fetch('/api/teacher/classes',{headers:{'Authorization':'Bearer '+teacherToken}});const d=await r.json();if(!r.ok)throw new Error(d.error||'读取失败');const el=$('classList');el.innerHTML='';if(!d.classes.length){el.textContent='暂无班级，请创建第一个班级。';return}
-    d.classes.forEach(c=>{const row=document.createElement('div');row.className='unit';row.style.marginBottom='9px';const title=document.createElement('b');title.textContent=c.class_name+' · 邀请码 '+c.invite_code;const meta=document.createElement('p');meta.className='muted';meta.textContent='学生 '+c.learner_count+' 人 · 探究记录 '+c.record_count+' 份';const btn=document.createElement('button');btn.className='btn soft';btn.textContent='查看学习档案';btn.onclick=()=>viewClassRecords(c.id);row.append(title,meta,btn);el.appendChild(row)});
+    d.classes.forEach(c=>{const row=document.createElement('div');row.className='unit';row.style.marginBottom='9px';const title=document.createElement('b');title.textContent=c.class_name+' · 邀请码 '+c.invite_code;const meta=document.createElement('p');meta.className='muted';meta.textContent='学生 '+c.learner_count+' 人 · 探究记录 '+c.record_count+' 份';const actions=document.createElement('div');actions.className='actions';const btn=document.createElement('button');btn.className='btn soft';btn.textContent='查看学习档案';btn.onclick=()=>viewClassRecords(c.id);const del=document.createElement('button');del.className='btn danger';del.textContent='删除班级及全部档案';del.onclick=()=>deleteClass(c.id,c.class_name);actions.append(btn,del);row.append(title,meta,actions);el.appendChild(row)});
   }catch(e){$('classList').textContent='读取失败：'+e.message}
+}
+async function deleteClass(classId,className){
+  if(!confirm('确定删除班级“'+className+'”及其全部学生档案吗？此操作不可撤销。'))return;
+  try{const r=await fetch('/api/teacher/classes/'+encodeURIComponent(classId),{method:'DELETE',headers:{'Authorization':'Bearer '+teacherToken}});const d=await r.json();if(!r.ok)throw new Error(d.error||'删除失败');$('classRecords').textContent='班级及其档案已删除。';await loadClasses();}
+  catch(e){$('classList').textContent='删除失败：'+e.message}
 }
 async function viewClassRecords(classId){
   $('classRecords').textContent='正在读取学生探究档案……';
