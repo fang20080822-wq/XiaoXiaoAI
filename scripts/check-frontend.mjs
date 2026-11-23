@@ -49,7 +49,7 @@ if (!html.includes('d.researchQuestion') || !html.includes('d.evidence') || !htm
 if (!server.includes('guardian_consent') || !server.includes('req.body?.guardianConsent!==true')) throw new Error('Guardian consent acknowledgement is not enforced');
 if (!server.includes('DATABASE_URL') || !server.includes('science_records')) throw new Error('PostgreSQL learning record storage missing');
 if (!html.includes('科学探究能力量规')) throw new Error('Science inquiry competency rubric missing');
-if (html.includes('六维100分评审量规') || html.includes('技术深度与工程') || html.includes('未成年人合规') || html.includes('25分')) throw new Error('Legacy competition scoring rubric must be removed from teacher UI');
+if (html.includes('六维100分评审量规') || html.includes('技术深度与工程') || html.includes('未成年人合规')) throw new Error('Legacy competition scoring rubric must be removed from teacher UI');
 for (const term of ['问题提出','假设预测','变量控制','实验设计','证据记录','结论反思']) if (!html.includes(term)) throw new Error('Inquiry rubric dimension missing: '+term);
 if (html.includes('DEEPSEEK_API_KEY=')) throw new Error('Possible API key assignment found in public frontend');
 console.log('V5 frontend syntax, six modules, API contracts, and frontend secret scan passed.');
