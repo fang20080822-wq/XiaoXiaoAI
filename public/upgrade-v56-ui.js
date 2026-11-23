@@ -3,7 +3,7 @@
   const el = (tag, text, cls) => { const n=document.createElement(tag); if(text!==undefined)n.textContent=text; if(cls)n.className=cls; return n; };
   const api = async (url, options={}) => {
     const headers={...(options.headers||{})};
-    if(window.teacherToken) headers.Authorization='Bearer '+window.teacherToken;
+    const activeToken=(typeof teacherToken!=='undefined'&&teacherToken)||window.teacherToken||''; if(activeToken) headers.Authorization='Bearer '+activeToken;
     const r=await fetch(url,{...options,headers});
     const d=await r.json().catch(()=>({error:'服务器返回格式异常'}));
     if(!r.ok) throw new Error(d.error||'请求失败');
@@ -44,7 +44,7 @@
     const register=el('button','提交教师账号申请','btn soft');register.type='button';
     register.addEventListener('click',async()=>{const status=$('teacherAccountStatus');status.textContent='正在提交申请…';try{const d=await api('/api/teacher/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email.value,password:password.value,school:school.value})});status.textContent=d.message;}catch(e){status.textContent=e.message;}});
     const login=el('button','教师账号登录','btn primary');login.type='button';
-    login.addEventListener('click',async()=>{const status=$('teacherAccountStatus');status.textContent='正在登录…';try{const d=await api('/api/teacher/account/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email.value,password:password.value})});window.teacherToken=d.token;$('teacherPanel')?.classList.remove('hidden');$('teacherLogout')?.classList.remove('hidden');$('loginMsg').textContent='教师账号登录成功。';await loadDashboard();await window.loadClasses?.();status.textContent='登录成功。';}catch(e){status.textContent=e.message;}});
+    login.addEventListener('click',async()=>{const status=$('teacherAccountStatus');status.textContent='正在登录…';try{const d=await api('/api/teacher/account/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email.value,password:password.value})});if(typeof teacherToken!=='undefined')teacherToken=d.token;window.teacherToken=d.token;$('teacherPanel')?.classList.remove('hidden');$('teacherLogout')?.classList.remove('hidden');$('loginMsg').textContent='教师账号登录成功。';await loadDashboard();await window.loadClasses?.();status.textContent='登录成功。';}catch(e){status.textContent=e.message;}});
     actions.append(register,login);box.append(email,school,password,actions,el('p','', 'muted'));const status=box.lastChild;status.id='teacherAccountStatus';teacher.querySelector('.pageintro')?.after(box);
   }
   async function loadDashboard(){
@@ -81,7 +81,6 @@
   if(typeof oldLogin==='function')window.teacherLogin=async function(){await oldLogin();setTimeout(()=>{loadDashboard();loadAudit();loadAdminReviews();},100);};
   const oldLoad=window.loadClasses;
   if(typeof oldLoad==='function')window.loadClasses=async function(){const v=await oldLoad();loadDashboard();loadAudit();return v;};
-  document.addEventListener('DOMContentLoaded',()=>{loadCurriculum();addTeacherAccountUI();});
-  if(document.readyState!=='loading'){loadCurriculum();addTeacherAccountUI();}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{loadCurriculum();addTeacherAccountUI();},{once:true});else{loadCurriculum();addTeacherAccountUI();}
   window.loadV56Dashboard=loadDashboard;
 })();
