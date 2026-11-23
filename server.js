@@ -360,9 +360,6 @@ app.post("/api/chat",chatLimiter,async(req,res)=>{
     res.json({mode,model:MODEL,answer,hintLevel:req.scienceHintLevel||1,qualityCheck:req.scienceQualityCheck||null,...(notice?{notice}:{})});
   }catch(err){console.error("chat_request_failed",err.message);res.status(503).json({mode:"offline",fallback:"offline",error:"对话服务暂不可用，请稍后重试。"});}
 });
-app.post("/api/teacher/login",loginLimiter,(req,res)=>{
-  res.status(410).json({error:"教师共享密码登录已停用，请使用教师邮箱账号登录。",replacement:"/api/teacher/account/login"});
-});
 app.post("/api/admin/login",loginLimiter,(req,res)=>{
   if(!ADMIN_PASSWORD || !TOKEN_SECRET) return res.status(503).json({error:"管理员安全配置尚未完成。"});
   const password=typeof req.body?.password==="string"?req.body.password:"";
