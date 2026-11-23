@@ -19,7 +19,19 @@ const ALLOW_ORIGIN = process.env.ALLOW_ORIGIN || "";
 
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
-app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: false,
+    directives: {
+      defaultSrc: ["'self'"], scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"], imgSrc: ["'self'", "data:"],
+      mediaSrc: ["'self'"], fontSrc: ["'self'", "data:"], connectSrc: ["'self'"],
+      objectSrc: ["'none'"], baseUri: ["'self'"], frameAncestors: ["'none'"],
+      formAction: ["'self'"]
+    }
+  },
+  crossOriginEmbedderPolicy: false
+}));
 app.use(express.json({ limit: "32kb" }));
 if (ALLOW_ORIGIN) {
   app.use((req,res,next)=>{
@@ -52,6 +64,14 @@ const SYSTEM_BASE = `你是“小小AI科学家”的儿童科学探究导师，
 7. 不诊断疾病、不提供危险实验操作、不评价学生人格或敏感属性；涉及危险活动建议停止并请教师成人指导。
 8. 每次回答尽量采用“先回应—给线索/步骤—提出一个继续思考的问题”的结构。
 9. 不声称已观察现实世界、已运行实验或已查阅实时资料，除非系统确实提供了相应工具。`;
+
+const MENTOR_MODES = Object.freeze({
+  curiosity: "采用好奇心探索方式：先回应学生的观察，再帮助把问题变得具体、可研究；通过一个追问引导学生自己思考，不直接代做。",
+  experiment: "采用实验设计方式：引导学生识别自变量、因变量和控制变量，提出适龄、安全、可操作的步骤，并提醒需要成人指导的风险。",
+  concept: "采用概念理解方式：用准确、适龄的中文和生活类比解释概念，说明类比的局限，并用一个问题检查理解。",
+  evidence: "采用证据分析方式：帮助区分观察、数据、推断和结论；指出证据局限，不编造数据。",
+  create: "采用创意设计方式：引导学生说明需求、约束、设计方案、测试指标和迭代方向，鼓励比较多种方案。"
+});
 
 function signToken(payload) {
   const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
@@ -113,16 +133,17 @@ async function callDeepSeek(messages, maxTokens=900) {
   } finally { clearTimeout(timer); }
 }
 
-app.get("/api/health",(req,res)=>res.json({ok:true,aiConfigured:Boolean(API_KEY),model:MODEL,mode:API_KEY?"online":"offline",version:"4.0.0"}));
+app.get("/api/health",(req,res)=>res.json({ok:true,aiConfigured:Boolean(API_KEY),model:MODEL,mode:API_KEY?"online":"offline",version:"5.1.0",capabilities:{serverSideMentorModes:true,contentSecurityPolicy:true,cloudLearningRecords:false}}));
 app.post("/api/chat",async(req,res)=>{
   const message=typeof req.body?.message==="string"?req.body.message.trim():"";
   const topic=typeof req.body?.topic==="string"?req.body.topic.slice(0,30):"general";
+  const mentorMode=typeof req.body?.mode==="string" && Object.hasOwn(MENTOR_MODES,req.body.mode) ? req.body.mode : "curiosity";
   const history=Array.isArray(req.body?.history)?req.body.history.slice(-6):[];
   if(!message) return res.status(400).json({error:"请输入问题。"});
   if(message.length>1200) return res.status(400).json({error:"问题过长，请控制在1200字以内。"});
   if(looksLikePII(message)) return res.status(400).json({error:"检测到可能的个人身份信息。请删除姓名、联系方式、地址、学号等信息后再提问。"});
   if(!API_KEY) return res.json({mode:"offline",answer:offlineTutor(message,topic)});
-  const safeHistory=history.filter(m=>m && ["user","assistant"].includes(m.role) && typeof m.content==="string")
+  const safeHistory=history.filter(m=>m && ["user","assistant"].includes(m.role) && typeof m.content==="string" && !looksLikePII(m.content))
     .map(m=>({role:m.role,content:m.content.slice(0,1200)}));
   const topicHint={
     ai:"课程主题：认识人工智能。帮助学生区分人工智能、自动化与普通程序。",
@@ -132,7 +153,7 @@ app.post("/api/chat",async(req,res)=>{
     design:"课程主题：AI创意设计。引导学生说明需求、输入、处理、输出、风险、测试和迭代。"
   }[topic]||"课程主题：儿童科学探究。";
   try {
-    const answer=await callDeepSeek([{role:"system",content:SYSTEM_BASE+"\n"+topicHint},...safeHistory,{role:"user",content:message}],1000);
+    const answer=await callDeepSeek([{role:"system",content:SYSTEM_BASE+"\n"+MENTOR_MODES[mentorMode]+"\n"+topicHint},...safeHistory,{role:"user",content:message}],1000);
     res.json({mode:"online",model:MODEL,answer});
   } catch(err) {
     res.json({mode:"offline",answer:offlineTutor(message,topic),notice:err.message});
@@ -163,7 +184,10 @@ app.post("/api/teacher/evaluate",apiLimiter,requireTeacher,async(req,res)=>{
     res.json({mode:"offline",answer:"AI评价服务暂不可用。请由教师按量规人工评价。"+err.message});
   }
 });
-app.use(express.static(path.join(__dirname,"public"),{extensions:["html"]}));
-app.get("*",(req,res)=>res.sendFile(path.join(__dirname,"public","index.html")));
+app.use(express.static(path.join(__dirname,"public"),{extensions:["html"],fallthrough:true}));
+app.use((req,res)=>{
+  if(req.path.startsWith("/api/")) return res.status(404).json({error:"接口不存在。"});
+  return res.status(404).type("text/plain; charset=utf-8").send("页面不存在（404）。请检查网址，或返回小小AI科学家首页。");
+});
 app.use((err,req,res,next)=>{console.error("request_error",err?.message||"unknown");res.status(500).json({error:"服务器内部错误，请稍后重试。"});});
 app.listen(PORT,()=>console.log(`Little AI Scientists V4 listening on ${PORT}`));
