@@ -154,6 +154,16 @@ async function requireTeacher(req,res,next) {
   }catch(error){console.error("teacher_session_read_failed",error.message);res.status(503).json({error:"教师身份验证暂不可用。"});}
 }
 function teacherId(req){return req.auth?.subjectId||"teacher-default";}
+async function resolveStudentSession(token){
+  if(!token||!db||!dbReady)return null;
+  try{
+    const session=await readSession(db,token);
+    if(!session||session.role!=="student")return null;
+    const learner=await db.query("SELECT id,class_id FROM science_learners WHERE id=$1",[session.subjectId]);
+    if(!learner.rowCount)return null;
+    return {role:"student",learnerId:learner.rows[0].id,classId:learner.rows[0].class_id};
+  }catch(error){console.error("chat_student_session_failed",error.message);return null;}
+}
 async function requireStudent(req,res,next){
   try{
     const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");
@@ -277,8 +287,8 @@ app.post("/api/chat/stream",chatLimiter,async(req,res)=>{
   if(message.length>6000)return res.status(400).json({error:"问题过长，请缩短后再试。"});
   if(looksLikePII(message))return res.status(400).json({error:"检测到可能的个人身份信息，请删除后再提问。"});
   const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
-  const student=verifyToken(token);
-  const ownsSession=Boolean(dbReady&&student?.role==="student"&&student.learnerId&&student.classId);
+  const student=await resolveStudentSession(token);
+  const ownsSession=Boolean(student?.learnerId&&student.classId);
   const ownerLearnerId=ownsSession?String(student.learnerId):"";
   const ownerClassId=ownsSession?String(student.classId):"";
   const headers={"Content-Type":"text/event-stream; charset=utf-8","Cache-Control":"no-cache, no-transform","Connection":"keep-alive","X-Accel-Buffering":"no"};
@@ -320,8 +330,8 @@ app.post("/api/chat",chatLimiter,async(req,res)=>{
   if(looksLikePII(message))return res.status(400).json({error:"检测到可能的个人身份信息。请删除姓名、联系方式、地址、学号等信息后再提问。"});
   try{
     const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
-    const student=verifyToken(token);
-    const ownsSession=Boolean(dbReady&&student?.role==="student" && student.learnerId && student.classId);
+    const student=await resolveStudentSession(token);
+    const ownsSession=Boolean(student?.learnerId && student.classId);
     const ownerLearnerId=ownsSession?String(student.learnerId):"";
     const ownerClassId=ownsSession?String(student.classId):"";
     const previous=ownsSession
