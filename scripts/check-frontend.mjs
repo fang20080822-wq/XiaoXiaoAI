@@ -4,6 +4,7 @@ import vm from 'node:vm';
 const html = readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
 const server = readFileSync(new URL('../server.js', import.meta.url), 'utf8');
 const upgradeModule = readFileSync(new URL('../upgrade-v56.js', import.meta.url), 'utf8');
+const inquiryModule = readFileSync(new URL('../lib/inquiry.js', import.meta.url), 'utf8');
 
 const openTag = '<script>';
 const closeTag = '</script>';
@@ -84,7 +85,7 @@ if (!server.includes('limit:30') || !server.includes('limit:120') || !server.inc
 if (!server.includes('本分钟对话次数已达上限') || !server.includes('fallback:"offline"') || !html.includes('r.status===429')) throw new Error('HTTP 429 must return and display a graceful offline fallback');
 if (!server.includes('function looksLikePII') || !server.includes('looksLikePII(alias)') || !server.includes('looksLikePII(d[key])') || !server.includes('looksLikePII(work)') || !server.includes('looksLikePII(message)')) throw new Error('PII screening must cover chat, alias, all inquiry fields and teacher studentWork');
 for (const field of ['observedPhenomenon','questionBoundary','measurementIndicator','hypothesisBasis','expectedResult','controlRationale','dataTable','anomalyHandling','evidenceReasoning']) if (!html.includes('id="'+field+'"') || !server.includes(field)) throw new Error('Level-four inquiry field missing end-to-end: '+field);
-if (!html.includes("if(!topic||!question)") || !server.includes('scoreRecord(d)') || !server.includes('parseDataTable')) throw new Error('Students must be able to submit with topic and question only; evidence quality is evaluated separately');
+if (!html.includes("if(!topic||!question)") || !server.includes('scoreRecord(d)') || !inquiryModule.includes('parseDataTable')) throw new Error('Students must be able to submit with topic and question only; evidence quality is evaluated separately');
 for (const term of ['真实观察','问题边界','可测量指标','假设依据','预期结果','控制理由','异常值处理','证据解释']) if (!server.includes(term) && !html.includes(term)) throw new Error('Level-four rubric requirement missing: '+term);
 if (!server.includes('五项标准') || !server.includes('尚无证据')) throw new Error('Teacher evaluation must use five level-four dimensions and avoid inferring evidence');
 if (!server.includes('q.rows.reverse().filter(m=>!looksLikePII(m.content))') || !server.includes('if(looksLikePII(answer))')) throw new Error('Chat history responses and stored AI answers must also be screened for PII');
