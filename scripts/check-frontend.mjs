@@ -25,7 +25,7 @@ for (const route of ['/api/health', '/api/chat', '/api/teacher/evaluate']) {
   if (!html.includes(route)) throw new Error('Frontend no longer calls expected API route: ' + route);
   if (!server.includes(route)) throw new Error('Backend route missing: ' + route);
 }
-if (!html.includes('/api/teacher/login') || !upgradeModule.includes('app.post("/api/teacher/login",apiLimiter,teacherAccountLogin)')) throw new Error('Email/password teacher login route missing');
+if (!html.includes('/api/teacher/login') || !upgradeModule.includes('app.post("/api/teacher/login",loginLimiter||apiLimiter,teacherAccountLogin)')) throw new Error('Email/password teacher login route or authentication rate limit missing');
 if (!server.includes('contentSecurityPolicy:')) throw new Error('Content Security Policy is not configured');
 if (!server.includes('MENTOR_MODES[mentorMode]')) throw new Error('Mentor mode must be selected and enforced by the server');
 if (server.includes('app.get("*",(req,res)=>res.sendFile')) throw new Error('Unknown routes must not silently return the homepage');
