@@ -188,7 +188,7 @@ app.get("/api/health",async(req,res)=>{
 app.get("/api/chat/history/:sessionId",chatLimiter,requireDatabase,async(req,res)=>{
   const sessionId=String(req.params.sessionId||"");
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId))return res.status(400).json({error:"对话会话标识无效。"});
-  try{const q=await db.query("SELECT role,content,created_at FROM chat_messages WHERE session_id=$1 ORDER BY created_at DESC LIMIT 30",[sessionId]);res.json({messages:q.rows.reverse()});}
+  try{const q=await db.query("SELECT role,content,created_at FROM chat_messages WHERE session_id=$1 ORDER BY created_at DESC LIMIT 30",[sessionId]);res.json({messages:q.rows.reverse().filter(m=>!looksLikePII(m.content))});}
   catch(e){console.error("chat_history_read_failed",e.message);res.status(500).json({error:"读取对话历史失败。"});}
 });
 app.delete("/api/chat/history/:sessionId",chatLimiter,requireDatabase,async(req,res)=>{
@@ -223,6 +223,7 @@ app.post("/api/chat",chatLimiter,requireDatabase,async(req,res)=>{
       try{answer=await callDeepSeek([{role:"system",content:SYSTEM_BASE+"\n"+MENTOR_MODES[mentorMode]+"\n"+topicHint},...safeHistory,{role:"user",content:message}],1000);}
       catch(err){answer=offlineTutor(message,topic);mode="offline";notice=err.message;}
     }
+    if(looksLikePII(answer))answer="这条回答可能包含个人身份信息，为保护隐私已隐藏。请改用匿名信息继续探究。";
     await db.query("INSERT INTO chat_messages(session_id,role,content) VALUES($1,'assistant',$2)",[sessionId,answer]);
     await db.query("DELETE FROM chat_messages WHERE session_id=$1 AND id NOT IN (SELECT id FROM chat_messages WHERE session_id=$1 ORDER BY created_at DESC LIMIT 30)",[sessionId]);
     res.json({mode,model:MODEL,answer,...(notice?{notice}:{})});
