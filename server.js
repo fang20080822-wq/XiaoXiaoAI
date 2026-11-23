@@ -10,7 +10,7 @@ import pg from "pg";
 import { registerV56Routes } from "./upgrade-v56.js";
 import { registerV57Routes } from "./upgrade-v57.js";
 import { scoreRecord,validateAlias,containsPII,offlineAnswer } from "./lib/inquiry.js";
-import { readSession,issueSession } from "./lib/auth.js";
+import { readSession,issueSession,hashSessionToken } from "./lib/auth.js";
 
 dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -102,9 +102,8 @@ if (ALLOW_ORIGIN) {
   });
 }
 function rateLimitKey(req){
-  const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
-  const payload=verifyToken(token);
-  return payload?.role==="student" && payload.learnerId ? "student:"+payload.learnerId : "ip:"+(req.ip||req.socket?.remoteAddress||"unknown");
+  const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");
+  return token ? "student:"+hashSessionToken(token) : "ip:"+(req.ip||req.socket?.remoteAddress||"unknown");
 }
 const apiLimiter = rateLimit({windowMs:60_000,limit:120,standardHeaders:"draft-7",legacyHeaders:false,keyGenerator:rateLimitKey,
   handler:(req,res)=>res.status(429).json({error:"请求过于频繁，请稍后再试。",mode:"offline",fallback:"offline"})});
