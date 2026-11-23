@@ -19,7 +19,7 @@ const ALLOW_ORIGIN = process.env.ALLOW_ORIGIN || "";
 
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
-app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+app.use(helmet({contentSecurityPolicy:{directives:{'default-src':["'self'"],'script-src':["'self'","'unsafe-inline'"],'style-src':["'self'","'unsafe-inline'"],'img-src':["'self'",'data:'],'media-src':["'self'"],'connect-src':["'self'"],'object-src':["'none'"],'base-uri':["'self'"],'frame-ancestors':["'none'"],'form-action':["'self'"]}},crossOriginEmbedderPolicy:false}));
 app.use(express.json({ limit: "32kb" }));
 if (ALLOW_ORIGIN) {
   app.use((req,res,next)=>{
@@ -113,29 +113,30 @@ async function callDeepSeek(messages, maxTokens=900) {
   } finally { clearTimeout(timer); }
 }
 
-app.get("/api/health",(req,res)=>res.json({ok:true,aiConfigured:Boolean(API_KEY),model:MODEL,mode:API_KEY?"online":"offline",version:"4.0.0"}));
+app.get("/api/health",(req,res)=>res.set("Cache-Control","no-store").json({ok:true,aiConfigured:Boolean(API_KEY),model:MODEL,mode:API_KEY?"online":"offline",version:"5.1.0"}));
+const MENTOR_MODES = {
+  curiosity: "先回应学生观察，再帮助把问题缩小到具体、可研究的范围。先提出一个启发式问题，不直接替学生完成探究。",
+  experiment: "帮助学生识别自变量、因变量和控制变量；给出适龄、安全、可操作的步骤，提醒需要成人指导的风险。",
+  concept: "用准确、适龄的中文和生活例子解释概念，说明类比的局限，并用一个问题检查理解。",
+  evidence: "区分观察、测量数据、推断和结论；指出证据局限，不编造数据。",
+  create: "引导学生说明真实需求、约束、方案、测试指标和迭代方向，鼓励比较多个方案。"
+};
 app.post("/api/chat",async(req,res)=>{
   const message=typeof req.body?.message==="string"?req.body.message.trim():"";
-  const topic=typeof req.body?.topic==="string"?req.body.topic.slice(0,30):"general";
-  const history=Array.isArray(req.body?.history)?req.body.history.slice(-6):[];
+  const mode=typeof req.body?.mode==="string"?req.body.mode:"curiosity";
   if(!message) return res.status(400).json({error:"请输入问题。"});
   if(message.length>1200) return res.status(400).json({error:"问题过长，请控制在1200字以内。"});
   if(looksLikePII(message)) return res.status(400).json({error:"检测到可能的个人身份信息。请删除姓名、联系方式、地址、学号等信息后再提问。"});
-  if(!API_KEY) return res.json({mode:"offline",answer:offlineTutor(message,topic)});
-  const safeHistory=history.filter(m=>m && ["user","assistant"].includes(m.role) && typeof m.content==="string")
-    .map(m=>({role:m.role,content:m.content.slice(0,1200)}));
-  const topicHint={
-    ai:"课程主题：认识人工智能。帮助学生区分人工智能、自动化与普通程序。",
-    ml:"课程主题：机器学习。重点解释样例、特征、训练、测试、偏差和预测。",
-    sensor:"课程主题：智能感知。重点解释传感器、输入—处理—输出与误报。",
-    safety:"课程主题：AI安全。重点解释隐私、事实核查、偏见、版权和人工监督。",
-    design:"课程主题：AI创意设计。引导学生说明需求、输入、处理、输出、风险、测试和迭代。"
-  }[topic]||"课程主题：儿童科学探究。";
+  const modeInstruction=MENTOR_MODES[mode]||MENTOR_MODES.curiosity;
+  if(!API_KEY) return res.json({mode:"offline",answer:offlineTutor(message,"general")});
   try {
-    const answer=await callDeepSeek([{role:"system",content:SYSTEM_BASE+"\n"+topicHint},...safeHistory,{role:"user",content:message}],1000);
-    res.json({mode:"online",model:MODEL,answer});
+    const answer=await callDeepSeek([
+      {role:"system",content:SYSTEM_BASE+"\\n当前导师模式："+modeInstruction+"\\n请优先启发学生思考；信息不足时先追问，不要编造实验结果或把猜想写成事实。"},
+      {role:"user",content:message}
+    ],1000);
+    res.json({mode:"online",model:MODEL,answer,mentorMode:mode});
   } catch(err) {
-    res.json({mode:"offline",answer:offlineTutor(message,topic),notice:err.message});
+    res.json({mode:"offline",answer:offlineTutor(message,"general"),notice:err.message});
   }
 });
 app.post("/api/teacher/login",loginLimiter,(req,res)=>{
@@ -163,7 +164,16 @@ app.post("/api/teacher/evaluate",apiLimiter,requireTeacher,async(req,res)=>{
     res.json({mode:"offline",answer:"AI评价服务暂不可用。请由教师按量规人工评价。"+err.message});
   }
 });
-app.use(express.static(path.join(__dirname,"public"),{extensions:["html"]}));
-app.get("*",(req,res)=>res.sendFile(path.join(__dirname,"public","index.html")));
+app.use(express.static(path.join(__dirname,"public"),{
+  extensions:["html"],
+  setHeaders(res,filePath) {
+    if (filePath.endsWith(".mp4")) res.setHeader("Cache-Control","public, max-age=604800, immutable");
+    else if (filePath.endsWith(".html")) res.setHeader("Cache-Control","no-cache");
+  }
+}));
+app.use((req,res)=>{
+  if (req.path.startsWith("/api/")) return res.status(404).json({error:"API接口不存在。"});
+  return res.status(404).type("text").send("404 Not Found");
+});
 app.use((err,req,res,next)=>{console.error("request_error",err?.message||"unknown");res.status(500).json({error:"服务器内部错误，请稍后重试。"});});
-app.listen(PORT,()=>console.log(`Little AI Scientists V4 listening on ${PORT}`));
+app.listen(PORT,()=>console.log(`Little AI Scientists V5.1 listening on ${PORT}`));
