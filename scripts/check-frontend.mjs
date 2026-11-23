@@ -33,6 +33,16 @@ for (const field of ['researchQuestion', 'independentVariable', 'dependentVariab
 }
 if (!html.includes('function joinClass()') || !html.includes('function submitCloudRecord()') || !html.includes('function loadMyRecords()')) throw new Error('Student classroom workflow missing');
 if (!html.includes('function createClass()') || !html.includes('function viewClassRecords(')) throw new Error('Teacher classroom workflow missing');
+const inquiryOrder = ['topic', 'researchQuestion', 'hypothesis', 'independentVariable', 'dependentVariable', 'controlVariables', 'method', 'evidence', 'conclusion', 'reflection'];
+let previousIndex = -1;
+for (const field of inquiryOrder) {
+  const index = html.indexOf('id="' + field + '"');
+  if (index < 0 || index <= previousIndex) throw new Error('Student inquiry fields are missing or out of order: ' + field);
+  previousIndex = index;
+}
+if (html.includes('id="observations"')) throw new Error('Legacy duplicate observations field should not appear in the student form');
+if (!html.includes('d.researchQuestion') || !html.includes('d.evidence') || !html.includes('d.reflection')) throw new Error('AI mentor context must include the complete structured inquiry record');
+
 if (!server.includes('guardian_consent') || !server.includes('req.body?.guardianConsent!==true')) throw new Error('Guardian consent acknowledgement is not enforced');
 if (!server.includes('DATABASE_URL') || !server.includes('science_records')) throw new Error('PostgreSQL learning record storage missing');
 if (!html.includes('六维100分评审量规')) throw new Error('Judges scoring rubric missing');
