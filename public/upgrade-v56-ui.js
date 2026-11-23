@@ -49,8 +49,8 @@
   }
   async function loadDashboard(){
     const panel=$('teacherPanel');if(!panel||panel.classList.contains('hidden'))return;
-    let box=$('teacherDashboardV56');
-    if(!box){box=el('section',undefined,'sample-card');box.id='teacherDashboardV56';const anchor=panel.firstElementChild;panel.insertBefore(box,anchor?.nextSibling||null);}
+    let box=$('classStats');
+    if(!box){box=el('section',undefined,'sample-card');box.id='classStats';const anchor=panel.firstElementChild;panel.insertBefore(box,anchor?.nextSibling||null);}
     box.replaceChildren(el('h3','班级学习数据看板'),el('p','以下指标由数据库记录和规则引擎统计，不由大模型估算。'));
     try{
       const d=await api('/api/teacher/dashboard');
@@ -83,13 +83,13 @@
   }
   async function loadAudit(){
     const panel=$('teacherPanel');if(!panel||panel.classList.contains('hidden'))return;
-    let box=$('teacherAuditV56');if(!box){box=el('div',undefined,'sample-card');box.id='teacherAuditV56';box.append(el('h3','我的操作审计记录'));$('teacherDashboardV56')?.after(box);}
+    let box=$('teacherAuditV56');if(!box){box=el('div',undefined,'sample-card');box.id='teacherAuditV56';box.append(el('h3','我的操作审计记录'));$('classStats')?.after(box);}
     try{const d=await api('/api/teacher/audit-log');box.replaceChildren(el('h3','我的操作审计记录'));(d.logs||[]).forEach(x=>box.appendChild(el('p',new Date(x.created_at).toLocaleString()+' · '+x.action+' · '+x.target_type+' '+x.target_id)));if(!d.logs?.length)box.appendChild(el('p','暂无操作记录。'));}
     catch(e){box.appendChild(el('p','审计日志读取失败：'+e.message));}
   }
   async function loadAdminReviews(){
     if(!$('teacherPanel')||$('teacherPanel').classList.contains('hidden'))return;
-    let box=$('teacherAdminReviewV56');if(!box){box=el('div',undefined,'sample-card');box.id='teacherAdminReviewV56';box.append(el('h3','管理员：教师账号审核'));$('teacherDashboardV56')?.after(box);}
+    let box=$('teacherAdminReviewV56');if(!box){box=el('div',undefined,'sample-card');box.id='teacherAdminReviewV56';box.append(el('h3','管理员：教师账号审核'));$('classStats')?.after(box);}
     try{const d=await api('/api/admin/teachers');box.replaceChildren(el('h3','管理员：教师账号审核'));(d.teachers||[]).forEach(t=>{const row=el('div',undefined,'unit');row.append(el('b',t.email),el('p',t.school+' · '+t.status));if(t.status==='pending'){for(const status of ['approved','rejected']){const b=el('button',status==='approved'?'批准':'驳回','btn soft');b.type='button';b.addEventListener('click',async()=>{try{await api('/api/admin/teachers/'+encodeURIComponent(t.id)+'/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({status})});loadAdminReviews();}catch(e){row.appendChild(el('p',e.message));}});row.appendChild(b);}}box.appendChild(row);});}
     catch(e){box.appendChild(el('p','管理员审核列表仅管理员可见：'+e.message));}
   }
