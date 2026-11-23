@@ -102,7 +102,7 @@ if (ALLOW_ORIGIN) {
   });
 }
 function rateLimitKey(req){
-  const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");
+  const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
   return token ? "student:"+hashSessionToken(token) : "ip:"+(req.ip||req.socket?.remoteAddress||"unknown");
 }
 const apiLimiter = rateLimit({windowMs:60_000,limit:120,standardHeaders:"draft-7",legacyHeaders:false,keyGenerator:rateLimitKey,
