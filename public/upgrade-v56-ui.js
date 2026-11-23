@@ -78,7 +78,7 @@
     catch(e){box.appendChild(el('p','管理员审核列表仅管理员可见：'+e.message));}
   }
   const oldLogin=window.teacherLogin;
-  if(typeof oldLogin==='function')window.teacherLogin=async function(){await oldLogin();setTimeout(()=>{loadDashboard();loadAudit();loadAdminReviews();},100);};
+  if(typeof oldLogin==='function')window.teacherLogin=async function(){await oldLogin();setTimeout(()=>{loadAdminReviews();},100);};
   const oldLoad=window.loadClasses;
   if(typeof oldLoad==='function')window.loadClasses=async function(){const v=await oldLoad();loadDashboard();loadAudit();return v;};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{loadCurriculum();addTeacherAccountUI();},{once:true});else{loadCurriculum();addTeacherAccountUI();}
