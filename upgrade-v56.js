@@ -49,8 +49,8 @@ export function nextHintState(previous = {}, message = "") {
   const selfCorrection = text.length >= 18 && /(我发现|我改成|应该是|因为.*所以|数据说明)/.test(text);
   const correctDirection = /(自变量|因变量|控制变量|重复.*次|单位|测量|证据)/.test(text) && text.length >= 12;
   const asksAnswer = /(直接告诉我答案|给我答案|答案是什么|帮我写完)/.test(text);
-  const normalized = text.toLowerCase().replace(/[？?。！!，,、\\s]/g,"");
-  const previousPrompt = String(previous.last_prompt||"").toLowerCase().replace(/[？?。！!，,、\\s]/g,"");
+  const normalized = text.toLowerCase().replace(/[？?。！!，,、\s]/g,"");
+  const previousPrompt = String(previous.last_prompt||"").toLowerCase().replace(/[？?。！!，,、\s]/g,"");
   const repeatedPrompt = normalized.length>=5 && normalized===previousPrompt;
   if (selfCorrection) { streak += 1; if (streak >= 2) { level = Math.min(4,level+1); streak = 0; } }
   else if (correctDirection) { level = Math.min(4,level+1); streak = 0; }
@@ -80,7 +80,7 @@ export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,AD
     if(!db)return next();
     try {
       await ensureTables();
-      const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");
+      const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
       const payload=verifyToken(token);
       if(payload?.accountTeacher){
         const q=await db.query("SELECT status FROM teachers WHERE id=$1",[payload.teacherId]);
@@ -90,7 +90,7 @@ export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,AD
     } catch(error) { console.error("teacher_account_guard_failed",error.message); res.status(503).json({error:"教师账号服务暂不可用。"}); }
   });
   const requireAdmin = (req,res,next) => {
-    const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");
+    const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
     const p=verifyToken(token);
     if(!p || p.role!=="admin" || p.isAdmin!==true) return res.status(403).json({error:"仅管理员可执行此操作。"});
     req.admin=p; next();
@@ -100,7 +100,7 @@ export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,AD
     if(req.method!=="POST" || !db) return next();
     try {
       await ensureTables();
-      const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");
+      const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
       const student=verifyToken(token);
       const sessionId=String(req.body?.sessionId||"");
       const stateQ=await db.query("SELECT level,streak,last_prompt FROM mentor_progress WHERE session_id=$1",[sessionId]);
