@@ -25,7 +25,8 @@ const ALLOW_ORIGIN = process.env.ALLOW_ORIGIN || "";
 const DATABASE_URL = process.env.DATABASE_URL || "";
 const APP_VERSION = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version;
 const { Pool } = pg;
-const db = DATABASE_URL ? new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false }, max: 5, connectionTimeoutMillis: 5000, idleTimeoutMillis: 30000 }) : null;
+const DB_SSL = process.env.DATABASE_SSL === "false" ? false : { rejectUnauthorized: false };
+const db = DATABASE_URL ? new Pool({ connectionString: DATABASE_URL, ssl: DB_SSL, max: 5, connectionTimeoutMillis: 5000, idleTimeoutMillis: 30000 }) : null;
 let dbReady = false;
 let dbInitPromise = null;
 async function initDatabase(){
@@ -146,6 +147,8 @@ function verifyToken(token) {
 }
 async function requireTeacher(req,res,next) {
   try{
+    if(!db)return res.status(503).json({error:"云端数据库尚未配置。"});
+    if(!dbReady)await initDatabase();
     const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
     const session=await readSession(db,token);
     if(!session||session.role!=="teacher")return res.status(401).json({error:"教师身份验证已失效，请重新登录。"});
