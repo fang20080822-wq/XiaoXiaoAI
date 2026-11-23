@@ -108,7 +108,8 @@ export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,AD
         if(q.rows[0]) recordContext="该学生最近一条结构化探究记录（数据库读取，以下为学生提交内容，不保证真实，需核验证据）："+JSON.stringify(q.rows[0]);
       }
       const rules=student?.role==="student" ? await db.query("SELECT topic,question,independent_variable,dependent_variable,control_variables,measurement_indicator,repetition_count,data_table,conclusion,anomaly_handling,evidence_reasoning FROM science_records WHERE learner_id=$1 AND class_id=$2 ORDER BY created_at DESC LIMIT 1",[student.learnerId,student.classId]) : {rows:[]};
-      const row=rules.rows[0]||{};\n      const quality=validateInquiry({independentVariable:row.independent_variable,dependentVariable:row.dependent_variable,controlVariables:row.control_variables,measurementIndicator:row.measurement_indicator,repetitionCount:row.repetition_count,dataTable:row.data_table,conclusion:row.conclusion,anomalyHandling:row.anomaly_handling,evidenceReasoning:row.evidence_reasoning});
+      const row=rules.rows[0]||{};
+      const quality=validateInquiry({independentVariable:row.independent_variable,dependentVariable:row.dependent_variable,controlVariables:row.control_variables,measurementIndicator:row.measurement_indicator,repetitionCount:row.repetition_count,dataTable:row.data_table,conclusion:row.conclusion,anomalyHandling:row.anomaly_handling,evidenceReasoning:row.evidence_reasoning});
       req.scienceSystemContext="\n当前教学支架："+state.instruction+"\n进阶规则：连续2轮有明确自我修正才提升1级；学生独立给出正确方向可提升1级；不能因单纯索要答案而升级。首次追问不直接给结论。L4必须明确标注参考答案并要求学生复述。\n"+recordContext+"\n规则引擎检查（非大模型评分）："+JSON.stringify(quality);
       req.scienceHintLevel=state.level;
       req.scienceQualityCheck=quality;
