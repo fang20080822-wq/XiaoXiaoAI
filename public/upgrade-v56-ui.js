@@ -36,13 +36,13 @@
   function addTeacherAccountUI(){
     const teacher=$('teacher');if(!teacher||$('teacherAccountBox'))return;
     const box=el('div',undefined,'card');box.id='teacherAccountBox';box.style.margin='18px 0';
-    box.append(el('h2','教师账号申请与登录'),el('p','教师使用独立邮箱账号；新账号需管理员审核通过后才能访问班级数据。'));
+    box.append(el('h2','教师账号注册与登录'),el('p','使用独立邮箱创建教师账号。注册成功后即可使用班级管理与学习数据功能。'));
     const email=el('input');email.type='email';email.id='teacherEmail';email.placeholder='教师工作邮箱';
     const school=el('input');school.id='teacherSchool';school.placeholder='学校 / 机构名称';
     const password=el('input');password.type='password';password.id='teacherAccountPassword';password.placeholder='至少8位密码';password.autocomplete='new-password';
     const actions=el('div',undefined,'actions');
-    const register=el('button','提交教师账号申请','btn soft');register.type='button';
-    register.addEventListener('click',async()=>{const status=$('teacherAccountStatus');status.textContent='正在提交申请…';try{const d=await api('/api/teacher/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email.value,password:password.value,school:school.value})});if(d.token)window.teacherPendingToken=d.token;status.textContent=d.message;}catch(e){status.textContent=e.message;}});
+    const register=el('button','注册并进入教师工作台','btn soft');register.type='button';
+    register.addEventListener('click',async()=>{const status=$('teacherAccountStatus');status.textContent='正在创建教师账号…';try{const d=await api('/api/teacher/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email.value,password:password.value,school:school.value})});if(!d.token)throw new Error('账号已创建，但未收到登录凭证，请使用账号登录。');if(typeof teacherToken!=='undefined')teacherToken=d.token;window.teacherToken=d.token;applyRoleVisibility(d.token);$('teacherPanel')?.classList.remove('hidden');$('teacherLogout')?.classList.remove('hidden');$('loginMsg').textContent='教师账号注册成功，已自动登录。';await loadDashboard();await window.loadClasses?.();status.textContent=d.message||'注册成功，已进入教师工作台。';}catch(e){status.textContent=e.message;}});
     const login=el('button','教师账号登录','btn primary');login.type='button';
     login.addEventListener('click',async()=>{const status=$('teacherAccountStatus');status.textContent='正在登录…';try{const d=await api('/api/teacher/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email.value,password:password.value})});if(typeof teacherToken!=='undefined')teacherToken=d.token;window.teacherToken=d.token;applyRoleVisibility(d.token);$('teacherPanel')?.classList.remove('hidden');$('teacherLogout')?.classList.remove('hidden');$('loginMsg').textContent='教师账号登录成功。';await loadDashboard();await window.loadClasses?.();status.textContent='登录成功。';}catch(e){status.textContent=e.message;}});
     actions.append(register,login);box.append(email,school,password,actions,el('p','', 'muted'));const status=box.lastChild;status.id='teacherAccountStatus';teacher.querySelector('.pageintro')?.after(box);
