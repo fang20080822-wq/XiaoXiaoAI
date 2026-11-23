@@ -3,7 +3,7 @@ import vm from 'node:vm';
 
 const html = readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
 const server = readFileSync(new URL('../server.js', import.meta.url), 'utf8');
-const upgrade = readFileSync(new URL('../upgrade-v56.js', import.meta.url), 'utf8');
+const upgradeModule = readFileSync(new URL('../upgrade-v56.js', import.meta.url), 'utf8');
 
 const openTag = '<script>';
 const closeTag = '</script>';
@@ -69,7 +69,7 @@ if (!html.includes('poster="/videos/poster-plant.svg"') || !html.includes('<trac
 if (!server.includes('maxAge:"7d",etag:true,lastModified:true,immutable:false')) throw new Error('Video static assets must support one-week caching and conditional requests');
 if (!html.includes("location.hash=target") || !html.includes("addEventListener('hashchange'")) throw new Error('Tab navigation must be addressable and respond to hash changes');
 if (!html.includes('function renderMarkdown(') || !html.includes("document.createElement('strong')") || !html.includes("document.createElement(type)")) throw new Error('Assistant Markdown must render safe bold text and lists');
-if (!server.includes('CREATE TABLE IF NOT EXISTS chat_messages') || !upgrade.includes('ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS learner_id') || !upgrade.includes('ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS class_id') || !server.includes('app.get("/api/chat/history/:sessionId",chatLimiter,requireStudent,requireDatabase') || !server.includes('app.delete("/api/chat/history/:sessionId",chatLimiter,requireStudent,requireDatabase')) throw new Error('Chat history routes must require authenticated student sessions');
+if (!server.includes('CREATE TABLE IF NOT EXISTS chat_messages') || !upgradeModule.includes('ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS learner_id') || !upgradeModule.includes('ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS class_id') || !server.includes('app.get("/api/chat/history/:sessionId",chatLimiter,requireStudent,requireDatabase') || !server.includes('app.delete("/api/chat/history/:sessionId",chatLimiter,requireStudent,requireDatabase')) throw new Error('Chat history routes must require authenticated student sessions');
 const chatRoute=server.slice(server.indexOf('app.post("/api/chat"'),server.indexOf('app.post("/api/teacher/login"'));
 if (chatRoute.includes('req.body?.history') || !chatRoute.includes('WHERE session_id=$1 AND learner_id=$2 AND class_id=$3') || !chatRoute.includes('INSERT INTO chat_messages(session_id,learner_id,class_id,role,content)')) throw new Error('Chat history must be scoped to the authenticated learner and class');
 if (!server.includes('replace(/^Bearer\\s+/i')) throw new Error('Chat route must correctly parse Bearer student tokens');
