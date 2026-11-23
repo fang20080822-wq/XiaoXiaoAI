@@ -4,10 +4,8 @@
 set -euo pipefail
 : "${BASE_URL:?Set BASE_URL}"
 : "${DATABASE_URL:?Set DATABASE_URL for the same test database used by the app}"
-: "${TEACHER_EMAIL:?Set a registered TEACHER_EMAIL}"
-: "${TEACHER_PASSWORD:?Set TEACHER_PASSWORD}"
-: "${TEACHER_B_EMAIL:?Set a second registered teacher}"
-: "${TEACHER_B_PASSWORD:?Set TEACHER_B_PASSWORD}"
+: "${TEACHER_TOKEN:?Pass the teacher A bearer token from the preceding acceptance step}"
+: "${TEACHER_B_TOKEN:?Pass the teacher B bearer token from the preceding acceptance step}"
 command -v curl >/dev/null
 command -v jq >/dev/null
 command -v node >/dev/null
@@ -27,10 +25,6 @@ cleanup() {
 }
 trap cleanup EXIT
 fail(){ echo "FAIL: $1"; if [[ -f "$TMP" ]]; then jq . "$TMP" 2>/dev/null || cat "$TMP"; fi; exit 1; }
-
-LOGIN="$(curl -fsS -X POST "$BASE_URL/api/teacher/login" -H 'Content-Type: application/json' -d "$(jq -nc --arg e "$TEACHER_EMAIL" --arg p "$TEACHER_PASSWORD" '{email:$e,password:$p}')")"
-TEACHER_TOKEN="$(jq -r '.token // empty' <<<"$LOGIN")"
-[[ -n "$TEACHER_TOKEN" ]] || fail "teacher A login did not return a token"
 
 create_class() {
   local name="$1" response
@@ -100,10 +94,7 @@ jq -e '
 ' "$TMP" >/dev/null || fail "empty class did not return zero values"
 echo "PASS: empty class returns zero values"
 
-LOGIN_B="$(curl -fsS -X POST "$BASE_URL/api/teacher/login" -H 'Content-Type: application/json' -d "$(jq -nc --arg e "$TEACHER_B_EMAIL" --arg p "$TEACHER_B_PASSWORD" '{email:$e,password:$p}')")"
-TOKEN_B="$(jq -r '.token // empty' <<<"$LOGIN_B")"
-[[ -n "$TOKEN_B" ]] || fail "teacher B login did not return a token"
-STATUS="$(curl -sS -o "$TMP" -w '%{http_code}' "$BASE_URL/api/teacher/classes/$CLASS_ID/stats" -H "Authorization: Bearer $TOKEN_B")"
+STATUS="$(curl -sS -o "$TMP" -w '%{http_code}' "$BASE_URL/api/teacher/classes/$CLASS_ID/stats" -H "Authorization: Bearer $TEACHER_B_TOKEN")"
 [[ "$STATUS" == "404" ]] || fail "cross-teacher request returned HTTP $STATUS instead of 404"
 echo "PASS: another teacher receives 404"
 echo "All class statistics acceptance checks passed."
