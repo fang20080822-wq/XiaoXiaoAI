@@ -88,7 +88,7 @@ export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,AD
   const requireAdmin = (req,res,next) => {
     const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");
     const p=verifyToken(token);
-    if(!p || p.role!=="teacher" || p.isAdmin!==true) return res.status(403).json({error:"仅管理员可执行此操作。"});
+    if(!p || p.role!=="admin" || p.isAdmin!==true) return res.status(403).json({error:"仅管理员可执行此操作。"});
     req.admin=p; next();
   };
 
