@@ -125,10 +125,10 @@ export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,AD
         COUNT(DISTINCT l.id)::int AS learner_count,
         COUNT(DISTINCT r.id)::int AS record_count,
         CASE WHEN COUNT(DISTINCT l.id)=0 THEN 0 ELSE ROUND(COUNT(DISTINCT r.learner_id)::numeric/COUNT(DISTINCT l.id)*100,1) END AS submission_rate,
-        CASE WHEN COUNT(r.id)=0 THEN 0 ELSE ROUND(COUNT(r.id) FILTER (WHERE r.independent_variable ~ '[,，、和以及]' OR r.repetition_count<2 OR r.data_table !~ '[0-9]')::numeric/COUNT(r.id)*100,1) END AS variable_control_error_rate,
-        COUNT(r.id) FILTER (WHERE r.question ~ '为什么|怎样|如何|是否')::int AS question_exploratory,
-        COUNT(r.id) FILTER (WHERE r.question ~ '什么是|是什么|定义')::int AS question_concept,
-        COUNT(r.id) FILTER (WHERE r.question !~ '为什么|怎样|如何|是否|什么是|是什么|定义')::int AS question_other
+        CASE WHEN COUNT(r.id)=0 THEN 0 ELSE ROUND(COUNT(DISTINCT r.id) FILTER (WHERE r.independent_variable ~ '[,，、和以及]' OR r.repetition_count<2 OR r.data_table !~ '[0-9]')::numeric/COUNT(r.id)*100,1) END AS variable_control_error_rate,
+        COUNT(DISTINCT r.id) FILTER (WHERE r.question ~ '为什么|怎样|如何|是否')::int AS question_exploratory,
+        COUNT(DISTINCT r.id) FILTER (WHERE r.question ~ '什么是|是什么|定义')::int AS question_concept,
+        COUNT(DISTINCT r.id) FILTER (WHERE r.question !~ '为什么|怎样|如何|是否|什么是|是什么|定义')::int AS question_other
         FROM science_classes c LEFT JOIN science_learners l ON l.class_id=c.id LEFT JOIN science_records r ON r.class_id=c.id
         WHERE c.teacher_id=$1 GROUP BY c.id,c.class_name ORDER BY c.created_at DESC`,[tid]);
       await audit(tid,"view_dashboard","teacher","all");
