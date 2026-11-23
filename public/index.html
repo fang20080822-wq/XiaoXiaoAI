@@ -477,7 +477,7 @@ async function teacherLogin(){
   try{
     const r=await fetch('/api/teacher/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('adminPassword').value})});
     const d=await r.json();if(!r.ok)throw new Error(d.error||'登录失败');
-    teacherToken=d.token;$('teacherPanel').classList.remove('hidden');loadClasses();$('teacherLogout').classList.remove('hidden');$('adminPassword').value='';$('loginMsg').textContent='✓ 登录成功。教师会话有效期为2小时；关闭页面或退出后需重新登录。'
+    teacherToken=d.token;$('teacherPanel').classList.remove('hidden');$('teacherLogout').classList.remove('hidden');$('adminPassword').value='';$('loginMsg').textContent='✓ 登录成功。教师会话有效期为2小时；关闭页面或退出后需重新登录。'
   }catch(e){$('loginMsg').textContent=e.message}
 }
 async function evaluateWork(){
