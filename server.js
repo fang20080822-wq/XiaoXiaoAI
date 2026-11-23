@@ -214,7 +214,7 @@ app.post("/api/chat",chatLimiter,requireDatabase,async(req,res)=>{
   const mentorMode=typeof req.body?.mode==="string" && Object.hasOwn(MENTOR_MODES,req.body.mode)?req.body.mode:"curiosity";
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId))return res.status(400).json({error:"对话会话标识无效，请刷新页面重试。"});
   if(!message)return res.status(400).json({error:"请输入问题。"});
-  if(message.length>1200)return res.status(400).json({error:"问题过长，请控制在1200字以内。"});
+  if(message.length>6000)return res.status(400).json({error:"问题过长，请控制在6000字以内。"});
   if(looksLikePII(message))return res.status(400).json({error:"检测到可能的个人身份信息。请删除姓名、联系方式、地址、学号等信息后再提问。"});
   try{
     const previous=await db.query("SELECT role,content FROM chat_messages WHERE session_id=$1 ORDER BY created_at DESC LIMIT 8",[sessionId]);
