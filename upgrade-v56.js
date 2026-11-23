@@ -97,7 +97,8 @@ export function registerV56Routes({app,db,apiLimiter,requireTeacher,teacherId,AD
       const rules=student?.role==="student" ? await db.query("SELECT topic,question,independent_variable,dependent_variable,control_variables,repetition_count,data_table,conclusion,anomaly_handling,evidence_reasoning FROM science_records WHERE learner_id=$1 AND class_id=$2 ORDER BY created_at DESC LIMIT 1",[student.learnerId,student.classId]) : {rows:[]};
       const quality=validateInquiry(rules.rows[0]||{});
       req.scienceSystemContext="\n当前教学支架："+state.instruction+"\n进阶规则：连续2轮有明确自我修正才提升1级；学生独立给出正确方向可提升1级；不能因单纯索要答案而升级。首次追问不直接给结论。L4必须明确标注参考答案并要求学生复述。\n"+recordContext+"\n规则引擎检查（非大模型评分）："+JSON.stringify(quality);
-      req.scienceHintLevel=state.level;\n      req.scienceQualityCheck=quality;
+      req.scienceHintLevel=state.level;
+      req.scienceQualityCheck=quality;
     } catch(error) { console.error("mentor_context_failed",error.message); req.scienceSystemContext="\n本轮未能读取云端探究记录，请明确告知学生并仅基于当前问题提供L1追问，不得假装已读取记录。"; }
     next();
   });
