@@ -310,6 +310,8 @@ app.post("/api/student/records",apiLimiter,requireStudent,requireDatabase,async(
   const rows=d.dataTable.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
   if(rows.length<2)return res.status(400).json({error:"证据记录至少需要两行实际测量记录，请按次数逐行填写。"});
   if(rows.length>repetitions)return res.status(400).json({error:"数据记录行数不能超过填写的重复实验次数。"});
+  const validRows=rows.every(row=>{const parts=row.split(/[|｜]/).map(x=>x.trim());const numericValue=parts.length>=4?Number(parts[2]):NaN;return parts.length>=4&&parts[0]&&parts[1]&&Number.isFinite(numericValue)&&parts[3].length>0;});
+  if(!validRows)return res.status(400).json({error:"每行数据请按“第几次｜日期/时间｜数值｜单位”填写，数值必须是数字并注明单位。"});
   try{
     const q=await db.query(
       "INSERT INTO science_records(class_id,learner_id,topic,question,hypothesis,independent_variable,dependent_variable,control_variables,method,evidence,conclusion,reflection,observed_phenomenon,question_boundary,measurement_indicator,hypothesis_basis,expected_result,repetition_count,control_rationale,data_table,anomaly_handling,evidence_reasoning) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING id,created_at",
