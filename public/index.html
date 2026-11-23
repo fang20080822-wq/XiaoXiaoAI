@@ -378,7 +378,7 @@ function renderInlineMarkdown(parent,text){
   for(const piece of pieces){if(piece.startsWith('**')&&piece.endsWith('**')){const strong=document.createElement('strong');strong.textContent=piece.slice(2,-2);parent.appendChild(strong)}else parent.appendChild(document.createTextNode(piece))}
 }
 function renderMarkdown(parent,source){
-  parent.classList.add('markdown-content');let list=null,listType='';
+  parent.replaceChildren();parent.classList.add('markdown-content');let list=null,listType='';
   for(const line of String(source).replace(/\r/g,'').split('\n')){
     const unordered=/^\s*[-*]\s+(.+)$/.exec(line),ordered=/^\s*\d+[.)]\s+(.+)$/.exec(line);
     if(unordered||ordered){const type=unordered?'ul':'ol';if(!list||listType!==type){list=document.createElement(type);parent.appendChild(list);listType=type}const li=document.createElement('li');renderInlineMarkdown(li,(unordered||ordered)[1]);list.appendChild(li);continue}
@@ -420,18 +420,24 @@ async function ask(){
     if(!r.ok||!r.body){const d=await r.json().catch(()=>({}));throw new Error(d.error||'服务暂不可用')}
     wait.remove();
     const answerBubble=document.createElement('div');answerBubble.className='bubble bot';$('chatlog').appendChild(answerBubble);
-    const reader=r.body.getReader(),decoder=new TextDecoder();let buffer='',answer='',meta={};
+    const reader=r.body.getReader(),decoder=new TextDecoder('utf-8');let buffer='',answer='',meta={};
+    const handleEvent=(event)=>{
+      const lines=event.split(/\r?\n/).filter(x=>x.startsWith('data:'));
+      if(!lines.length)return;
+      const raw=lines.map(x=>x.slice(5).replace(/^ /,'')).join('\n');
+      let payload;try{payload=JSON.parse(raw)}catch{return}
+      if(typeof payload.delta==='string'){answer+=payload.delta;renderMarkdown(answerBubble,answer);$('chatlog').scrollTop=$('chatlog').scrollHeight}
+      if(payload.done===true)meta=payload;
+    };
     while(true){
       const part=await reader.read();if(part.done)break;
       buffer+=decoder.decode(part.value,{stream:true});
-      const events=buffer.split(/\n\n/);buffer=events.pop()||'';
-      for(const event of events){
-        const line=event.split(/\r?\n/).find(x=>x.startsWith('data:'));if(!line)continue;
-        let payload;try{payload=JSON.parse(line.slice(5).trim())}catch{continue}
-        if(typeof payload.delta==='string'){answer+=payload.delta;renderMarkdown(answerBubble,answer);$('chatlog').scrollTop=$('chatlog').scrollHeight}
-        if(payload.done)meta=payload;
-      }
+      const events=buffer.split(/\r\n\r\n|\n\n|\r\r/);buffer=events.pop()||'';
+      events.forEach(handleEvent);
     }
+    buffer+=decoder.decode();
+    if(buffer.trim())handleEvent(buffer);
+    if(meta.done!==true)throw new Error(answer?'回答连接中断，请重试。':'未收到有效回答，请重试。');
     const suffix=meta.mode==='offline'?'\n\n（离线规则提示，并非实时大模型回答）'+(meta.notice?' 原因：'+meta.notice:''):'\n\n（DeepSeek 实时回答 · '+mode.label+'）';
     renderMarkdown(answerBubble,answer+suffix);
   }catch(e){wait.remove();bubble('暂时无法获得AI回答：'+e.message,'bot')}
