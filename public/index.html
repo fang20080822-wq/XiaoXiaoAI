@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101a3a">
 <meta name="description" content="小小AI科学家：面向青少年的AI科学探究平台，让好奇心成为科学发现的起点。">
-<title>小小AI科学家 V5.3｜AI科学探究平台</title>
+<title>小小AI科学家｜AI科学探究平台</title>
 <style>
 :root{--navy:#101a3a;--navy2:#172653;--blue:#3978f6;--cyan:#65d5ff;--violet:#8665f6;--ink:#17233d;--muted:#71809a;--bg:#f5f7fc;--line:#e4e9f3;--surface:#fff;--green:#14845d;--shadow:0 18px 48px rgba(27,43,84,.09);--radius:22px}
 *{box-sizing:border-box}
@@ -66,7 +66,7 @@ main{max-width:1180px;margin:0 auto;padding:34px 24px 72px}
 .card{padding:24px;margin-bottom:16px}.card h2,.card h3{margin-top:0}.card h2{font-size:24px;letter-spacing:-.4px}.card h3{font-size:17px}
 .muted,small{color:var(--muted)}.muted{font-size:13px}
 .pill{display:inline-flex;align-items:center;padding:5px 10px;border-radius:99px;background:#edf3ff;color:#4266b6;font-size:11px;font-weight:750;margin:2px}
-.course{padding:0;overflow:hidden;transition:.2s}.course:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+.course{padding:0;overflow:hidden;transition:.2s}.course:hover{transform:translateY(-3px);box-shadow:var(--shadow)}.course.selected{border:2px solid #6685ef;box-shadow:0 10px 28px #6685ef22}.course.selected:before{content:"默认推荐课程";display:block;background:#edf2ff;color:#315fc5;font-size:11px;font-weight:800;padding:6px 16px}.sample-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;margin:22px 0}.sample-card{padding:19px;background:#fff;border:1px solid var(--line);border-radius:18px}.sample-card h3{margin:4px 0 8px;font-size:15px}.sample-card p{font-size:12px;color:var(--muted);margin:5px 0}.sample-tag{font-size:10px;color:#315fc5;font-weight:850;letter-spacing:1px}.markdown-content{white-space:normal;overflow-wrap:anywhere}.markdown-content p{margin:5px 0}.markdown-content ul,.markdown-content ol{margin:6px 0;padding-left:22px}.markdown-content li{margin:3px 0}.markdown-content strong{font-weight:850;color:#17233d}.video-progress{font-size:11px;color:#d2def6;padding:4px 10px 8px;background:#172653}
 .course-top{padding:22px;background:linear-gradient(135deg,#eaf3ff,#f1edff);font-size:38px}.course-body{padding:18px}.course-body h3{margin:0 0 7px}.course-body p{font-size:12px;color:var(--muted);min-height:42px}
 .course-video{margin:14px 0 12px;border-radius:14px;overflow:hidden;background:#101a3a;border:1px solid #e4e9f3}.course-video video{display:block;width:100%;max-height:260px;aspect-ratio:16/9;object-fit:contain;background:#0b1020}.course-video-note{padding:7px 10px;color:#d2def6;font-size:11px;background:#172653}.course-meta{display:flex;justify-content:space-between;color:#8490a7;font-size:11px;margin:13px 0}
 .steps{display:grid;grid-template-columns:repeat(6,1fr);gap:9px}.step{padding:15px 11px;border:1px solid var(--line);border-radius:15px;background:#fff}.step b{display:block;color:#6685d4;font-size:11px}.step strong{display:block;font-size:12px;margin:7px 0 3px}.step span{display:block;color:var(--muted);font-size:10px}
@@ -91,7 +91,7 @@ textarea{min-height:105px;resize:vertical}
 .footer{border-top:1px solid var(--line);padding:25px 12px;text-align:center;color:#8b96aa;font-size:11px}
 .hidden{display:none!important}
 @media(max-width:900px){.headinner{gap:12px;padding:0 16px}.nav button{padding:9px}.status{display:none}.hero-grid{grid-template-columns:1fr .7fr}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.steps{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:650px){.headinner{min-height:66px;flex-wrap:wrap;gap:7px;padding:9px 14px}.brandmark{width:37px;height:37px}.brandname{font-size:15px}.nav{order:3;flex-basis:100%;margin:0 -4px 2px}.headright{margin-left:auto}.nav button{font-size:11px;padding:8px 10px}.headinner{min-height:auto}main{padding:20px 14px 50px}.hero{padding:27px 22px;border-radius:23px}.hero-grid{grid-template-columns:1fr}.hero-art{min-height:215px}.orbit{width:210px}.core{width:100px;height:100px;font-size:48px;border-radius:30px}.f1{left:4%}.f2{right:0}.f3{bottom:4%}.hero h1{font-size:39px}.hero-copy{font-size:14px}.hero-foot{gap:13px;margin-top:25px}.grid{grid-template-columns:1fr}.sectionhead{margin-top:30px}.sectionhead h2{font-size:21px}.steps{grid-template-columns:repeat(2,1fr)}.pageintro{padding:22px}.pageintro h1{font-size:25px}.card{padding:18px}.progressbox{align-items:flex-start}.progressbox .muted{font-size:11px}}
+@media(max-width:650px){.headinner{min-height:66px;flex-wrap:wrap;gap:7px;padding:9px 14px}.brandmark{width:37px;height:37px}.brandname{font-size:15px}.nav{order:3;flex-basis:100%;margin:0 -4px 2px}.headright{margin-left:auto}.nav button{font-size:11px;padding:8px 10px}.headinner{min-height:auto}main{padding:20px 14px 50px}.hero{padding:27px 22px;border-radius:23px}.hero-grid{grid-template-columns:1fr}.hero-art{min-height:215px}.orbit{width:210px}.core{width:100px;height:100px;font-size:48px;border-radius:30px}.f1{left:4%}.f2{right:0}.f3{bottom:4%}.hero h1{font-size:39px}.hero-copy{font-size:14px}.hero-foot{gap:13px;margin-top:25px}.grid{grid-template-columns:1fr}.sample-grid{grid-template-columns:1fr}.sectionhead{margin-top:30px}.sectionhead h2{font-size:21px}.steps{grid-template-columns:repeat(2,1fr)}.pageintro{padding:22px}.pageintro h1{font-size:25px}.card{padding:18px}.progressbox{align-items:flex-start}.progressbox .muted{font-size:11px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -135,6 +135,7 @@ textarea{min-height:105px;resize:vertical}
 
   <div class="sectionhead"><div><div class="kicker">YOUR SCIENCE JOURNEY</div><h2>每一步探索，都值得记录</h2></div><p>从一个问题，走向一个发现</p></div>
   <div class="progressbox"><div class="progress-icon">🌱</div><div class="progress-info"><b>我的探索进度</b><div class="muted" id="progressText">完成一次探究，记录你的第一个科学发现。</div><div class="progress-track"><div class="progress-fill" id="progressFill"></div></div></div><button class="btn soft" onclick="tab('lab')">继续探索 →</button></div>
+  <div class="sample-grid"><article class="sample-card"><span class="sample-tag">示例探究记录 · 只读</span><h3>植物怎样把水运送到叶片？</h3><p><b>研究问题：</b>植物茎中的水分会怎样向上运输？</p><p><b>假设：</b>水分可能通过茎中的细小通道向叶片移动。</p><p><b>示例证据：</b>白色花茎插入有色水后，观察花瓣或茎部颜色变化，并记录时间。</p><p><b>示例结论：</b>颜色变化可作为水分沿茎运输的可观察线索；还需重复实验并控制条件。</p></article><article class="sample-card"><span class="sample-tag">示例班级 · 只读</span><h3>科学探究示范班</h3><p>1 个示例学习者 · 1 份示例探究记录</p><p>示例档案展示班级学习记录的组织方式，不会混入真实班级数据。</p><button class="btn outline" onclick="tab('learn')">查看推荐课程 →</button></article></div>
 
   <div class="sectionhead"><div><div class="kicker">EXPLORE THE PLATFORM</div><h2>六大科学学习空间</h2></div></div>
   <div class="grid">
@@ -160,9 +161,9 @@ textarea{min-height:105px;resize:vertical}
 <section id="learn" class="panel">
   <div class="pageintro"><div class="kicker">LEARNING PATH</div><h1>探索课程</h1><p>选择一个你感兴趣的科学主题，开始一段有问题、有实验、有证据的探索。</p></div>
   <div class="grid">
-    <article class="unit course"><div class="course-top">🌱</div><div class="course-body"><span class="pill">生命科学</span><h3>植物怎样喝水？</h3><p>观察植物吸水现象，探索水分在植物体内的运输方式。</p><div class="course-video"><video controls playsinline preload="metadata"><source src="/videos/video1.mp4.mp4" type="video/mp4">你的浏览器暂不支持视频播放。</video><div class="course-video-note">课程视频 · 植物怎样喝水</div></div><div class="course-meta"><span>入门 · 约30分钟</span><span>观察与实验</span></div><button class="btn soft" onclick="selectTopic('植物怎样吸收和运输水分？')">开始学习 →</button></div></article>
-    <article class="unit course"><div class="course-top">🌈</div><div class="course-body"><span class="pill">物理科学</span><h3>彩虹如何形成？</h3><p>探索光的折射、反射与色散，发现白光里的色彩秘密。</p><div class="course-video"><video controls playsinline preload="metadata"><source src="/videos/video2.mp4.mp4" type="video/mp4">你的浏览器暂不支持视频播放。</video><div class="course-video-note">课程视频 · 彩虹如何形成</div></div><div class="course-meta"><span>入门 · 约30分钟</span><span>光学探究</span></div><button class="btn soft" onclick="selectTopic('彩虹是怎样形成的？')">开始学习 →</button></div></article>
-    <article class="unit course"><div class="course-top">🧲</div><div class="course-body"><span class="pill">物理科学</span><h3>磁铁的秘密</h3><p>比较不同材料与磁铁的相互作用，寻找磁性规律。</p><div class="course-video"><video controls playsinline preload="metadata"><source src="/videos/video3.mp4.mp4" type="video/mp4">你的浏览器暂不支持视频播放。</video><div class="course-video-note">课程视频 · 磁铁的秘密</div></div><div class="course-meta"><span>入门 · 约25分钟</span><span>比较实验</span></div><button class="btn soft" onclick="selectTopic('哪些材料会被磁铁吸引？')">开始学习 →</button></div></article>
+    <article class="unit course selected" aria-label="默认推荐课程" data-course="plant"><div class="course-top">🌱</div><div class="course-body"><span class="pill">生命科学</span><h3>植物怎样喝水？</h3><p>观察植物吸水现象，探索水分在植物体内的运输方式。</p><div class="course-video"><video controls playsinline preload="metadata" poster="/videos/poster-plant.svg" data-video-id="plant"><source src="/videos/video1.mp4" type="video/mp4"><track kind="captions" src="/videos/video1.zh-CN.vtt" srclang="zh-CN" label="学习提示字幕（非逐字转写）">你的浏览器暂不支持视频播放。</video><div class="video-progress" data-progress="plant">播放进度会自动保存</div><div class="course-video-note">课程视频 · 植物怎样喝水</div></div><div class="course-meta"><span>入门 · 约30分钟</span><span>观察与实验</span></div><button class="btn soft" onclick="selectTopic('植物怎样吸收和运输水分？','plant')">开始学习 →</button></div></article>
+    <article class="unit course"><div class="course-top">🌈</div><div class="course-body"><span class="pill">物理科学</span><h3>彩虹如何形成？</h3><p>探索光的折射、反射与色散，发现白光里的色彩秘密。</p><div class="course-video"><video controls playsinline preload="metadata" poster="/videos/poster-rainbow.svg" data-video-id="rainbow"><source src="/videos/video2.mp4" type="video/mp4"><track kind="captions" src="/videos/video2.zh-CN.vtt" srclang="zh-CN" label="学习提示字幕（非逐字转写）">你的浏览器暂不支持视频播放。</video><div class="video-progress" data-progress="rainbow">播放进度会自动保存</div><div class="course-video-note">课程视频 · 彩虹如何形成</div></div><div class="course-meta"><span>入门 · 约30分钟</span><span>光学探究</span></div><button class="btn soft" onclick="selectTopic('彩虹是怎样形成的？','rainbow')">开始学习 →</button></div></article>
+    <article class="unit course"><div class="course-top">🧲</div><div class="course-body"><span class="pill">物理科学</span><h3>磁铁的秘密</h3><p>比较不同材料与磁铁的相互作用，寻找磁性规律。</p><div class="course-video"><video controls playsinline preload="metadata" poster="/videos/poster-magnet.svg" data-video-id="magnet"><source src="/videos/video3.mp4" type="video/mp4"><track kind="captions" src="/videos/video3.zh-CN.vtt" srclang="zh-CN" label="学习提示字幕（非逐字转写）">你的浏览器暂不支持视频播放。</video><div class="video-progress" data-progress="magnet">播放进度会自动保存</div><div class="course-video-note">课程视频 · 磁铁的秘密</div></div><div class="course-meta"><span>入门 · 约25分钟</span><span>比较实验</span></div><button class="btn soft" onclick="selectTopic('哪些材料会被磁铁吸引？','magnet')">开始学习 →</button></div></article>
   </div>
   <div class="card" style="margin-top:17px"><h3>课程学习方法</h3><p class="muted">先独立思考，再向 AI 导师寻求线索；用实验和可靠证据检验想法。课程建议时长为学习规划参考，实际时间以探究过程为准。</p><ol><li>观察现象，写下你注意到的细节。</li><li>提出一个清楚、可以研究的问题。</li><li>形成假设，说明你这样猜想的理由。</li><li>设计公平、安全的实验。</li><li>如实记录数据和观察结果。</li><li>依据证据解释结果，并提出新问题。</li></ol></div>
 </section>
@@ -261,24 +262,40 @@ textarea{min-height:105px;resize:vertical}
       <div id="classRecords" class="result" style="margin-top:12px"></div>
 
       <h3>学生探究作品评价</h3><label for="studentWork">学生作品（请先去除个人身份信息）</label><textarea id="studentWork" maxlength="6000" placeholder="粘贴匿名化的学生探究记录……"></textarea>
-      <label for="rubric">评价维度</label><select id="rubric"><option>六维100分评审量规（完整评价）</option><option>教育价值与教学法设计（25分）</option><option>AI技术深度与工程（25分）</option><option>产品完成度与体验（20分）</option><option>学习成效证据（15分）</option><option>未成年人合规（10分）</option><option>可持续与规模化（5分）</option></select>
+      <div class="sample-card" style="margin-top:12px"><span class="sample-tag">SCIENCE INQUIRY COMPETENCY RUBRIC</span><h3>科学探究能力量规</h3><p>问题提出 · 假设预测 · 变量控制 · 实验设计 · 证据记录 · 结论反思</p><p>评价聚焦学生探究过程与作品证据，提供具体反馈和下一步建议，不进行竞赛技术打分。</p></div>
       <div class="actions" style="margin-top:14px"><button class="btn primary" id="evaluateBtn" onclick="evaluateWork()">生成评价建议</button><button class="btn outline" onclick="exportEvaluation()">导出评价建议</button></div><div id="evaluation" class="result" style="margin-top:14px" aria-live="polite"></div>
     </div>
   </div>
   <div class="notice">AI评价仅提供形成性反馈建议，不能代替教师专业判断。不要提交学生姓名、联系方式、学校班级等可识别信息。</div>
 </section>
 </main>
-<footer class="footer">小小AI科学家 V5.3 · 让好奇心成为科学发现的起点<br>AI用于启发和辅助学习，重要信息请核查，实验请在成人指导下安全开展。</footer>
+<footer class="footer">小小AI科学家 <span id="appVersion">正在读取版本…</span> · 让好奇心成为科学发现的起点<br>AI用于启发和辅助学习，重要信息请核查，实验请在成人指导下安全开展。</footer>
 
 <script>
 const $=id=>document.getElementById(id);
-function tab(id){
-  document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id===id));
-  document.querySelectorAll('#nav button').forEach(x=>{const active=x.dataset.tab===id;x.classList.toggle('active',active);if(active)x.setAttribute('aria-current','page');else x.removeAttribute('aria-current')});
+function tab(id,writeHash=true){
+  const target=document.getElementById(id)?id:'home';
+  document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id===target));
+  document.querySelectorAll('#nav button').forEach(x=>{const active=x.dataset.tab===target;x.classList.toggle('active',active);if(active)x.setAttribute('aria-current','page');else x.removeAttribute('aria-current')});
+  if(writeHash && location.hash!=='#'+target) location.hash=target;
   window.scrollTo({top:0,behavior:'smooth'});
 }
 document.querySelectorAll('#nav button').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
-function selectTopic(t){$('topic').value=t;tab('lab')}
+window.addEventListener('hashchange',()=>tab(location.hash.slice(1)||'home',false));
+tab(location.hash.slice(1)||'home',false);
+function selectTopic(t,courseId='plant'){$('topic').value=t;document.querySelectorAll('.course[data-course]').forEach(card=>card.classList.toggle('selected',card.dataset.course===courseId));localStorage.setItem('scienceSelectedCourse',courseId);tab('lab')}
+function initCourseVideos(){
+  document.querySelectorAll('video[data-video-id]').forEach(video=>{
+    const id=video.dataset.videoId,key='scienceVideoProgress:'+id,saved=Number(localStorage.getItem(key)||0),label=document.querySelector('[data-progress="'+id+'"]');
+    const update=()=>{if(label){const duration=Number.isFinite(video.duration)&&video.duration>0?video.duration:0;label.textContent=duration?'已观看 '+Math.floor(video.currentTime/duration*100)+'% · 进度自动保存':'播放进度会自动保存'}};
+    video.addEventListener('loadedmetadata',()=>{if(saved>2&&saved<video.duration-2)video.currentTime=saved;update()});
+    let lastSaved=0;video.addEventListener('timeupdate',()=>{if(video.currentTime-lastSaved>=5){localStorage.setItem(key,String(Math.floor(video.currentTime)));lastSaved=video.currentTime}update()});
+    video.addEventListener('ended',()=>{localStorage.removeItem(key);if(label)label.textContent='已完成观看'});
+  });
+  const selected=localStorage.getItem('scienceSelectedCourse')||'plant';
+  document.querySelectorAll('.course[data-course]').forEach(card=>card.classList.toggle('selected',card.dataset.course===selected));
+}
+initCourseVideos();
 function getLabRecords(){try{const v=JSON.parse(localStorage.getItem('scienceLabs')||'[]');return Array.isArray(v)?v:[]}catch(e){return []}}
 function saveLab(){
   const data={id:Date.now(),topic:$('topic').value.trim(),researchQuestion:$('researchQuestion').value.trim(),hypothesis:$('hypothesis').value.trim(),independentVariable:$('independentVariable').value.trim(),dependentVariable:$('dependentVariable').value.trim(),controlVariables:$('controlVariables').value.trim(),method:$('method').value.trim(),evidence:$('evidence').value.trim(),conclusion:$('conclusion').value.trim(),reflection:$('reflection').value.trim(),savedAt:new Date().toISOString()};
@@ -329,11 +346,29 @@ function grade(){
 }
 function retryQuiz(){renderQuiz();$('retryQuiz').classList.add('hidden')}
 
-let history=[];
-function bubble(t,who){const d=document.createElement('div');d.className='bubble '+who;d.textContent=t;$('chatlog').appendChild(d);$('chatlog').scrollTop=$('chatlog').scrollHeight}
+let chatSessionId=localStorage.getItem('scienceChatSessionId')||'';
+if(!/^[0-9a-f-]{36}$/i.test(chatSessionId)){chatSessionId=crypto.randomUUID();localStorage.setItem('scienceChatSessionId',chatSessionId)}
+function renderInlineMarkdown(parent,text){
+  const pieces=String(text).split(/(\*\*[^*]+\*\*)/g);
+  for(const piece of pieces){if(piece.startsWith('**')&&piece.endsWith('**')){const strong=document.createElement('strong');strong.textContent=piece.slice(2,-2);parent.appendChild(strong)}else parent.appendChild(document.createTextNode(piece))}
+}
+function renderMarkdown(parent,source){
+  parent.classList.add('markdown-content');let list=null,listType='';
+  for(const line of String(source).replace(/\r/g,'').split('\n')){
+    const unordered=/^\s*[-*]\s+(.+)$/.exec(line),ordered=/^\s*\d+[.)]\s+(.+)$/.exec(line);
+    if(unordered||ordered){const type=unordered?'ul':'ol';if(!list||listType!==type){list=document.createElement(type);parent.appendChild(list);listType=type}const li=document.createElement('li');renderInlineMarkdown(li,(unordered||ordered)[1]);list.appendChild(li);continue}
+    list=null;listType='';if(!line.trim())continue;const p=document.createElement('p');renderInlineMarkdown(p,line);parent.appendChild(p);
+  }
+}
+function bubble(t,who){const d=document.createElement('div');d.className='bubble '+who;if(who==='bot')renderMarkdown(d,t);else d.textContent=t;$('chatlog').appendChild(d);$('chatlog').scrollTop=$('chatlog').scrollHeight}
+async function restoreChat(){
+  try{const r=await fetch('/api/chat/history/'+encodeURIComponent(chatSessionId));if(!r.ok)throw new Error('history unavailable');const d=await r.json();$('chatlog').innerHTML='';if(!d.messages.length){bubble('你好，小小科学家！🔬 你最近观察到了什么有趣的现象？选择一种探究方式，我们从你的问题开始。','bot');return}d.messages.forEach(m=>bubble(m.content,m.role==='user'?'user':'bot'))}
+  catch(e){if(!$('chatlog').children.length)bubble('你好，小小科学家！🔬 你最近观察到了什么有趣的现象？选择一种探究方式，我们从你的问题开始。','bot')}
+}
+restoreChat();
 function quickAsk(q){$('question').value=q;ask()}
 async function health(){
-  try{const r=await fetch('/api/health');const d=await r.json();const online=Boolean(d.aiConfigured);$('healthDot').classList.toggle('live',online);$('healthShort').textContent=online?'AI服务已配置':'AI服务待配置';$('mode').textContent=(online?'AI服务已配置。':'AI服务未配置，当前使用离线规则提示。')+' 云端学习档案：'+(d.database==='ready'?'已连接':d.database==='connecting'?'正在连接':'未连接')+'。';$('mode').className='notice '+(d.database==='ready'?'ok':'')}
+  try{const r=await fetch('/api/health');const d=await r.json();const online=Boolean(d.aiConfigured);$('healthDot').classList.toggle('live',online);$('healthShort').textContent=online?'AI服务已配置':'AI服务待配置';$('mode').textContent=(online?'AI服务已配置。':'AI服务未配置，当前使用离线规则提示。')+' 云端学习档案：'+(d.database==='ready'?'已连接':d.database==='connecting'?'正在连接':'未连接')+'。';$('mode').className='notice '+(d.database==='ready'?'ok':'');if(d.version){$('appVersion').textContent='V'+d.version;document.title='小小AI科学家 V'+d.version+'｜AI科学探究平台'}}
   catch(e){$('healthShort').textContent='服务连接异常';$('mode').textContent='暂时无法连接服务，请稍后刷新页面。';$('mode').className='notice bad'}
 }
 health();
@@ -349,20 +384,21 @@ function useLabContext(){const d=currentLab();if(!d.topic&&!d.researchQuestion&&
 async function ask(){
   const q=$('question').value.trim();if(!q)return;
   if(q.length>1200){$('mode').textContent='问题不能超过1200字。';return}
-  const mode=mentorModes[$('mentorMode').value]||mentorModes.curiosity;
-  const mentorMode=$('mentorMode').value;
+  const mode=mentorModes[$('mentorMode').value]||mentorModes.curiosity,mentorMode=$('mentorMode').value;
   bubble(q,'user');$('question').value='';$('sendBtn').disabled=true;$('sendBtn').textContent='AI思考中…';
   const wait=document.createElement('div');wait.className='bubble bot';wait.textContent='导师正在思考……';$('chatlog').appendChild(wait);$('chatlog').scrollTop=$('chatlog').scrollHeight;
   try{
-    const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:q,mode:mentorMode,topic:'青少年科学探究',history:history.slice(-6)})});
-    const d=await r.json();if(!r.ok)throw new Error(d.error||'服务暂不可用');
-    wait.remove();const suffix=d.mode==='offline'?'\n\n（离线规则提示，并非实时大模型回答）'+(d.notice?' 原因：'+d.notice:''):'\n\n（DeepSeek 实时回答 · '+mode.label+'）';bubble(d.answer+suffix,'bot');
-    history.push({role:'user',content:q},{role:'assistant',content:d.answer});history=history.slice(-8)
+    const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json',...(studentToken?{'Authorization':'Bearer '+studentToken}:{})},body:JSON.stringify({message:q,sessionId:chatSessionId,mode:mentorMode,topic:'青少年科学探究'})});
+    const d=await r.json();wait.remove();
+    if(r.status===429){bubble(d.answer||'当前对话次数已达上限，请稍后重试。已有对话已保存在服务器。','bot');return}
+    if(!r.ok)throw new Error(d.error||'服务暂不可用');
+    const suffix=d.mode==='offline'?'\n\n（离线规则提示，并非实时大模型回答）'+(d.notice?' 原因：'+d.notice:''):'\n\n（DeepSeek 实时回答 · '+mode.label+'）';
+    bubble(d.answer+suffix,'bot');
   }catch(e){wait.remove();bubble('暂时无法获得AI回答：'+e.message,'bot')}
   finally{$('sendBtn').disabled=false;$('sendBtn').textContent='发送问题 →'}
 }
 $('question').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();ask()}});
-function clearChat(){history=[];$('chatlog').innerHTML='<div class="bubble bot">对话已清空。你有什么新的科学问题？</div>';$('question').value=''}
+async function clearChat(){try{await fetch('/api/chat/history/'+encodeURIComponent(chatSessionId),{method:'DELETE'})}catch(e){}$('chatlog').innerHTML='';bubble('对话已清空。你有什么新的科学问题？','bot');$('question').value=''}
 
 let studentToken=localStorage.getItem('scienceStudentToken')||'';
 let studentAlias=localStorage.getItem('scienceStudentAlias')||'';
@@ -432,7 +468,7 @@ async function evaluateWork(){
   if(!teacherToken){$('evaluation').textContent='教师会话已失效，请重新登录。';return}
   $('evaluateBtn').disabled=true;$('evaluateBtn').textContent='正在评价…';$('evaluation').textContent='正在依据所选维度生成形成性反馈，请稍候…';
   try{
-    const r=await fetch('/api/teacher/evaluate',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+teacherToken},body:JSON.stringify({work,rubric:$('rubric').value})});
+    const r=await fetch('/api/teacher/evaluate',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+teacherToken},body:JSON.stringify({work})});
     const d=await r.json();if(r.status===401){teacherLogout();throw new Error('教师登录已过期，请重新登录。')}
     if(!r.ok)throw new Error(d.error||'评价失败');
     $('evaluation').textContent=d.answer+(d.mode==='offline'?'\n\n（离线规则提示，非真实AI评价）':'\n\n（AI辅助建议，请教师结合教学目标独立判断）')

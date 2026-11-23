@@ -48,17 +48,34 @@ if (!html.includes('d.researchQuestion') || !html.includes('d.evidence') || !htm
 
 if (!server.includes('guardian_consent') || !server.includes('req.body?.guardianConsent!==true')) throw new Error('Guardian consent acknowledgement is not enforced');
 if (!server.includes('DATABASE_URL') || !server.includes('science_records')) throw new Error('PostgreSQL learning record storage missing');
-if (!html.includes('六维100分评审量规')) throw new Error('Judges scoring rubric missing');
+if (!html.includes('科学探究能力量规')) throw new Error('Science inquiry competency rubric missing');
+if (html.includes('六维100分评审量规') || html.includes('技术深度与工程') || html.includes('未成年人合规')) throw new Error('Legacy competition scoring rubric must be removed from teacher UI');
+for (const term of ['问题提出','假设预测','变量控制','实验设计','证据记录','结论反思']) if (!html.includes(term)) throw new Error('Inquiry rubric dimension missing: '+term);
 if (html.includes('DEEPSEEK_API_KEY=')) throw new Error('Possible API key assignment found in public frontend');
 console.log('V5 frontend syntax, six modules, API contracts, and frontend secret scan passed.');
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
-if (pkg.version !== '5.3.0') throw new Error('package version must match V5.3.0');
-if (!server.includes('const APP_VERSION = "5.3.0"') || !server.includes('version:APP_VERSION')) throw new Error('Backend version and health version are inconsistent');
-if (!html.includes('小小AI科学家 V5.3') || !html.includes('小小AI科学家 V5.3 ·')) throw new Error('Frontend version labels must match V5.3.0');
-for (const file of ['public/videos/video1.mp4.mp4', 'public/videos/video2.mp4.mp4', 'public/videos/video3.mp4.mp4']) {
-  if (!existsSync(new URL('../' + file, import.meta.url))) throw new Error('Course video asset missing: ' + file);
+const lock = JSON.parse(readFileSync(new URL('../package-lock.json', import.meta.url), 'utf8'));
+if (pkg.version !== '5.4.0' || lock.version !== pkg.version || lock.packages?.['']?.version !== pkg.version) throw new Error('Package and lockfile versions must match V5.4.0');
+if (!server.includes('const APP_VERSION = JSON.parse(readFileSync(new URL("./package.json"') || !server.includes('version:APP_VERSION')) throw new Error('Backend health version must derive from package.json');
+if (!html.includes("fetch('/api/health')") || !html.includes("$('appVersion').textContent='V'+d.version") || !html.includes("document.title='小小AI科学家 V'+d.version")) throw new Error('Page version must be injected from the health endpoint');
+if (/小小AI科学家 V5\\.\\d/.test(html)) throw new Error('Frontend must not hardcode a release version');
+for (const file of ['public/videos/video1.mp4', 'public/videos/video2.mp4', 'public/videos/video3.mp4', 'public/videos/poster-plant.svg', 'public/videos/poster-rainbow.svg', 'public/videos/poster-magnet.svg', 'public/videos/video1.zh-CN.vtt', 'public/videos/video2.zh-CN.vtt', 'public/videos/video3.zh-CN.vtt']) {
+  if (!existsSync(new URL('../' + file, import.meta.url))) throw new Error('Course media asset missing: ' + file);
 }
+if (!html.includes('preload="metadata"') || !html.includes('data-video-id=') || !html.includes('initCourseVideos()') || !html.includes('localStorage.setItem(key')) throw new Error('Course videos must preload metadata and restore saved playback progress');
+if (!html.includes('poster="/videos/poster-plant.svg"') || !html.includes('<track kind="captions"')) throw new Error('Course videos need posters and caption tracks');
+if (!server.includes('maxAge:"7d",etag:true,lastModified:true,immutable:false')) throw new Error('Video static assets must support one-week caching and conditional requests');
+if (!html.includes("location.hash=target") || !html.includes("addEventListener('hashchange'")) throw new Error('Tab navigation must be addressable and respond to hash changes');
+if (!html.includes('function renderMarkdown(') || !html.includes("document.createElement('strong')") || !html.includes("document.createElement(type)")) throw new Error('Assistant Markdown must render safe bold text and lists');
+if (!server.includes('CREATE TABLE IF NOT EXISTS chat_messages') || !server.includes('app.get("/api/chat/history/:sessionId"') || !server.includes('app.delete("/api/chat/history/:sessionId"')) throw new Error('Server-side chat history storage and retrieval missing');
+const chatRoute=server.slice(server.indexOf('app.post("/api/chat"'),server.indexOf('app.post("/api/teacher/login"'));
+if (chatRoute.includes('req.body?.history') || !chatRoute.includes('SELECT role,content FROM chat_messages') || !chatRoute.includes('INSERT INTO chat_messages')) throw new Error('Chat must read prior history only from the database and persist new turns');
+if (!server.includes('limit:30') || !server.includes('limit:120') || !server.includes('ipKeyGenerator(req.ip)') || !server.includes('"student:"+payload.learnerId')) throw new Error('Rate limits must use student token first, IP fallback, 30 chat/minute and 120 API/minute');
+if (!server.includes('本分钟对话次数已达上限') || !server.includes('fallback:"offline"') || !html.includes('r.status===429')) throw new Error('HTTP 429 must return and display a graceful offline fallback');
+if (!server.includes('function looksLikePII') || !server.includes('looksLikePII(alias)') || !server.includes('looksLikePII(d[k])') || !server.includes('looksLikePII(work)') || !server.includes('looksLikePII(message)')) throw new Error('PII screening must cover chat, alias, all inquiry fields and teacher studentWork');
+if (!server.includes('q.rows.reverse().filter(m=>!looksLikePII(m.content))') || !server.includes('if(looksLikePII(answer))')) throw new Error('Chat history responses and stored AI answers must also be screened for PII');
+if (!html.includes('示例探究记录 · 只读') || !html.includes('示例班级 · 只读') || !html.includes('data-course="plant"') || !html.includes('scienceSelectedCourse')) throw new Error('Homepage must include read-only sample work/class and a default selected course');
 const routeDefinitions = [
   ['post', '/api/teacher/classes'],
   ['get', '/api/student/records'],
@@ -72,4 +89,4 @@ for (const [method, route] of routeDefinitions) {
 if (!server.includes('connectionTimeoutMillis: 5000') || !server.includes('for(const statement of statements) await db.query(statement)')) throw new Error('Database initialization must be bounded and sequential');
 if (!server.includes('await db.query("SELECT 1")') || !server.includes('database = "unavailable"')) throw new Error('Health check must probe database connectivity');
 if (!server.includes('requireTeacher,requireDatabase,async(req,res)=>{')) throw new Error('Teacher class creation must retry database initialization');
-console.log('V5.3 backend hardening, version consistency, database readiness, route uniqueness, and course media checks passed.');
+console.log('V5.4: rubric, media, Markdown, navigation, server chat, rate limits, PII, sample homepage and version checks passed.');
