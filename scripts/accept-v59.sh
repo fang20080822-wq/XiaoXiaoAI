@@ -28,6 +28,7 @@ answers='[1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5]'
 record_json="{\"recordId\":\"$RECORD_ID\"}"
 request event 201 "$STUDENT_TOKEN" POST "$base/api/student/events" "{\"step\":\"observe\",\"action\":\"save\",$record_json}"
 request event_duplicate 200 "$STUDENT_TOKEN" POST "$base/api/student/events" "{\"step\":\"observe\",\"action\":\"save\",$record_json}"
+grep -q '"deduplicated":true' "$tmp/event_duplicate.out"
 request hint_event 201 "$STUDENT_TOKEN" POST "$base/api/student/events" "{\"step\":\"question\",\"action\":\"hint\",\"hintLevel\":2,$record_json}"
 request revision_event 201 "$STUDENT_TOKEN" POST "$base/api/student/events" "{\"step\":\"question\",\"action\":\"edit\",\"field\":\"researchQuestion\",$record_json}"
 request survey_submit 200 "$STUDENT_TOKEN" POST "$base/api/survey/submit" "{\"stage\":\"pre\",\"answers\":$answers}"
