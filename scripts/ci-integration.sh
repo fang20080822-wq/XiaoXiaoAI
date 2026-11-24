@@ -55,6 +55,7 @@ EMPTY_CLASS="$(curl -fsS -X POST "$BASE_URL/api/teacher/classes" -H "Authorizati
 EMPTY_CLASS_ID="$(jq -r '.class.id' <<<"$EMPTY_CLASS")"
 STUDENT_JOIN="$(curl -fsS -X POST "$BASE_URL/api/student/join" -H 'Content-Type: application/json' -d "$(jq -nc --arg code "$INVITE_CODE" '{inviteCode:$code,alias:"V59-CI-STUDENT",grade:"3-4",guardianConsent:true}')")"
 STUDENT_TOKEN="$(jq -r '.token' <<<"$STUDENT_JOIN")"
-curl -fsS -X POST "$BASE_URL/api/student/records" -H "Authorization: Bearer $STUDENT_TOKEN" -H 'Content-Type: application/json' -d '{"topic":"CI plant inquiry","question":"Does light affect growth?","hypothesis":"More light may increase growth","independentVariable":"light level","dependentVariable":"plant height","controlVariables":"same plant type, same water","method":"Measure height daily","evidence":"Day 1: 2 cm; Day 2: 3 cm","conclusion":"The sample grew","repetitionCount":3}' >/dev/null
-export STUDENT_TOKEN TEACHER_TOKEN="$TEACHER_A_TOKEN" OTHER_TEACHER_TOKEN="$TEACHER_B_TOKEN" CLASS_ID EMPTY_CLASS_ID
+RECORD_RESPONSE="$(curl -fsS -X POST "$BASE_URL/api/student/records" -H "Authorization: Bearer $STUDENT_TOKEN" -H 'Content-Type: application/json' -d '{"topic":"CI plant inquiry","question":"Does light affect growth?","hypothesis":"More light may increase growth","independentVariable":"light level","dependentVariable":"plant height","controlVariables":"same plant type, same water","method":"Measure height daily","evidence":"Day 1: 2 cm; Day 2: 3 cm","conclusion":"The sample grew","repetitionCount":3}')"
+RECORD_ID="$(jq -r '.record.id' <<<"$RECORD_RESPONSE")"
+export STUDENT_TOKEN TEACHER_TOKEN="$TEACHER_A_TOKEN" OTHER_TEACHER_TOKEN="$TEACHER_B_TOKEN" CLASS_ID EMPTY_CLASS_ID RECORD_ID
 bash scripts/accept-v59.sh
