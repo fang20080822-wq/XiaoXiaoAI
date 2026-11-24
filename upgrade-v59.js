@@ -36,6 +36,13 @@ function validUuid(value) {
 
 export function registerV59Routes({app,db,apiLimiter,requireTeacher,requireStudent,teacherId,requireDatabase}) {
 
+
+  app.get("/api/teacher/course-assessments/:courseId",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
+    const course=COURSE_ASSESSMENTS[req.params.courseId],stage=String(req.query.stage||"");
+    if(!course||!["pre","post"].includes(stage))return res.status(404).json({error:"课程或测评阶段不存在。"});
+    res.json({courseId:req.params.courseId,title:course.title,stage,questions:course[stage].map(q=>({prompt:q[0],options:q[1],correctIndex:q[2],rationale:q[3]}))});
+  });
+
   app.get("/api/student/course-assessments/mine",apiLimiter,requireStudent,requireDatabase,async(req,res)=>{
     try{
       const q=await db.query("SELECT course_id,stage,score,correct_count,total,updated_at FROM course_assessment_results WHERE learner_id=$1 ORDER BY course_id,stage",[req.student.learnerId]);
