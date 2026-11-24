@@ -93,7 +93,7 @@
     const field=(labelText,id,type='text',placeholder='')=>{
       const wrap=el('label',labelText,'trial-field');wrap.style.display='block';wrap.style.fontWeight='700';wrap.style.fontSize='13px';
       const input=el(type==='textarea'?'textarea':type==='select'?'select':'input');input.id=id;input.name=id;input.style.display='block';input.style.width='100%';input.style.marginTop='5px';input.style.padding='10px';input.style.border='1px solid #dce4f1';input.style.borderRadius='10px';input.style.background='#fff';input.style.color='#17233d';
-      if(type==='number'){input.type='number';input.min='0';input.max=id==='preScore'||id==='postScore'?'100':id.endsWith('Rating')?'5':'3';input.step='1';}
+      if(type==='number'){input.type='number';input.min='0';input.max=id==='preScore'||id==='postScore'?'100':id.endsWith('Rating')?'5':'3';input.step='1';input.required=true;}
       if(type==='text'){input.type='text';input.maxLength=24;input.placeholder=placeholder;}
       if(type==='textarea'){input.maxLength=500;input.rows=3;input.placeholder=placeholder;}
       wrap.appendChild(input);return {wrap,input};
@@ -134,7 +134,7 @@
     save.addEventListener('click',()=>{
       const participantCode=code.input.value.trim();
       const ids=['preScore','postScore','trialQuestionScore','trialDataScore','trialReasoningScore','trialEngagementRating','trialAiRating','trialFeasibilityRating'];
-      const values={};ids.forEach(id=>{values[id]=Number($(id).value);});
+      const values={};ids.forEach(id=>{const raw=String($(id).value??'').trim();values[id]=raw===''?NaN:Number(raw);});
       const comment=note.input.value.trim();
       if(!/^[A-Za-z0-9_-]{2,24}$/.test(participantCode)){status.textContent='请使用2—24位字母、数字、下划线或短横线组成的匿名编号。';return;}
       if(!course.input.value){status.textContent='请选择试教课程。';return;}
@@ -142,7 +142,7 @@
       for(const id of ['trialQuestionScore','trialDataScore','trialReasoningScore'])if(!Number.isInteger(values[id])||values[id]<0||values[id]>3){status.textContent='作品量规各项须填写0—3级。';return;}
       for(const id of ['trialEngagementRating','trialAiRating','trialFeasibilityRating'])if(!Number.isInteger(values[id])||values[id]<1||values[id]>5){status.textContent='教师反馈评分须填写1—5分。';return;}
       if(/(?:\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b|(?:\+?86)?1[3-9]\d{9})/.test(comment)){status.textContent='备注中检测到疑似联系方式，请删除后再保存。';return;}
-      const rows=readRows();rows.push({participantCode,courseId:course.input.value,courseTitle:course.input.options[course.input.selectedIndex]?.textContent||course.input.value,preScore:values.preScore,postScore:values.postScore,questionScore:values.trialQuestionScore,dataScore:values.trialDataScore,reasoningScore:values.trialReasoningScore,engagementRating:values.trialEngagementRating,aiRating:values.trialAiRating,feasibilityRating:values.trialFeasibilityRating,teacherNote:comment,savedAt:new Date().toISOString()});
+      const rows=readRows();const entry={participantCode,courseId:course.input.value,courseTitle:course.input.options[course.input.selectedIndex]?.textContent||course.input.value,preScore:values.preScore,postScore:values.postScore,questionScore:values.trialQuestionScore,dataScore:values.trialDataScore,reasoningScore:values.trialReasoningScore,engagementRating:values.trialEngagementRating,aiRating:values.trialAiRating,feasibilityRating:values.trialFeasibilityRating,teacherNote:comment,savedAt:new Date().toISOString()};const existingIndex=rows.findIndex(row=>row.participantCode===participantCode&&row.courseId===course.input.value);if(existingIndex>=0)rows[existingIndex]=entry;else rows.push(entry);
       try{localStorage.setItem(storageKey,JSON.stringify(rows));render();status.textContent='已保存。本条分数变化：'+(values.postScore-values.preScore>0?'+':'')+(values.postScore-values.preScore)+'分；请勿将分数变化直接解释为平台造成的因果效果。';}
       catch(error){status.textContent='本机保存失败：'+error.message+'。请检查浏览器存储空间。';}
     });
