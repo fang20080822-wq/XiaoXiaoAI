@@ -1,6 +1,57 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const el = (tag, text, cls) => { const n=document.createElement(tag); if(text!==undefined)n.textContent=text; if(cls)n.className=cls; return n; };
+  function addResourcePack(card, topic){
+    const pack=topic?.resourcePack;
+    if(!pack)return;
+    const details=el('details',undefined,'course-resource-pack');
+    details.style.marginTop='16px';
+    details.style.padding='14px 16px';
+    details.style.border='1px solid #dce5f5';
+    details.style.borderRadius='14px';
+    details.style.background='linear-gradient(135deg,#f7faff,#fbfaff)';
+    const summary=el('summary','查看完整教学资源包 · '+pack.duration,'resource-pack-summary');
+    summary.style.cursor='pointer';
+    summary.style.fontWeight='800';
+    summary.style.color='#315fc5';
+    summary.style.padding='3px 0';
+    details.appendChild(summary);
+    const intro=el('p','教师可按本校课时与器材条件调整；学生记录应保留真实观察，不得补造数据。','muted');
+    intro.style.margin='10px 0';
+    details.appendChild(intro);
+    const addList=(heading,items)=>{
+      const section=el('section',undefined,'resource-pack-section');
+      const h=el('h4',heading);h.style.margin='12px 0 6px';section.appendChild(h);
+      const list=el('ul');list.style.paddingLeft='21px';list.style.margin='5px 0 10px';
+      (items||[]).forEach(item=>list.appendChild(el('li',item)));
+      section.appendChild(list);details.appendChild(section);
+    };
+    addList('学习成果与教学目标',pack.objectives);
+    addList('材料清单',pack.materials);
+    const flow=el('section',undefined,'resource-pack-section');
+    const flowTitle=el('h4','活动流程');flowTitle.style.margin='12px 0 6px';flow.appendChild(flowTitle);
+    const flowList=el('ol');flowList.style.paddingLeft='21px';flowList.style.margin='5px 0 10px';
+    (pack.steps||[]).forEach(step=>{
+      const item=el('li');
+      const time=el('b',step.time+'｜');item.appendChild(time);
+      item.appendChild(document.createTextNode('教师：'+step.teacher+' 学生：'+step.student));
+      item.style.marginBottom='7px';flowList.appendChild(item);
+    });
+    flow.appendChild(flowList);details.appendChild(flow);
+    addList('学生任务单',pack.taskSheet);
+    const rubric=el('section',undefined,'resource-pack-section');
+    const rubricTitle=el('h4','学习评价量规（每项0—3级）');rubricTitle.style.margin='12px 0 6px';rubric.appendChild(rubricTitle);
+    (pack.rubric||[]).forEach(row=>{
+      const item=el('div',undefined,'resource-rubric-row');
+      item.style.padding='8px 10px';item.style.margin='6px 0';item.style.borderRadius='10px';item.style.background='#fff';item.style.border='1px solid #e5eaf3';
+      item.appendChild(el('b',row.criterion));
+      const levels=el('p',(row.levels||[]).map((level,index)=>index+'级：'+level).join('；'));
+      levels.style.margin='4px 0 0';levels.style.fontSize='13px';item.appendChild(levels);rubric.appendChild(item);
+    });
+    details.appendChild(rubric);
+    addList('安全与风险控制',pack.safety);
+    card.appendChild(details);
+  }
   const api = async (url, options={}) => {
     const headers={...(options.headers||{})};
     const activeToken=(typeof teacherToken!=='undefined'&&teacherToken)||window.teacherToken||''; if(activeToken) headers.Authorization='Bearer '+activeToken;
@@ -21,11 +72,12 @@
       const known=d.topics.slice(0,3);
       for(const t of known){
         const card=existing.find(c=>((c.textContent||'').includes(t.title)));
-        if(card){const line=el('p','课标映射｜'+t.domain+' · '+t.grade+' · 核心概念：'+t.concept,'curriculum-standard');card.appendChild(line);}
+        if(card){const line=el('p','课标映射｜'+t.domain+' · '+t.grade+' · 核心概念：'+t.concept,'curriculum-standard');card.appendChild(line);addResourcePack(card,t);}
       }
       d.topics.slice(3).forEach(t=>{
         const card=el('article',undefined,'unit course curriculum-card');
         card.append(el('span',t.domain,'pill'),el('h3',t.title),el('p','课标映射｜'+t.grade+' · 核心概念：'+t.concept),el('p','探究问题：'+t.question));
+        addResourcePack(card,t);
         const btn=el('button','开始探究 →','btn soft');btn.type='button';btn.addEventListener('click',()=>{
           if(typeof window.selectTopic==='function')window.selectTopic(t.question,t.id,t);
           else {location.hash='#assistant';const q=$('question');if(q)q.value=t.question;}
