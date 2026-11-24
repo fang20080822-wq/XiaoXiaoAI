@@ -80,7 +80,7 @@ for (const topic of context.CURRICULUM_12) {
 
 
 const uiSource = readFileSync(new URL('../public/upgrade-v56-ui.js', import.meta.url), 'utf8');
-const uiStart = uiSource.indexOf('async function loadCurriculum(){');
+const uiStart = uiSource.indexOf('function addResourcePack(card, topic){');
 const uiEnd = uiSource.indexOf('\n  function addTeacherAccountUI(){', uiStart);
 assert.ok(uiStart >= 0 && uiEnd > uiStart, 'curriculum-map renderer must be present');
 const uiFunction = uiSource.slice(uiStart, uiEnd);
