@@ -220,6 +220,54 @@
     loadReportClasses();window.refreshCourseAssessmentClasses=loadReportClasses;
   }
 
+  function addLearningEvidenceReportUI(){
+    const panel=$('teacherPanel');if(!panel||$('learningEvidenceReportV510'))return;
+    const box=el('section',undefined,'sample-card');box.id='learningEvidenceReportV510';box.style.marginTop='18px';
+    box.append(el('span','LEARNING EVIDENCE · V5.10','sample-tag'),el('h3','学习变化与探究证据分析'),el('p','将同一学生的课程前测、后测与探究作品按课程主题关联。仅显示班级聚合结果，不展示个人答题记录。'));
+    const classSelect=el('select');classSelect.id='learningEvidenceClass';classSelect.style.padding='10px';classSelect.style.minWidth='220px';
+    const refresh=el('button','生成学习证据报告','btn primary');refresh.type='button';
+    const actions=el('div',undefined,'actions');actions.append(classSelect,refresh);box.appendChild(actions);
+    const status=el('p','教师登录并选择班级后生成报告。','muted');status.setAttribute('role','status');status.setAttribute('aria-live','polite');box.appendChild(status);
+    const results=el('div');results.id='learningEvidenceResults';box.appendChild(results);panel.appendChild(box);
+    const loadClasses=async()=>{
+      try{const d=await api('/api/teacher/classes');classSelect.replaceChildren();(d.classes||[]).forEach(c=>{const option=el('option',c.class_name+'（'+c.learner_count+'人）');option.value=c.id;classSelect.appendChild(option);});if(!classSelect.options.length)status.textContent='当前账号还没有可分析的班级。';else status.textContent='已加载班级。选择班级后生成学习证据报告。';}
+      catch(e){status.textContent='请先登录教师账号：'+e.message;}
+    };
+    refresh.addEventListener('click',async()=>{
+      if(!classSelect.value){status.textContent='请先选择班级。';return;}
+      refresh.disabled=true;status.textContent='正在关联前后测与探究记录…';results.replaceChildren();
+      try{
+        const d=await api('/api/teacher/classes/'+encodeURIComponent(classSelect.value)+'/learning-evidence');
+        const populated=(d.results||[]).filter(c=>c.pre.participants||c.post.participants||c.inquiry.records);
+        if(!populated.length){status.textContent='该班级暂时没有可关联的课程测评或探究记录。完成课前测评、课程探究和课后测评后再生成报告。';return;}
+        status.textContent='报告已生成。未匹配到课程主题的探究记录：'+(d.unmatchedRecordCount||0)+' 条。'+d.note;
+        populated.forEach(course=>{
+          const card=el('article',undefined,'unit');card.style.margin='10px 0';card.style.padding='14px';
+          card.appendChild(el('h4',course.title));
+          const pre=course.pre,post=course.post,paired=course.paired,inquiry=course.inquiry;
+          card.appendChild(el('p','课前测评：'+pre.participants+' 人参与｜均分 '+(pre.averageScore===null?'—':pre.averageScore.toFixed(1))+'；课后测评：'+post.participants+' 人参与｜均分 '+(post.averageScore===null?'—':post.averageScore.toFixed(1))));
+          if(paired.participants){
+            const change=paired.averageChange;
+            card.appendChild(el('p','同一学生配对样本：'+paired.participants+' 人｜前测均分 '+paired.averagePre.toFixed(1)+' → 后测均分 '+paired.averagePost.toFixed(1)+'｜平均变化 '+(change>0?'+':'')+change.toFixed(1)+' 分'));
+          }else card.appendChild(el('p','当前没有同时完成前测和后测的配对学生，暂不计算个人配对变化。','muted'));
+          const weak=[...pre.items].filter(item=>item.answered).sort((a,b)=>(b.errorRate??-1)-(a.errorRate??-1)).slice(0,3);
+          const postItems=new Map(post.items.map(item=>[item.index,item]));
+          card.appendChild(el('b','知识目标与易错题线索'));
+          if(weak.length){
+            weak.forEach(item=>{const after=postItems.get(item.index);card.appendChild(el('p','目标：'+item.objective+'｜前测错题率 '+item.errorRate.toFixed(1)+'%（'+item.incorrect+'/'+item.answered+'）｜后测对应题错题率 '+(after?.errorRate===null||after?.errorRate===undefined?'—':after.errorRate.toFixed(1)+'%')));});
+          }else card.appendChild(el('p','尚无前测答题数据。','muted'));
+          card.appendChild(el('b','科学探究作品证据'));
+          card.appendChild(el('p','匹配探究记录 '+inquiry.records+' 条｜关联学生 '+inquiry.learners+' 人｜六项作品要素平均覆盖率 '+(inquiry.averageElementCoverage===null?'—':inquiry.averageElementCoverage.toFixed(1)+'%')));
+          inquiry.elements.forEach(item=>card.appendChild(el('p',item.label+'：'+item.completed+'/'+item.total+' 条记录有填写（'+(item.rate===null?'—':item.rate.toFixed(1)+'%')+'）')));
+          if(paired.participants<5||inquiry.records<5)card.appendChild(el('small','当前样本量较小，结果仅作教学观察和下一轮课程改进线索，不宜作显著性或因果判断。','muted'));
+          results.appendChild(card);
+        });
+      }catch(e){status.textContent='报告生成失败：'+e.message;}
+      finally{refresh.disabled=false;}
+    });
+    loadClasses();window.refreshLearningEvidenceClasses=loadClasses;
+  }
+
   function addStudentCourseAssessmentUI(){
     const lab=$('lab'),bank=window.COURSE_ASSESSMENTS_V1,anchor=$('courseLearningPanel');
     if(!lab||!bank||$('studentCourseAssessment'))return;
@@ -298,7 +346,7 @@
     document.querySelectorAll('#teacherPanel h3').forEach(h=>{if(/班级管理与学习档案|学生探究作品评价/.test(h.textContent))h.hidden=admin;});
   }
   const oldLoad=window.loadClasses;
-  if(typeof oldLoad==='function')window.loadClasses=async function(){const v=await oldLoad();loadDashboard();loadAudit();return v;};
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{loadCurriculum();addTeacherAccountUI();addTrialAssessmentUI();addCourseAssessmentBankUI();addStudentCourseAssessmentUI();},{once:true});else{loadCurriculum();addTeacherAccountUI();addTrialAssessmentUI();addCourseAssessmentBankUI();addStudentCourseAssessmentUI();}
+  if(typeof oldLoad==='function')window.loadClasses=async function(){const v=await oldLoad();loadDashboard();loadAudit();window.refreshLearningEvidenceClasses?.();return v;};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{loadCurriculum();addTeacherAccountUI();addTrialAssessmentUI();addCourseAssessmentBankUI();addLearningEvidenceReportUI();addStudentCourseAssessmentUI();},{once:true});else{loadCurriculum();addTeacherAccountUI();addTrialAssessmentUI();addCourseAssessmentBankUI();addStudentCourseAssessmentUI();}
   window.loadV56Dashboard=loadDashboard;
 })();
