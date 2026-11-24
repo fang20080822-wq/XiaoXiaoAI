@@ -24,7 +24,7 @@ for(const id of expected){
       assert.equal(new Set(q[1]).size,4,id+' '+stage+' options must be distinct');
       assert.ok(Number.isInteger(q[2])&&q[2]>=0&&q[2]<4,id+' '+stage+' answer index invalid');
       assert.ok(q[3].trim().length>=8,id+' '+stage+' rationale required');
-      assert.deepEqual(Array.from(publicItem[stage][index]),q.slice(0,2),'public payload must contain only prompt and options');
+      assert.equal(JSON.stringify(publicItem[stage][index]),JSON.stringify(q.slice(0,2)),'public payload must contain only prompt and options');
       assert.equal(publicItem[stage][index].length,2,'answer key and rationale must not be public');
     });
   }
