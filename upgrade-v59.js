@@ -29,13 +29,15 @@ export function registerV59Routes({app,db,apiLimiter,requireTeacher,requireStude
   app.post("/api/student/events",apiLimiter,requireStudent,requireDatabase,async(req,res)=>{
     const step=String(req.body?.step||"");
     const action=String(req.body?.action||"");
-    const fieldKey=typeof req.body?.field==="string"?req.body.field.slice(0,80):"";
-    const hintLevel=req.body?.hintLevel;
+    const rawField=req.body?.field ?? req.body?.field_key;
+    const fieldKey=typeof rawField==="string"?rawField.slice(0,80):"";
+    const hintLevel=req.body?.hintLevel ?? req.body?.hint_level;
     if(!STEPS.has(step)||!ACTIONS.has(action))return res.status(400).json({error:"探究过程事件类型无效。"});
     if(action==="hint" && (!Number.isInteger(hintLevel)||hintLevel<1||hintLevel>4))return res.status(400).json({error:"提示等级必须为1至4。"});
     if(action!=="hint" && hintLevel!==undefined && hintLevel!==null)return res.status(400).json({error:"只有提示事件可以包含提示等级。"});
     const studentId=req.student.learnerId;
-    let recordId=typeof req.body?.recordId==="string"&&validUuid(req.body.recordId)?req.body.recordId:null;
+    const rawRecordId=req.body?.recordId ?? req.body?.record_id;
+    let recordId=typeof rawRecordId==="string"&&validUuid(rawRecordId)?rawRecordId:null;
     try {
       if(recordId){
         const ownedRecord=await db.query("SELECT id FROM science_records WHERE id=$1 AND learner_id=$2 AND class_id=$3",[recordId,studentId,req.student.classId]);
