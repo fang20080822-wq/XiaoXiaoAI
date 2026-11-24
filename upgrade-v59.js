@@ -35,7 +35,8 @@ export function registerV59Routes({app,db,apiLimiter,requireTeacher,requireStude
     if(!STEPS.has(step)||!ACTIONS.has(action))return res.status(400).json({error:"探究过程事件类型无效。"});
     if(action==="hint" && (!Number.isInteger(hintLevel)||hintLevel<1||hintLevel>4))return res.status(400).json({error:"提示等级必须为1至4。"});
     if(action!=="hint" && hintLevel!==undefined && hintLevel!==null)return res.status(400).json({error:"只有提示事件可以包含提示等级。"});
-    const studentId=req.student.learnerId;
+    const studentId=req.student?.learnerId;
+    if(!studentId)return res.status(401).json({error:"学生会话已失效，请重新加入班级。"});
     const rawRecordId=req.body?.recordId ?? req.body?.record_id;
     if(rawRecordId!==undefined&&rawRecordId!==null&&(!validUuid(rawRecordId)))return res.status(400).json({error:"探究记录标识无效。"});
     const recordId=typeof rawRecordId==="string"?rawRecordId:null;
