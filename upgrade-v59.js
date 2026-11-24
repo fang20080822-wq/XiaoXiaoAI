@@ -45,8 +45,7 @@ export function registerV59Routes({app,db,apiLimiter,requireTeacher,requireStude
         WITH lock_row AS (
           SELECT pg_advisory_xact_lock(hashtext($1::text),hashtext($2::text))
         ), candidate AS (
-          SELECT COALESCE($3::uuid,(SELECT id FROM science_records WHERE learner_id=$1::uuid AND class_id=$4::uuid ORDER BY created_at DESC,id DESC LIMIT 1)) AS record_id
-          FROM lock_row
+          SELECT $3::uuid AS record_id FROM lock_row
         ), inserted AS (
           INSERT INTO events(student_id,record_id,step,action,hint_level,field_key,ts)
           SELECT $1::uuid,candidate.record_id,$5,$6,$7,$8,NOW() FROM candidate
