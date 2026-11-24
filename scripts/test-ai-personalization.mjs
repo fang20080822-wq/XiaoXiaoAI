@@ -14,7 +14,7 @@ assert.equal(plant?.id, 'leaf-absorption');
 assert.equal(detectCourseMisconception('magnet', '我想比较铁片和纸片是否被磁铁吸引。'), null);
 
 const courseContext = buildCourseLearningContext('magnet', '所有金属都能被磁铁吸住', [{
-  topic: '哪些材料会被磁铁吸引？',
+  topic: '不同材料与距离怎样影响磁铁吸引效果？',
   hypothesis: '所有金属都会被吸引',
   data_table: '铁片 3次；铝片 0次'
 }]);
@@ -39,7 +39,7 @@ let chatMiddleware;
 const record = {
   topic: '哪些材料会被磁铁吸引？',
   observed_phenomenon: '铁片靠近磁铁后移动',
-  question: '哪些材料会被磁铁吸引？',
+  question: '不同材料与距离怎样影响磁铁吸引效果？',
   hypothesis: '所有金属都会被吸引',
   independent_variable: '材料种类',
   dependent_variable: '是否被吸引',
@@ -84,7 +84,7 @@ assert.match(req.scienceSystemContext,/磁铁的秘密/);
 assert.match(req.scienceSystemContext,/所有金属/);
 assert.match(req.scienceSystemContext,/非可信数据/);
 assert.match(req.scienceSystemContext,/可能把“金属”误认为都具有相同的磁性/);
-assert.ok(sqlCalls.some(call=>call.sql.includes("topic=$3 OR question=$3") && call.params[2]==='哪些材料会被磁铁吸引？'), 'database query must be scoped to the selected course');
+assert.ok(sqlCalls.some(call=>call.sql.includes("topic=$3 OR question=$3") && call.params[2]==='不同材料与距离怎样影响磁铁吸引效果？'), 'database query must be scoped to the selected course');
 assert.equal(req.scienceHintLevel<=3,true,'automatic hint level must remain at or below L3');
 
 console.log('AI personalization regression passed: course-aware misconception signals, recent-record context, false-positive guard, and L3 scaffold ceiling.');
