@@ -25,7 +25,7 @@ request() {
 }
 
 answers='[1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5]'
-record_json="{\"recordId\":\"$RECORD_ID\"}"
+record_json="\"recordId\":\"$RECORD_ID\""
 request event 201 "$STUDENT_TOKEN" POST "$base/api/student/events" "{\"step\":\"observe\",\"action\":\"save\",$record_json}"
 request event_duplicate 200 "$STUDENT_TOKEN" POST "$base/api/student/events" "{\"step\":\"observe\",\"action\":\"save\",$record_json}"
 grep -q '"deduplicated":true' "$tmp/event_duplicate.out"
