@@ -25,6 +25,7 @@ const featured = [
 
     await page.locator('#nav button[data-tab="learn"]').click();
     for (const course of featured) {
+      await page.locator('#nav button[data-tab="learn"]').click();
       const card = page.locator('.course[data-course="' + course.id + '"]');
       await card.locator('button').click();
       await page.waitForFunction(id => document.querySelector('#courseLearningPanel')?.dataset.courseId === id, course.id);
