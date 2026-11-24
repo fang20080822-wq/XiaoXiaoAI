@@ -1,6 +1,14 @@
 name: Live browser course smoke test
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'public/**'
+      - 'server.js'
+      - 'upgrade-v*.js'
+      - 'tests/live-course-smoke.cjs'
+      - '.github/workflows/live-browser-smoke.yml'
   workflow_dispatch:
   schedule:
     - cron: '30 2 * * *'
@@ -23,6 +31,8 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
+      - name: Allow production deployment to settle
+        run: sleep 90
       - name: Verify production course flows in Chromium
         env:
           BASE_URL: https://xiaoxiaai-scientist.onrender.com
