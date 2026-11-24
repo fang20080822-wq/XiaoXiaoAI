@@ -3,7 +3,7 @@ set -euo pipefail
 DB_FILE="${1:?Usage: bash migrations/apply-v59-sqlite.sh path/to/database.sqlite}"
 command -v sqlite3 >/dev/null 2>&1 || { echo "sqlite3 CLI is required" >&2; exit 1; }
 has_column() { sqlite3 "$DB_FILE" "PRAGMA table_info($1);" | awk -F'|' -v c="$2" '$2==c{found=1} END{exit !found}'; }
-add_column() { if ! has_column "$1" "$2"; then sqlite3 "$DB_FILE" "ALTER TABLE $1 ADD COLUMN \\"$2\\" $3;"; fi; }
+add_column() { if ! has_column "$1" "$2"; then sqlite3 "$DB_FILE" "ALTER TABLE $1 ADD COLUMN [$2] $3;"; fi; }
 add_column science_classes group "TEXT NOT NULL DEFAULT 'experimental'"
 add_column science_learners student_code "TEXT"
 add_column messages is_direct_answer "INTEGER NOT NULL DEFAULT 0"
