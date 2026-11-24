@@ -43,5 +43,7 @@ jobs:
         run: bash scripts/test-sqlite-migration.sh
       - name: SQLite V5.9 migration and idempotency
         run: bash scripts/test-v59-sqlite.sh
+      - name: SQLite V5.10 chat memory migration and idempotency
+        run: bash scripts/test-v510-sqlite.sh
       - name: PostgreSQL end-to-end acceptance (V5.9)
         run: bash scripts/ci-integration.sh
