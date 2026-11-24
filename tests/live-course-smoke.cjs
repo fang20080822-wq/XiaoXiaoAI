@@ -38,6 +38,12 @@ const featured = [
     await assessmentBank.locator('#assessmentStageSelect').selectOption('post');
     assert.equal(await assessmentBank.locator('#assessmentQuestionPreview article').count(),3,'post-test must render three questions');
     assert.equal(await assessmentBank.locator('#assessmentQuestionPreview').innerText().then(t=>t.includes('参考答案')),false,'answer key must be hidden by default');
+    const publicBank=await page.evaluate(()=>window.COURSE_ASSESSMENTS_V1);
+    await page.route('**/api/teacher/course-assessments/*',async route=>{
+      const url=new URL(route.request().url()),id=decodeURIComponent(url.pathname.split('/').pop()),stage=url.searchParams.get('stage')||'pre';
+      const item=publicBank[id],questions=(item?.[stage]||[]).map(q=>({prompt:q[0],options:q[1],correctIndex:0,rationale:'浏览器测试用解析'}));
+      await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({courseId:id,title:item?.title||id,stage,questions})});
+    });
     await assessmentBank.getByRole('button',{name:'显示教师答案与解析'}).click();
     assert.equal(await assessmentBank.locator('#assessmentQuestionPreview').innerText().then(t=>t.includes('参考答案')),true,'teacher can reveal answer explanations');
     const studentDownload=page.waitForEvent('download');
@@ -49,7 +55,24 @@ const featured = [
     const teacherFile=await teacherDownload;
     assert.match(teacherFile.suggestedFilename(),/教师答案\.html$/);
 
-
+    await page.route('**/api/student/course-assessments/**',async route=>{
+      const request=route.request(),url=new URL(request.url());
+      if(request.method()==='GET'){
+        await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({courseId:'plant-water',title:'植物怎样喝水',stage:'pre',questions:[{prompt:'植物吸收水分主要依靠哪个部位？',options:['根','花瓣','果实','种子']},{prompt:'第二道浏览器测试题目是什么？',options:['A','B','C','D']},{prompt:'第三道浏览器测试题目是什么？',options:['A','B','C','D']}]})});
+      }else if(request.method()==='POST'){
+        await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({saved:true,score:100,correctCount:3,total:3,review:[{question:1,correct:true,correctIndex:0,correctOption:'根',rationale:'测试解析'},{question:2,correct:true,correctIndex:0,correctOption:'A',rationale:'测试解析'},{question:3,correct:true,correctIndex:0,correctOption:'A',rationale:'测试解析'}]})});
+      }else await route.continue();
+    });
+    await page.evaluate(()=>localStorage.setItem('scienceStudentToken','browser-smoke-student-token'));
+    await page.locator('#nav button[data-tab="learn"]').click();
+    await page.locator('.course[data-course="plant"] button').click();
+    await page.locator('#studentCourseAssessment').getByRole('button',{name:'开始测评'}).click();
+    await page.locator('#studentCourseAssessment input[name="studentCourseAssessmentQ0"][value="0"]').check();
+    await page.locator('#studentCourseAssessment input[name="studentCourseAssessmentQ1"][value="0"]').check();
+    await page.locator('#studentCourseAssessment input[name="studentCourseAssessmentQ2"][value="0"]').check();
+    await page.locator('#studentCourseAssessment').getByRole('button',{name:'提交并查看成绩'}).click();
+    await page.waitForFunction(()=>document.querySelector('#studentAssessmentResult')?.textContent.includes('100 / 100'));
+    assert.match(await page.locator('#studentAssessmentResult').innerText(),/答对 3 \/ 3 题/);
 
     await page.locator('#nav button[data-tab="learn"]').click();
     for (const course of featured) {
