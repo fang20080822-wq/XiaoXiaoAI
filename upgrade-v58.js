@@ -14,10 +14,6 @@ export function registerV58Routes({app,db,apiLimiter,requireTeacher,teacherId,re
         [group,classId,teacherId(req)]
       );
       if(!q.rowCount)return res.status(404).json({error:"班级不存在或无权修改。"});
-      await db.query(
-        "INSERT INTO audit_log(teacher_id,action,target_type,target_id) VALUES($1,$2,$3,$4)",
-        [teacherId(req),"update_class_group","class",classId]
-      );
       res.json({class:q.rows[0]});
     } catch(error) {
       console.error("class_group_update_failed",error.message);
