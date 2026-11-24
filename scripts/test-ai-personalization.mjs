@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { CURRICULUM_12, buildCourseLearningContext, detectCourseMisconception, nextHintState, registerV56Routes } from '../upgrade-v56.js';
+import { CURRICULUM_12, buildCourseLearningContext, buildPreAssessmentContext, detectCourseMisconception, nextHintState, registerV56Routes } from '../upgrade-v56.js';
 
 const magnet = detectCourseMisconception('magnet', '我觉得所有金属都能被磁铁吸住。');
 assert.equal(magnet?.id, 'all-metals');
@@ -27,6 +27,12 @@ assert.equal(courseContext.course.title, '磁铁的秘密');
 assert.equal(courseContext.course.id, 'magnet');
 assert.equal(courseContext.misconception.id, 'all-metals');
 assert.equal(courseContext.records.length, 1);
+const pretestContext=buildPreAssessmentContext('magnet',{score:33,answers:[1,0,2]});
+assert.equal(pretestContext.score,33);
+assert.equal(pretestContext.incorrectAreas.length,2);
+assert.equal(pretestContext.incorrectAreas[0].studentChoice,'铝');
+assert.equal('correctIndex' in pretestContext.incorrectAreas[0],false,'AI context must not expose answer keys');
+assert.equal(buildPreAssessmentContext('magnet',null),null);
 assert.equal(buildCourseLearningContext('not-a-course').course, null);
 assert.equal(CURRICULUM_12.length, 12);
 
@@ -59,6 +65,7 @@ const fakeDb = {
   async query(sql, params=[]) {
     sqlCalls.push({sql,params});
     if (sql.includes('SELECT level,streak,last_prompt FROM mentor_progress')) return {rows:[]};
+    if (sql.includes('FROM course_assessment_results')) return {rows:[{score:33,answers:[1,0,2]}]};
     if (sql.includes('FROM science_records')) return {rows:[record]};
     return {rows:[],rowCount:1};
   }
@@ -86,6 +93,8 @@ const res={status(){return this;},json(payload){throw new Error('middleware unex
 await chatMiddleware(req,res,()=>{nextCalled=true;});
 assert.equal(nextCalled,true);
 assert.match(req.scienceSystemContext,/磁铁的秘密/);
+assert.match(req.scienceSystemContext,/课前测评线索/);
+assert.match(req.scienceSystemContext,/铝/);
 assert.match(req.scienceSystemContext,/所有金属/);
 assert.match(req.scienceSystemContext,/非可信数据/);
 assert.match(req.scienceSystemContext,/可能把“金属”误认为都具有相同的磁性/);
