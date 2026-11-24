@@ -424,7 +424,7 @@ app.post("/api/chat",chatLimiter,async(req,res)=>{
     if(ownsSession){
       await db.query("INSERT INTO messages(session_id,student_id,role,content,mode) VALUES($1,$2,'assistant',$3,$4)",[sessionId,ownerLearnerId,answer,mentorMode]);
       void refreshChatMemory(ownerLearnerId,sessionId);
-      await db.query("DELETE FROM messages WHERE session_id=$1 AND student_id=$2 AND id NOT IN (SELECT id FROM messages WHERE session_id=$1 AND student_id=$2 ORDER BY created_at DESC LIMIT 100)",[sessionId,ownerLearnerId]);
+      await db.query("DELETE FROM messages WHERE session_id=$1 AND student_id=$2 AND id NOT IN (SELECT id FROM messages WHERE session_id=$1 AND student_id=$2 ORDER BY created_at DESC LIMIT 30)",[sessionId,ownerLearnerId]);
     }
     res.json({mode,model:MODEL,answer,hintLevel:req.scienceHintLevel||1,qualityCheck:req.scienceQualityCheck||null,...(notice?{notice}:{})});
   }catch(err){console.error("chat_request_failed",err.message);res.status(503).json({mode:"offline",fallback:"offline",error:"对话服务暂不可用，请稍后重试。"});}
