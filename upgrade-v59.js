@@ -37,7 +37,8 @@ export function registerV59Routes({app,db,apiLimiter,requireTeacher,requireStude
     if(action!=="hint" && hintLevel!==undefined && hintLevel!==null)return res.status(400).json({error:"只有提示事件可以包含提示等级。"});
     const studentId=req.student.learnerId;
     const rawRecordId=req.body?.recordId ?? req.body?.record_id;
-    let recordId=typeof rawRecordId==="string"&&validUuid(rawRecordId)?rawRecordId:null;
+    if(rawRecordId!==undefined&&rawRecordId!==null&&(!validUuid(rawRecordId)))return res.status(400).json({error:"探究记录标识无效。"});
+    const recordId=typeof rawRecordId==="string"?rawRecordId:null;
     try {
       if(recordId){
         const ownedRecord=await db.query("SELECT id FROM science_records WHERE id=$1 AND learner_id=$2 AND class_id=$3",[recordId,studentId,req.student.classId]);
