@@ -85,6 +85,76 @@
       });
     }catch(e){grid.appendChild(el('p','课程映射暂时无法加载：'+e.message));}
   }
+  async function addTrialAssessmentUI(){
+    const panel=$('teacherPanel');if(!panel||$('trialAssessmentV56'))return;
+    const box=el('section',undefined,'sample-card');box.id='trialAssessmentV56';box.style.marginTop='18px';
+    box.append(el('span','CLASSROOM TRIAL · EVIDENCE LOG','sample-tag'),el('h3','课程试教与学习效果记录'),el('p','用于记录匿名化的前测、后测、学生作品表现和教师反馈。请先取得学校及监护人要求的授权；不要录入姓名、联系方式或可识别信息。数据仅保存在当前教师设备浏览器中，建议定期导出CSV备份。'));
+    const grid=el('div',undefined,'grid');grid.style.gridTemplateColumns='repeat(auto-fit,minmax(190px,1fr))';grid.style.gap='10px';
+    const field=(labelText,id,type='text',placeholder='')=>{
+      const wrap=el('label',labelText,'trial-field');wrap.style.display='block';wrap.style.fontWeight='700';wrap.style.fontSize='13px';
+      const input=el(type==='textarea'?'textarea':type==='select'?'select':'input');input.id=id;input.name=id;input.style.display='block';input.style.width='100%';input.style.marginTop='5px';input.style.padding='10px';input.style.border='1px solid #dce4f1';input.style.borderRadius='10px';input.style.background='#fff';input.style.color='#17233d';
+      if(type==='number'){input.type='number';input.min='0';input.max=id==='preScore'||id==='postScore'?'100':id.endsWith('Rating')?'5':'3';input.step='1';}
+      if(type==='text'){input.type='text';input.maxLength=24;input.placeholder=placeholder;}
+      if(type==='textarea'){input.maxLength=500;input.rows=3;input.placeholder=placeholder;}
+      wrap.appendChild(input);return {wrap,input};
+    };
+    const code=field('匿名参与者编号','trialParticipantCode','text','例如 S001（不要填写姓名）');
+    const course=field('试教课程','trialCourse','select');
+    const pre=field('前测得分（0—100）','preScore','number');
+    const post=field('后测得分（0—100）','postScore','number');
+    const question=field('问题设计（0—3级）','trialQuestionScore','number');
+    const data=field('数据记录（0—3级）','trialDataScore','number');
+    const reasoning=field('证据解释（0—3级）','trialReasoningScore','number');
+    const engagement=field('学生参与度（1—5分）','trialEngagementRating','number');
+    const aiSupport=field('AI引导有效性（1—5分）','trialAiRating','number');
+    const feasibility=field('课堂可实施性（1—5分）','trialFeasibilityRating','number');
+    const note=field('教师观察与改进建议（不含身份信息）','trialTeacherNote','textarea','记录课堂实施情况、学生典型困难与下一轮调整建议');
+    try{
+      const curriculum=await api('/api/curriculum');
+      (curriculum.topics||[]).forEach(topic=>{const option=el('option',topic.title);option.value=topic.id;course.input.appendChild(option);});
+    }catch(error){box.appendChild(el('p','课程列表加载失败：'+error.message));return;}
+    [code,course,pre,post,question,data,reasoning,engagement,aiSupport,feasibility,note].forEach(item=>grid.appendChild(item.wrap));
+    box.appendChild(grid);
+    const actions=el('div',undefined,'actions');actions.style.marginTop='12px';
+    const save=el('button','保存本条试教记录','btn primary');save.type='button';
+    const exportButton=el('button','导出全部记录 CSV','btn outline');exportButton.type='button';
+    actions.append(save,exportButton);box.appendChild(actions);
+    const status=el('p','当前设备尚无试教记录。','muted');status.id='trialAssessmentStatus';status.setAttribute('role','status');status.setAttribute('aria-live','polite');box.appendChild(status);
+    const list=el('div',undefined,'trial-assessment-list');list.id='trialAssessmentList';box.appendChild(list);
+    const storageKey='scienceTrialAssessmentsV1';
+    const readRows=()=>{try{const rows=JSON.parse(localStorage.getItem(storageKey)||'[]');return Array.isArray(rows)?rows:[];}catch{return[];}};
+    const render=()=>{
+      const rows=readRows();const avg=key=>rows.length?(rows.reduce((sum,row)=>sum+Number(row[key]||0),0)/rows.length).toFixed(1):'—';
+      const gains=rows.filter(row=>Number.isFinite(Number(row.preScore))&&Number.isFinite(Number(row.postScore)));
+      const gain=gains.length?(gains.reduce((sum,row)=>sum+Number(row.postScore)-Number(row.preScore),0)/gains.length).toFixed(1):'—';
+      status.textContent='已保存 '+rows.length+' 条匿名记录｜平均前测 '+avg('preScore')+'｜平均后测 '+avg('postScore')+'｜平均分数变化 '+(gain==='—'?'—':(Number(gain)>0?'+':'')+gain)+' 分。数据仅在本设备保存。';
+      list.replaceChildren();
+      rows.slice(-5).reverse().forEach(row=>{const item=el('p',row.participantCode+' · '+row.courseTitle+' · '+row.preScore+' → '+row.postScore+' 分 · 作品量规 '+(Number(row.questionScore)+Number(row.dataScore)+Number(row.reasoningScore))+'/9');list.appendChild(item);});
+    };
+    save.addEventListener('click',()=>{
+      const participantCode=code.input.value.trim();
+      const ids=['preScore','postScore','trialQuestionScore','trialDataScore','trialReasoningScore','trialEngagementRating','trialAiRating','trialFeasibilityRating'];
+      const values={};ids.forEach(id=>{values[id]=Number($(id).value);});
+      const comment=note.input.value.trim();
+      if(!/^[A-Za-z0-9_-]{2,24}$/.test(participantCode)){status.textContent='请使用2—24位字母、数字、下划线或短横线组成的匿名编号。';return;}
+      if(!course.input.value){status.textContent='请选择试教课程。';return;}
+      if(!Number.isInteger(values.preScore)||!Number.isInteger(values.postScore)||values.preScore<0||values.preScore>100||values.postScore<0||values.postScore>100){status.textContent='前测和后测必须填写0—100之间的整数分数。';return;}
+      for(const id of ['trialQuestionScore','trialDataScore','trialReasoningScore'])if(!Number.isInteger(values[id])||values[id]<0||values[id]>3){status.textContent='作品量规各项须填写0—3级。';return;}
+      for(const id of ['trialEngagementRating','trialAiRating','trialFeasibilityRating'])if(!Number.isInteger(values[id])||values[id]<1||values[id]>5){status.textContent='教师反馈评分须填写1—5分。';return;}
+      if(/(?:\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b|(?:\+?86)?1[3-9]\d{9})/.test(comment)){status.textContent='备注中检测到疑似联系方式，请删除后再保存。';return;}
+      const rows=readRows();rows.push({participantCode,courseId:course.input.value,courseTitle:course.input.options[course.input.selectedIndex]?.textContent||course.input.value,preScore:values.preScore,postScore:values.postScore,questionScore:values.trialQuestionScore,dataScore:values.trialDataScore,reasoningScore:values.trialReasoningScore,engagementRating:values.trialEngagementRating,aiRating:values.trialAiRating,feasibilityRating:values.trialFeasibilityRating,teacherNote:comment,savedAt:new Date().toISOString()});
+      try{localStorage.setItem(storageKey,JSON.stringify(rows));render();status.textContent='已保存。本条分数变化：'+(values.postScore-values.preScore>0?'+':'')+(values.postScore-values.preScore)+'分；请勿将分数变化直接解释为平台造成的因果效果。';}
+      catch(error){status.textContent='本机保存失败：'+error.message+'。请检查浏览器存储空间。';}
+    });
+    exportButton.addEventListener('click',()=>{
+      const rows=readRows();if(!rows.length){status.textContent='暂无可导出的试教记录。';return;}
+      const columns=['participantCode','courseId','courseTitle','preScore','postScore','questionScore','dataScore','reasoningScore','engagementRating','aiRating','feasibilityRating','teacherNote','savedAt'];
+      const csv=[columns.join(','),...rows.map(row=>columns.map(key=>'"'+String(row[key]??'').replace(/"/g,'""')+'"').join(','))].join('\r\n');
+      const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='小小AI科学家_匿名试教评估记录.csv';link.click();URL.revokeObjectURL(url);
+      status.textContent='已生成CSV导出文件。请妥善保存并仅用于授权范围内的教学研究。';
+    });
+    panel.appendChild(box);render();
+  }
   function addTeacherAccountUI(){
     const teacher=$('teacher');if(!teacher||$('teacherAccountBox'))return;
     const box=el('div',undefined,'card');box.id='teacherAccountBox';box.style.margin='18px 0';
@@ -138,6 +208,6 @@
   }
   const oldLoad=window.loadClasses;
   if(typeof oldLoad==='function')window.loadClasses=async function(){const v=await oldLoad();loadDashboard();loadAudit();return v;};
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{loadCurriculum();addTeacherAccountUI();},{once:true});else{loadCurriculum();addTeacherAccountUI();}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{loadCurriculum();addTeacherAccountUI();addTrialAssessmentUI();},{once:true});else{loadCurriculum();addTeacherAccountUI();addTrialAssessmentUI();}
   window.loadV56Dashboard=loadDashboard;
 })();
