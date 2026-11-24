@@ -15,7 +15,9 @@ export PORT=3000
 LOG_FILE="$(mktemp)"
 SERVER_PID=""
 cleanup() {
+  local exit_code=$?
   if [[ -n "$SERVER_PID" ]]; then kill "$SERVER_PID" 2>/dev/null || true; wait "$SERVER_PID" 2>/dev/null || true; fi
+  if [[ "$exit_code" -ne 0 ]]; then cat "$LOG_FILE"; fi
   rm -f "$LOG_FILE"
 }
 trap cleanup EXIT
@@ -38,9 +40,25 @@ register_teacher() {
   jq -e '.status=="approved" and (.token|length>20)' <<<"$response" >/dev/null
   local token
   token="$(jq -r '.token' <<<"$response")"
+  if [[ "$email" == "$TEACHER_EMAIL" ]]; then TEACHER_A_TOKEN="$token"; else TEACHER_B_TOKEN="$token"; fi
   curl -fsS "$BASE_URL/api/teacher/dashboard" -H "Authorization: Bearer $token" | jq -e '.classes|type=="array"' >/dev/null
 }
+TEACHER_A_TOKEN=""
+TEACHER_B_TOKEN=""
 register_teacher "$TEACHER_EMAIL" "$TEACHER_PASSWORD"
 register_teacher "$TEACHER_B_EMAIL" "$TEACHER_B_PASSWORD"
 
 RUN_CLASS_STATS_ACCEPTANCE=1 bash scripts/accept-v57.sh
+
+# V5.9 end-to-end acceptance: one populated class and one empty class.
+CLASS_A="$(curl -fsS -X POST "$BASE_URL/api/teacher/classes" -H "Authorization: Bearer $TEACHER_A_TOKEN" -H 'Content-Type: application/json' -d '{"className":"V59 CI populated class"}')"
+CLASS_ID="$(jq -r '.class.id' <<<"$CLASS_A")"
+INVITE_CODE="$(jq -r '.class.invite_code' <<<"$CLASS_A")"
+EMPTY_CLASS="$(curl -fsS -X POST "$BASE_URL/api/teacher/classes" -H "Authorization: Bearer $TEACHER_A_TOKEN" -H 'Content-Type: application/json' -d '{"className":"V59 CI empty class"}')"
+EMPTY_CLASS_ID="$(jq -r '.class.id' <<<"$EMPTY_CLASS")"
+STUDENT_JOIN="$(curl -fsS -X POST "$BASE_URL/api/student/join" -H 'Content-Type: application/json' -d "$(jq -nc --arg code "$INVITE_CODE" '{inviteCode:$code,alias:"V59CI",grade:"3-4",guardianConsent:true}')")"
+STUDENT_TOKEN="$(jq -r '.token' <<<"$STUDENT_JOIN")"
+RECORD_RESPONSE="$(curl -fsS -X POST "$BASE_URL/api/student/records" -H "Authorization: Bearer $STUDENT_TOKEN" -H 'Content-Type: application/json' -d '{"topic":"CI plant inquiry","question":"Does light affect growth?","hypothesis":"More light may increase growth","independentVariable":"light level","dependentVariable":"plant height","controlVariables":"same plant type, same water","method":"Measure height daily","evidence":"Day 1: 2 cm; Day 2: 3 cm","conclusion":"The sample grew","repetitionCount":3}')"
+RECORD_ID="$(jq -r '.record.id' <<<"$RECORD_RESPONSE")"
+export STUDENT_TOKEN TEACHER_TOKEN="$TEACHER_A_TOKEN" OTHER_TEACHER_TOKEN="$TEACHER_B_TOKEN" CLASS_ID EMPTY_CLASS_ID RECORD_ID
+bash scripts/accept-v59.sh

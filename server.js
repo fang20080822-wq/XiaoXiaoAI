@@ -10,6 +10,7 @@ import pg from "pg";
 import { registerV56Routes } from "./upgrade-v56.js";
 import { registerV57Routes } from "./upgrade-v57.js";
 import { registerV58Routes } from "./upgrade-v58.js";
+import { registerV59Routes } from "./upgrade-v59.js";
 import { scoreRecord,validateAlias,containsPII,offlineAnswer } from "./lib/inquiry.js";
 import { readSession,issueSession,hashSessionToken } from "./lib/auth.js";
 
@@ -64,7 +65,18 @@ async function initDatabase(){
       "CREATE TABLE IF NOT EXISTS sessions(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),token_hash TEXT UNIQUE NOT NULL,role TEXT NOT NULL CHECK(role IN ('teacher','student','admin')),subject_id TEXT NOT NULL,expires_at TIMESTAMPTZ NOT NULL,created_at TIMESTAMPTZ DEFAULT NOW())",
       "CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at)",
       "CREATE TABLE IF NOT EXISTS messages(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),session_id UUID NOT NULL,student_id TEXT NOT NULL DEFAULT '',role TEXT NOT NULL CHECK(role IN ('user','assistant')),content TEXT NOT NULL,mode TEXT NOT NULL DEFAULT 'offline',created_at TIMESTAMPTZ DEFAULT NOW())",
-      "CREATE INDEX IF NOT EXISTS idx_messages_owner_session_time ON messages(student_id,session_id,created_at DESC)"
+      "CREATE INDEX IF NOT EXISTS idx_messages_owner_session_time ON messages(student_id,session_id,created_at DESC)",
+      "ALTER TABLE science_learners ADD COLUMN IF NOT EXISTS student_code TEXT",
+      "ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_direct_answer INTEGER NOT NULL DEFAULT 0",
+      "CREATE TABLE IF NOT EXISTS events(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),student_id UUID NOT NULL REFERENCES science_learners(id) ON DELETE CASCADE,record_id UUID REFERENCES science_records(id) ON DELETE SET NULL,step TEXT NOT NULL CHECK(step IN ('observe','question','hypothesis','variables','method','data','evidence','conclusion','reflection','submit')),action TEXT NOT NULL CHECK(action IN ('edit','save','hint','submit','reload')),hint_level INTEGER,field_key TEXT NOT NULL DEFAULT '',ts TIMESTAMPTZ NOT NULL DEFAULT NOW(),CHECK((action='hint' AND hint_level BETWEEN 1 AND 4) OR (action<>'hint' AND hint_level IS NULL)))",
+      "CREATE INDEX IF NOT EXISTS idx_events_student_ts ON events(student_id,ts DESC)",
+      "CREATE INDEX IF NOT EXISTS idx_events_record_action_ts ON events(record_id,action,ts)",
+      "CREATE TABLE IF NOT EXISTS surveys(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),student_id UUID NOT NULL REFERENCES science_learners(id) ON DELETE CASCADE,stage TEXT NOT NULL CHECK(stage IN ('pre','post')),answers JSONB NOT NULL,total NUMERIC(4,2) NOT NULL,d1 NUMERIC(4,2) NOT NULL,d2 NUMERIC(4,2) NOT NULL,d3 NUMERIC(4,2) NOT NULL,d4 NUMERIC(4,2) NOT NULL,d5 NUMERIC(4,2) NOT NULL,ts TIMESTAMPTZ NOT NULL DEFAULT NOW(),UNIQUE(student_id,stage))",
+      "CREATE INDEX IF NOT EXISTS idx_surveys_student_stage ON surveys(student_id,stage)",
+      "WITH missing AS (SELECT id,class_id,ROW_NUMBER() OVER(PARTITION BY class_id ORDER BY id) AS rn FROM science_learners WHERE student_code IS NULL OR BTRIM(student_code)=''), offsets AS (SELECT class_id,COALESCE(MAX(NULLIF(regexp_replace(student_code,'[^0-9]','','g'),'')::INTEGER),0) AS base FROM science_learners GROUP BY class_id) UPDATE science_learners l SET student_code='S'||LPAD((o.base+m.rn)::TEXT,GREATEST(3,LENGTH((o.base+m.rn)::TEXT)),'0') FROM missing m JOIN offsets o ON o.class_id=m.class_id WHERE l.id=m.id",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_learners_class_student_code ON science_learners(class_id,student_code) WHERE student_code IS NOT NULL",
+      "CREATE OR REPLACE FUNCTION assign_science_student_code() RETURNS trigger AS $v59$ DECLARE next_code INTEGER; BEGIN IF NEW.student_code IS NULL OR BTRIM(NEW.student_code)='' THEN PERFORM pg_advisory_xact_lock(hashtext(NEW.class_id::TEXT)); SELECT COALESCE(MAX(NULLIF(regexp_replace(student_code,'[^0-9]','','g'),'')::INTEGER),0)+1 INTO next_code FROM science_learners WHERE class_id=NEW.class_id; NEW.student_code:='S'||LPAD(next_code::TEXT,GREATEST(3,LENGTH(next_code::TEXT)),'0'); END IF; RETURN NEW; END; $v59$ LANGUAGE plpgsql",
+      "DO $v59$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='trg_assign_science_student_code') THEN CREATE TRIGGER trg_assign_science_student_code BEFORE INSERT ON science_learners FOR EACH ROW EXECUTE FUNCTION assign_science_student_code(); END IF; END $v59$"
     ];
     for(const statement of statements) await db.query(statement);
     await db.query("SELECT 1");
@@ -226,6 +238,7 @@ async function callDeepSeek(messages, maxTokens=900) {
 registerV56Routes({app,db,apiLimiter,loginLimiter,requireTeacher,teacherId,ADMIN_PASSWORD,TOKEN_SECRET,signToken,verifyToken,looksLikePII,resolveStudentSession,initDatabase});
 registerV57Routes({app,db,apiLimiter,requireTeacher,teacherId,requireDatabase});
 registerV58Routes({app,db,apiLimiter,requireTeacher,teacherId,requireDatabase});
+registerV59Routes({app,db,apiLimiter,requireTeacher,requireStudent,teacherId,requireDatabase});
 
 app.get("/api/health",async(req,res)=>{
   let database = DATABASE_URL ? (dbReady ? "ready" : "connecting") : "not_configured";
@@ -318,7 +331,7 @@ app.post("/api/chat/stream",chatLimiter,async(req,res)=>{
     }
     if(req.scienceHintLevel===4&&!/参考答案/.test(answer))answer="参考答案（仅供参考，请用自己的话复述）\n"+answer+"\n\n请先遮住上面的内容，用自己的话复述你的理解。";
     if(looksLikePII(answer)){answer="回答可能包含个人信息，已隐藏。请用匿名信息继续。";mode="offline";emit({delta:"\n"+answer})}
-    if(ownsSession)await db.query("INSERT INTO messages(session_id,student_id,role,content,mode) VALUES($1,$2,'assistant',$3,$4)",[sessionId,ownerLearnerId,answer,mentorMode]);
+    if(ownsSession){const isDirectAnswer=(/答案是|结论是|应该选|正确选项/.test(answer)||(answer.length>400&&!/[？?]/.test(answer)))?1:0;await db.query("INSERT INTO messages(session_id,student_id,role,content,mode,is_direct_answer) VALUES($1,$2,'assistant',$3,$4,$5)",[sessionId,ownerLearnerId,answer,mentorMode,isDirectAnswer]);}
     emit({done:true,mode,model:MODEL,...(notice?{notice}:{})});
     res.end();
   }catch(error){

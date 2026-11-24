@@ -33,8 +33,8 @@ expect(){ [[ "$STATUS" == "$1" ]] || fail "$2 (HTTP $STATUS, expected $1)"; }
 # 1 health/version
 request GET /api/health
 expect 200 "health endpoint"
-[[ "$(jq -r '.ok' <<<"$RESP")" == "true" && "$(jq -r '.version' <<<"$RESP")" == "5.7.1" ]] || fail "health/version payload"
-check "health reports V5.7.1"
+[[ "$(jq -r '.ok' <<<"$RESP")" == "true" && "$(jq -r '.version' <<<"$RESP")" == "5.9.0" ]] || fail "health/version payload"
+check "health reports V5.9.0"
 # 2 privacy page
 request GET /privacy
 expect 200 "privacy page"

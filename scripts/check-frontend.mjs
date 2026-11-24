@@ -65,7 +65,7 @@ console.log('V5.6.3 frontend syntax, API contracts, student-owned chat history a
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const lock = JSON.parse(readFileSync(new URL('../package-lock.json', import.meta.url), 'utf8'));
-if (pkg.version !== '5.7.1' || lock.version !== pkg.version || lock.packages?.['']?.version !== pkg.version) throw new Error('Package and lockfile versions must match V5.7.0');
+if (pkg.version !== '5.9.0' || lock.version !== pkg.version || lock.packages?.['']?.version !== pkg.version) throw new Error('Package and lockfile versions must match V5.9.0');
 if (!server.includes('const APP_VERSION = JSON.parse(readFileSync(new URL("./package.json"') || !server.includes('version:APP_VERSION')) throw new Error('Backend health version must derive from package.json');
 if (!html.includes("fetch('/api/health')") || !html.includes("$('appVersion').textContent='V'+d.version") || !html.includes("document.title='小小AI科学家 V'+d.version")) throw new Error('Page version must be injected from the health endpoint');
 if (/小小AI科学家 V5\\.\\d/.test(html)) throw new Error('Frontend must not hardcode a release version');
@@ -100,7 +100,7 @@ for (const field of ['observedPhenomenon','questionBoundary','measurementIndicat
 if (!/if\s*\(\s*!topic\s*\|\|\s*!question\s*\)/.test(html) || !/scoreRecord\s*\(\s*d\s*\)/.test(server) || !/function\s+parseDataTable\s*\(/.test(inquiryModule)) throw new Error('Students must be able to submit with topic and question only; evidence quality is evaluated separately');
 for (const term of ['真实观察','问题边界','可测量指标','假设依据','预期结果','控制理由','异常值处理','证据解释']) if (!server.includes(term) && !html.includes(term)) throw new Error('Level-four rubric requirement missing: '+term);
 if (!server.includes('五项标准') || !server.includes('尚无证据')) throw new Error('Teacher evaluation must use five level-four dimensions and avoid inferring evidence');
-if (!html.includes('L1 起步') || !html.includes('L2 发展') || !html.includes('L3 熟练') || !html.includes('L4 优秀') || !html.includes('L1也能提交')) throw new Error('Student-facing rubric must show five dimensions across L1-L4 and allow L1 submissions');
+if (!html.includes('L1 待改进') || !html.includes('L2 合格') || !html.includes('L3 良好') || !html.includes('L4 优秀') || !html.includes('L1 也能提交')) throw new Error('Student-facing rubric must show five dimensions across L1-L4 and allow L1 submissions');
 if (!v57Module.includes('classes/:id/stats') || !v57Module.includes('DISTINCT ON (learner_id)') || !v57Module.includes('ORDER BY learner_id,created_at DESC NULLS LAST,id DESC') || !v57Module.includes('(level_json->>\'evidence_ok\')::boolean IS FALSE') || !readUi().includes("box.id='classStats'") || !html.includes('id="classRecordStats"') || !html.includes('Promise.allSettled') || !html.includes('renderClassStats') || !html.includes('最需要帮助：') || !html.includes('还没有学生加入，把邀请码发给学生吧')) throw new Error('Class archive must use each learner latest record and render the five-metric statistics card');
 if (readUi().includes('查看本班探究统计')) throw new Error('Per-class statistics must be displayed in the class archive, not duplicated in the dashboard');
 if (!server.includes('q.rows.reverse().filter(m=>!looksLikePII(m.content))') || !server.includes('if(looksLikePII(answer))')) throw new Error('Chat history responses and stored AI answers must also be screened for PII');
