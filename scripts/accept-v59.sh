@@ -12,7 +12,8 @@ trap 'rm -rf "$tmp"' EXIT
 base="${BASE_URL%/}"
 
 request() {
-  local name="$1" expected="$2" token="$3" method="$4" url="$5" body="${6:-}" output="$tmp/$name.out"
+  local name="$1" expected="$2" token="$3" method="$4" url="$5" body="${6:-}"
+  local output="$tmp/$name.out"
   local status
   status="$(curl -sS -o "$output" -w '%{http_code}' -X "$method" "$url" -H "Authorization: Bearer $token" -H 'Content-Type: application/json' --data-binary "$body")"
   if [[ "$status" != "$expected" ]]; then
