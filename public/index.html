@@ -325,7 +325,7 @@ function getLabRecords(){try{const v=JSON.parse(localStorage.getItem('scienceLab
 function saveLab(){
   const data={...currentLab(),id:Date.now()};
   if(!data.topic||!data.hypothesis){$('saved').textContent='请至少填写实验主题和假设。';return}
-  try{const records=getLabRecords();records.unshift(data);localStorage.setItem('scienceLabs',JSON.stringify(records.slice(0,20)));$('saved').textContent='✓ 已保存在本设备浏览器中。';$('progressText').textContent='已保存探究记录：'+data.topic;renderSaved();updateProgress()}
+  try{const records=getLabRecords();records.unshift(data);localStorage.setItem('scienceLabs',JSON.stringify(records.slice(0,20)));sendProcessEvent('submit','save');$('saved').textContent='✓ 已保存在本设备浏览器中。';$('progressText').textContent='已保存探究记录：'+data.topic;renderSaved();updateProgress()}
   catch(e){$('saved').textContent='保存失败：浏览器存储空间可能不足，请先导出已有记录。'}
 }
 function currentLab(){return {topic:$('topic').value.trim(),observedPhenomenon:$('observedPhenomenon').value.trim(),researchQuestion:$('researchQuestion').value.trim(),questionBoundary:$('questionBoundary').value.trim(),measurementIndicator:$('measurementIndicator').value.trim(),hypothesis:$('hypothesis').value.trim(),hypothesisBasis:$('hypothesisBasis').value.trim(),expectedResult:$('expectedResult').value.trim(),independentVariable:$('independentVariable').value.trim(),dependentVariable:$('dependentVariable').value.trim(),controlVariables:$('controlVariables').value.trim(),controlRationale:$('controlRationale').value.trim(),repetitionCount:Number($('repetitionCount').value||0),method:$('method').value.trim(),dataTable:$('dataTable').value.trim(),evidence:$('evidence').value.trim(),anomalyHandling:$('anomalyHandling').value.trim(),evidenceReasoning:$('evidenceReasoning').value.trim(),conclusion:$('conclusion').value.trim(),reflection:$('reflection').value.trim(),savedAt:new Date().toISOString()}}
@@ -412,7 +412,7 @@ async function ask(){
   const q=$('question').value.trim();if(!q)return;
   if(q.length>6000){$('mode').textContent='问题不能超过6000字。';return}
   const mode=mentorModes[$('mentorMode').value]||mentorModes.curiosity,mentorMode=$('mentorMode').value;
-  bubble(q,'user');$('question').value='';$('sendBtn').disabled=true;$('sendBtn').textContent='AI思考中…';
+  bubble(q,'user');const hintSteps={curiosity:'question',experiment:'variables',concept:'question',evidence:'evidence',create:'method'};const hintLevels={curiosity:1,experiment:2,concept:3,evidence:3,create:3};sendProcessEvent(hintSteps[mentorMode]||'question','hint',{hintLevel:hintLevels[mentorMode]||1});$('question').value='';$('sendBtn').disabled=true;$('sendBtn').textContent='AI思考中…';
   const wait=document.createElement('div');wait.className='bubble bot';wait.textContent='导师正在思考……';$('chatlog').appendChild(wait);$('chatlog').scrollTop=$('chatlog').scrollHeight;
   try{
     const r=await fetch('/api/chat/stream',{method:'POST',headers:{'Content-Type':'application/json',...(studentToken?{'Authorization':'Bearer '+studentToken}:{})},body:JSON.stringify({message:q,sessionId:chatSessionId,mode:mentorMode,topic:'青少年科学探究'})});
@@ -448,7 +448,24 @@ async function clearChat(){const token=localStorage.getItem('scienceStudentToken
 
 let studentToken=localStorage.getItem('scienceStudentToken')||'';
 let studentAlias=localStorage.getItem('scienceStudentAlias')||'';
-if(studentToken){$('joinStatus').textContent='已加入班级：'+studentAlias+'。此设备保存学生会话。'}
+async function sendProcessEvent(step,action,extra={}) {
+  if(!studentToken)return;
+  try {
+    await fetch('/api/student/events',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+studentToken},body:JSON.stringify({step,action,...extra})});
+  } catch(e) {}
+}
+const processFields={
+  topic:'observe',observedPhenomenon:'observe',researchQuestion:'question',questionBoundary:'question',measurementIndicator:'question',
+  hypothesis:'hypothesis',hypothesisBasis:'hypothesis',expectedResult:'hypothesis',
+  independentVariable:'variables',dependentVariable:'variables',controlVariables:'variables',controlRationale:'variables',repetitionCount:'variables',
+  method:'method',dataTable:'data',evidence:'evidence',anomalyHandling:'evidence',evidenceReasoning:'evidence',
+  conclusion:'conclusion',reflection:'reflection'
+};
+Object.entries(processFields).forEach(([field,step])=>{
+  const el=$(field);
+  if(el)el.addEventListener('blur',()=>sendProcessEvent(step,'edit',{field}));
+});
+if(studentToken){$('joinStatus').textContent='已加入班级：'+studentAlias+'。此设备保存学生会话。';sendProcessEvent('observe','reload');}
 async function joinClass(){
   const inviteCode=$('classInvite').value.trim().toUpperCase(),alias=$('studentAlias').value.trim();
   if(!$('guardianAck').checked){$('joinStatus').textContent='请先确认已取得教师和监护人必要同意。';return}
@@ -474,7 +491,7 @@ async function submitCloudRecord(){
   try{
     const r=await fetch('/api/student/records',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+studentToken},body:JSON.stringify(payload)});
     const result=await r.json();if(!r.ok)throw new Error(result.error||'提交失败');
-    const level=Math.max(1,Math.min(4,Number(result.level)||1));
+    sendProcessEvent('submit','submit',{recordId:result.record?.id||null});const level=Math.max(1,Math.min(4,Number(result.level)||1));
     const tips=Array.isArray(result.next_steps)?result.next_steps.slice(0,3).map(x=>x.suggestion||('请补充：'+(x.missing||[]).join('、'))).join('；'):'';
     $('cloudSaveStatus').textContent='✓ 已提交。当前探究水平：L'+level+'。'+(tips?' 下一步：'+tips:'');
     await loadMyRecords();
