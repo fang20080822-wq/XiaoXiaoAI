@@ -29,6 +29,8 @@ request() {
 
 answers='[1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5]'
 request event 201 "$STUDENT_TOKEN" POST "$base/api/student/events" '{"step":"observe","action":"save"}'
+request hint_event 201 "$STUDENT_TOKEN" POST "$base/api/student/events" '{"step":"question","action":"hint","hintLevel":2}'
+request revision_event 201 "$STUDENT_TOKEN" POST "$base/api/student/events" '{"step":"question","action":"edit","field":"researchQuestion"}'
 request survey_submit 200 "$STUDENT_TOKEN" POST "$base/api/survey/submit" "{\"stage\":\"pre\",\"answers\":$answers}"
 grep -q '"total":2.6' "$tmp/survey_submit.out"
 grep -q '"d1":2.5' "$tmp/survey_submit.out"
@@ -43,6 +45,8 @@ grep -q '"hint_adherence_rate":' "$tmp/process.out"
 grep -q '"variable_correct_rate":' "$tmp/process.out"
 grep -q '"avg_revisions":' "$tmp/process.out"
 grep -q '"events_total":' "$tmp/process.out"
+grep -q '"hint_adherence_rate":100' "$tmp/process.out"
+grep -q '"avg_revisions":1' "$tmp/process.out"
 request csv 200 "$TEACHER_TOKEN" GET "$base/api/teacher/classes/$CLASS_ID/export.csv"
 header="$(head -n 1 "$tmp/csv.out" | sed 's/^\xEF\xBB\xBF//' | tr -d '\r')"
 expected='student_code,group,record_id,created_at,level,completeness,evidence_ok,topic,question,observed_phenomenon,question_boundary,measurement_indicator,hypothesis,hypothesis_basis,expected_result,independent_variable,dependent_variable,control_variables,control_rationale,repetition_count,method,data_table,evidence,anomaly_handling,evidence_reasoning,conclusion,reflection,pre_total,pre_d1,pre_d2,pre_d3,pre_d4,pre_d5,post_total,post_d1,post_d2,post_d3,post_d4,post_d5'
