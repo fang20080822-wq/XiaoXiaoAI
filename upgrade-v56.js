@@ -1124,15 +1124,22 @@ const COURSE_MISCONCEPTIONS = {
   ]
 };
 
+const COURSE_ID_ALIASES = {plant:"plant-water"};
+export function normalizeCourseId(courseId) {
+  const id=String(courseId||"");
+  return COURSE_ID_ALIASES[id] || id;
+}
+
 export function detectCourseMisconception(courseId, text = "") {
   const source = String(text || "").slice(0, 12000);
-  const rules = COURSE_MISCONCEPTIONS[String(courseId || "")] || [];
+  const rules = COURSE_MISCONCEPTIONS[normalizeCourseId(courseId)] || [];
   const match = rules.find(rule => rule.pattern.test(source));
   return match ? {id:match.id,label:match.label,prompt:match.prompt} : null;
 }
 
 export function buildCourseLearningContext(courseId, learnerText = "", records = []) {
-  const course = CURRICULUM_12.find(item => item.id === String(courseId || "")) || null;
+  const canonicalCourseId=normalizeCourseId(courseId);
+  const course = CURRICULUM_12.find(item => item.id === canonicalCourseId) || null;
   const safeRecords = Array.isArray(records) ? records.slice(0,3) : [];
   const recordText = safeRecords.map(row => [
     row.observed_phenomenon,row.question,row.hypothesis,row.hypothesis_basis,
