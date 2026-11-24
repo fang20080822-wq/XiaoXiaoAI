@@ -11,6 +11,11 @@ assert.equal(rainbow?.id, 'cloud-color');
 const plant = detectCourseMisconception('plant-water', '我认为叶子直接吸水。');
 assert.equal(plant?.id, 'leaf-absorption');
 
+const featuredPlantAlias = detectCourseMisconception('plant', '我认为叶子直接吸水。');
+assert.equal(featuredPlantAlias?.id, 'leaf-absorption');
+assert.equal(buildCourseLearningContext('plant').course.id, 'plant-water');
+
+
 assert.equal(detectCourseMisconception('magnet', '我想比较铁片和纸片是否被磁铁吸引。'), null);
 
 const courseContext = buildCourseLearningContext('magnet', '所有金属都能被磁铁吸住', [{
