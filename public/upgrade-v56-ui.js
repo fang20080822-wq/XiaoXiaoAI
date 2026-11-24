@@ -259,7 +259,15 @@
           card.appendChild(el('b','科学探究作品证据'));
           card.appendChild(el('p','匹配探究记录 '+inquiry.records+' 条｜关联学生 '+inquiry.learners+' 人｜六项作品要素平均覆盖率 '+(inquiry.averageElementCoverage===null?'—':inquiry.averageElementCoverage.toFixed(1)+'%')));
           inquiry.elements.forEach(item=>card.appendChild(el('p',item.label+'：'+item.completed+'/'+item.total+' 条记录有填写（'+(item.rate===null?'—':item.rate.toFixed(1)+'%')+'）')));
-          if(paired.participants<5||inquiry.records<5)card.appendChild(el('small','当前样本量较小，结果仅作教学观察和下一轮课程改进线索，不宜作显著性或因果判断。','muted'));
+          card.appendChild(el('b','下一轮教学改进建议'));
+          const advice=Array.isArray(course.recommendations)?course.recommendations:[];
+          advice.forEach((item,index)=>{
+            const adviceBox=el('div',undefined,'unit');adviceBox.style.margin='8px 0';adviceBox.style.padding='10px';
+            const priority=item.priority==='high'?'优先处理':item.priority==='medium'?'建议关注':'观察建议';
+            adviceBox.append(el('strong',(index+1)+'. '+priority+'｜'+item.focus),el('p','数据依据：'+item.evidence),el('p','教学行动：'+item.action));
+            card.appendChild(adviceBox);
+          });
+          if(paired.participants<5||inquiry.records<5)card.appendChild(el('small','当前样本量较小，建议仅作教学观察和下一轮课程改进线索，不宜作显著性或因果判断。','muted'));
           results.appendChild(card);
         });
       }catch(e){status.textContent='报告生成失败：'+e.message;}
