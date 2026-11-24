@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { COURSE_ASSESSMENTS } from '../lib/course-assessments.js';
-import { scoreCourseAssessment } from '../upgrade-v59.js';
+import { scoreCourseAssessment, registerV59Routes } from '../upgrade-v59.js';
 
 const publicSource=readFileSync(new URL('../public/course-assessments-v1.js',import.meta.url),'utf8');
 const context={window:{}};vm.createContext(context);vm.runInContext(publicSource,context);
@@ -56,4 +56,40 @@ assert.match(routes,/app\.get\("\/api\/teacher\/classes\/:id\/course-assessments
 assert.match(routes,/app\.get\("\/api\/teacher\/course-assessments\/:courseId"/);
 assert.match(server,/CREATE TABLE IF NOT EXISTS course_assessment_results/);
 assert.ok(html.indexOf('course-assessments-v1.js')<html.indexOf('upgrade-v56-ui.js'),'student-safe assessment bank must load before UI');
+
+const routeMap=new Map();
+const fakeApp={get:(path,...handlers)=>routeMap.set('GET '+path,handlers),post:(path,...handlers)=>routeMap.set('POST '+path,handlers)};
+const queryCalls=[];
+const fakeDb={query:async(sql,params=[])=>{
+  queryCalls.push({sql:String(sql),params});
+  if(String(sql).includes('INSERT INTO course_assessment_results'))return {rows:[{score:67,correct_count:2,total:3,updated_at:'2026-11-25T00:00:00Z'}],rowCount:1};
+  if(String(sql).includes('SELECT id FROM science_classes'))return {rows:[{id:'class-1'}],rowCount:1};
+  if(String(sql).includes('FROM course_assessment_results WHERE class_id'))return {rows:[{course_id:'plant-water',stage:'pre',participant_count:4,average_score:'66.8',highest_score:100,lowest_score:33}],rowCount:1};
+  return {rows:[],rowCount:0};
+}};
+const pass=(req,res,next)=>next();
+const studentAuth=(req,res,next)=>{req.student={learnerId:'learner-1',classId:'class-1'};next();};
+registerV59Routes({app:fakeApp,db:fakeDb,apiLimiter:pass,requireTeacher:pass,requireStudent:studentAuth,teacherId:()=> 'teacher-1',requireDatabase:pass});
+async function callRoute(method,path,req={}){
+  const handlers=routeMap.get(method+' '+path);assert.ok(handlers,method+' '+path+' must be registered');
+  const res={statusCode:200,body:null,status(code){this.statusCode=code;return this;},json(value){this.body=value;return this;}};
+  let index=0;const next=()=>{const handler=handlers[index++];return handler?handler(req,res,next):undefined;};
+  await next();return res;
+}
+const studentQuestionResponse=await callRoute('GET','/api/student/course-assessments/:courseId',{params:{courseId:'plant-water'},query:{stage:'pre'}});
+assert.equal(studentQuestionResponse.statusCode,200);
+assert.equal(studentQuestionResponse.body.questions.length,3);
+assert.equal('correctIndex' in studentQuestionResponse.body.questions[0],false,'student question endpoint must not expose answer index');
+assert.equal('rationale' in studentQuestionResponse.body.questions[0],false,'student question endpoint must not expose rationale');
+const answers=[correct[0],correct[1],wrong[2]];
+const submitResponse=await callRoute('POST','/api/student/course-assessments/:courseId',{params:{courseId:'plant-water'},body:{stage:'pre',answers}});
+assert.equal(submitResponse.body.score,67);
+assert.equal(submitResponse.body.correctCount,2);
+assert.ok(queryCalls.some(call=>call.sql.includes('ON CONFLICT(learner_id,course_id,stage) DO UPDATE')),'re-submission must update the latest student/course/stage result');
+const teacherAnswers=await callRoute('GET','/api/teacher/course-assessments/:courseId',{params:{courseId:'plant-water'},query:{stage:'pre'}});
+assert.equal(teacherAnswers.body.questions[0].correctIndex,COURSE_ASSESSMENTS['plant-water'].pre[0][2]);
+const teacherSummary=await callRoute('GET','/api/teacher/classes/:id/course-assessments',{params:{id:'class-1'}});
+assert.equal(teacherSummary.body.results[0].participant_count,4);
+assert.equal(teacherSummary.body.results[0].average_score,66.8);
+
 console.log('Course assessments passed: 12 course banks, private answer keys, server-side scoring, anonymous persistence, and teacher aggregate report contracts.');
