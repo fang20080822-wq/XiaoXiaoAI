@@ -123,11 +123,27 @@
     const list=el('div',undefined,'trial-assessment-list');list.id='trialAssessmentList';box.appendChild(list);
     const storageKey='scienceTrialAssessmentsV1';
     const readRows=()=>{try{const rows=JSON.parse(localStorage.getItem(storageKey)||'[]');return Array.isArray(rows)?rows:[];}catch{return[];}};
+    const analytics=el('section',undefined,'trial-course-analytics');analytics.id='trialCourseAnalytics';analytics.style.marginTop='14px';box.appendChild(analytics);
     const render=()=>{
-      const rows=readRows();const avg=key=>rows.length?(rows.reduce((sum,row)=>sum+Number(row[key]||0),0)/rows.length).toFixed(1):'—';
+      const rows=readRows();const mean=(items,key)=>items.length?(items.reduce((sum,row)=>sum+Number(row[key]||0),0)/items.length):null;
       const gains=rows.filter(row=>Number.isFinite(Number(row.preScore))&&Number.isFinite(Number(row.postScore)));
-      const gain=gains.length?(gains.reduce((sum,row)=>sum+Number(row.postScore)-Number(row.preScore),0)/gains.length).toFixed(1):'—';
-      status.textContent='已保存 '+rows.length+' 条匿名记录｜平均前测 '+avg('preScore')+'｜平均后测 '+avg('postScore')+'｜平均分数变化 '+(gain==='—'?'—':(Number(gain)>0?'+':'')+gain)+' 分。数据仅在本设备保存。';
+      const gain=mean(gains,'postScore')===null?null:gains.reduce((sum,row)=>sum+Number(row.postScore)-Number(row.preScore),0)/gains.length;
+      const fmt=value=>value===null?'—':value.toFixed(1);
+      status.textContent='已保存 '+rows.length+' 条匿名记录｜有效前后测 '+gains.length+' 人｜平均前测 '+fmt(mean(gains,'preScore'))+'｜平均后测 '+fmt(mean(gains,'postScore'))+'｜平均分数变化 '+(gain===null?'—':(gain>0?'+':'')+gain.toFixed(1))+' 分。数据仅在本设备保存。';
+      analytics.replaceChildren(el('h4','分课程学习效果概览'),el('p','按课程分别汇总有效记录；n为匿名参与者数。样本较少时仅作描述性参考，不进行显著性或因果推断。','muted'));
+      const grouped=new Map();rows.forEach(row=>{const key=row.courseId||'unknown';if(!grouped.has(key))grouped.set(key,[]);grouped.get(key).push(row);});
+      if(!grouped.size)analytics.appendChild(el('p','尚无记录。完成并保存试教记录后，这里会自动生成课程分析。','muted'));
+      [...grouped.entries()].sort((a,b)=>String(a[1][0].courseTitle).localeCompare(String(b[1][0].courseTitle),'zh-CN')).forEach(([courseId,items])=>{
+        const valid=items.filter(row=>Number.isFinite(Number(row.preScore))&&Number.isFinite(Number(row.postScore)));
+        const delta=valid.length?valid.reduce((sum,row)=>sum+Number(row.postScore)-Number(row.preScore),0)/valid.length:null;
+        const card=el('article',undefined,'unit');card.style.margin='9px 0';card.style.padding='12px';
+        card.append(el('b',items[0].courseTitle||courseId),el('p','匿名参与者 '+items.length+' 人｜有效前后测 '+valid.length+' 人'));
+        card.append(el('p','前测均分 '+fmt(mean(valid,'preScore'))+'｜后测均分 '+fmt(mean(valid,'postScore'))+'｜平均变化 '+(delta===null?'—':(delta>0?'+':'')+delta.toFixed(1))+' 分'));
+        card.append(el('p','探究量规均分（满分3）：问题设计 '+fmt(mean(items,'questionScore'))+'｜数据记录 '+fmt(mean(items,'dataScore'))+'｜证据解释 '+fmt(mean(items,'reasoningScore'))));
+        card.append(el('p','课堂反馈均分（满分5）：参与度 '+fmt(mean(items,'engagementRating'))+'｜AI引导 '+fmt(mean(items,'aiRating'))+'｜可实施性 '+fmt(mean(items,'feasibilityRating'))));
+        if(valid.length<5)card.append(el('small','当前有效样本少于5人，建议继续积累记录后再作比较。','muted'));
+        analytics.appendChild(card);
+      });
       list.replaceChildren();
       rows.slice(-5).reverse().forEach(row=>{const item=el('p',row.participantCode+' · '+row.courseTitle+' · '+row.preScore+' → '+row.postScore+' 分 · 作品量规 '+(Number(row.questionScore)+Number(row.dataScore)+Number(row.reasoningScore))+'/9');list.appendChild(item);});
     };
