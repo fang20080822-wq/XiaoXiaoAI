@@ -27,7 +27,7 @@
         const card=el('article',undefined,'unit course curriculum-card');
         card.append(el('span',t.domain,'pill'),el('h3',t.title),el('p','课标映射｜'+t.grade+' · 核心概念：'+t.concept),el('p','探究问题：'+t.question));
         const btn=el('button','开始探究 →','btn soft');btn.type='button';btn.addEventListener('click',()=>{
-          if(typeof window.selectTopic==='function')window.selectTopic(t.question,t.id);
+          if(typeof window.selectTopic==='function')window.selectTopic(t.question,t.id,t);
           else {location.hash='#assistant';const q=$('question');if(q)q.value=t.question;}
         });card.appendChild(btn);grid.appendChild(card);
       });
