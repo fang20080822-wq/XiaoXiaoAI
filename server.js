@@ -9,6 +9,7 @@ import dotenv from "dotenv";
 import pg from "pg";
 import { registerV56Routes } from "./upgrade-v56.js";
 import { registerV57Routes } from "./upgrade-v57.js";
+import { registerV58Routes } from "./upgrade-v58.js";
 import { scoreRecord,validateAlias,containsPII,offlineAnswer } from "./lib/inquiry.js";
 import { readSession,issueSession,hashSessionToken } from "./lib/auth.js";
 
@@ -37,6 +38,8 @@ async function initDatabase(){
   dbInitPromise = (async()=>{
     const statements = [
       "CREATE TABLE IF NOT EXISTS science_classes(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), teacher_id TEXT NOT NULL, class_name TEXT NOT NULL, invite_code TEXT UNIQUE NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW())",
+      "ALTER TABLE science_classes ADD COLUMN IF NOT EXISTS \"group\" TEXT NOT NULL DEFAULT 'experimental'",
+      "DO $v58$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'science_classes_group_check' AND conrelid = 'science_classes'::regclass) THEN ALTER TABLE science_classes ADD CONSTRAINT science_classes_group_check CHECK (\"group\" IN ('experimental','control')); END IF; END $v58$",
       "CREATE TABLE IF NOT EXISTS science_learners(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), class_id UUID REFERENCES science_classes(id) ON DELETE CASCADE, alias TEXT NOT NULL, guardian_consent BOOLEAN NOT NULL DEFAULT FALSE, consent_recorded_at TIMESTAMPTZ, UNIQUE(class_id,alias))",
       "ALTER TABLE science_learners ADD COLUMN IF NOT EXISTS guardian_consent BOOLEAN NOT NULL DEFAULT FALSE",
       "ALTER TABLE science_learners ADD COLUMN IF NOT EXISTS consent_recorded_at TIMESTAMPTZ",
@@ -97,7 +100,7 @@ if (ALLOW_ORIGIN) {
       res.setHeader("Access-Control-Allow-Origin", origin);
       res.setHeader("Vary","Origin");
       res.setHeader("Access-Control-Allow-Headers","Content-Type, Authorization");
-      res.setHeader("Access-Control-Allow-Methods","GET, POST, OPTIONS");
+      res.setHeader("Access-Control-Allow-Methods","GET, POST, PATCH, OPTIONS");
     }
     if(req.method==="OPTIONS") return res.sendStatus(204);
     next();
@@ -222,6 +225,7 @@ async function callDeepSeek(messages, maxTokens=900) {
 
 registerV56Routes({app,db,apiLimiter,loginLimiter,requireTeacher,teacherId,ADMIN_PASSWORD,TOKEN_SECRET,signToken,verifyToken,looksLikePII,resolveStudentSession,initDatabase});
 registerV57Routes({app,db,apiLimiter,requireTeacher,teacherId,requireDatabase});
+registerV58Routes({app,db,apiLimiter,requireTeacher,teacherId,requireDatabase});
 
 app.get("/api/health",async(req,res)=>{
   let database = DATABASE_URL ? (dbReady ? "ready" : "connecting") : "not_configured";
@@ -395,7 +399,7 @@ app.post("/api/teacher/classes",apiLimiter,requireTeacher,requireDatabase,async(
   const className=typeof req.body?.className==="string"?req.body.className.trim().slice(0,60):"";
   if(!className)return res.status(400).json({error:"请填写班级代号，不要填写真实学校或班级信息。"});
   const inviteCode=crypto.randomBytes(4).toString("hex").toUpperCase();
-  try{const q=await db.query("INSERT INTO science_classes(teacher_id,class_name,invite_code) VALUES($1,$2,$3) RETURNING id,class_name,invite_code,created_at",[teacherId(req),className,inviteCode]);res.status(201).json({class:q.rows[0]});}
+  try{const q=await db.query("INSERT INTO science_classes(teacher_id,class_name,invite_code) VALUES($1,$2,$3) RETURNING id,class_name,invite_code,created_at,\"group\"",[teacherId(req),className,inviteCode]);res.status(201).json({class:q.rows[0]});}
   catch(e){console.error("class_create_failed",e.message);res.status(500).json({error:"创建班级失败。"});}
 });
 
@@ -437,7 +441,7 @@ app.get("/api/student/records",apiLimiter,requireStudent,requireDatabase,async(r
   catch(e){console.error("student_record_list_failed",e.message);res.status(500).json({error:"读取个人探究记录失败。"});}
 });
 app.get("/api/teacher/classes",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
-  try{const q=await db.query("SELECT c.id,c.class_name,c.invite_code,c.created_at,COUNT(DISTINCT l.id)::int AS learner_count,COUNT(DISTINCT r.id)::int AS record_count FROM science_classes c LEFT JOIN science_learners l ON l.class_id=c.id LEFT JOIN science_records r ON r.class_id=c.id WHERE c.teacher_id=$1 GROUP BY c.id ORDER BY c.created_at DESC",[teacherId(req)]);await db.query("INSERT INTO audit_log(teacher_id,action,target_type,target_id) VALUES($1,$2,$3,$4)",[teacherId(req),"list_classes","teacher","all"]);res.json({classes:q.rows});}
+  try{const q=await db.query("SELECT c.id,c.class_name,c.invite_code,c.created_at,c.\"group\",COUNT(DISTINCT l.id)::int AS learner_count,COUNT(DISTINCT r.id)::int AS record_count FROM science_classes c LEFT JOIN science_learners l ON l.class_id=c.id LEFT JOIN science_records r ON r.class_id=c.id WHERE c.teacher_id=$1 GROUP BY c.id ORDER BY c.created_at DESC",[teacherId(req)]);await db.query("INSERT INTO audit_log(teacher_id,action,target_type,target_id) VALUES($1,$2,$3,$4)",[teacherId(req),"list_classes","teacher","all"]);res.json({classes:q.rows});}
   catch(e){console.error("class_list_failed",e.message);res.status(500).json({error:"读取班级列表失败。"});}
 });
 app.get("/api/teacher/classes/:id/records",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
