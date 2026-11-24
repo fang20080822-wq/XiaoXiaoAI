@@ -32,8 +32,11 @@ for(const id of expected){
 }
 const scored=scoreCourseAssessment('plant-water','pre',COURSE_ASSESSMENTS['plant-water'].pre.map(q=>q[2]));
 assert.deepEqual({correctCount:scored.correctCount,total:scored.total,score:scored.score},{correctCount:3,total:3,score:100});
-assert.equal(scoreCourseAssessment('plant-water','pre',[0,0,0]).score,0);
-assert.equal(scoreCourseAssessment('plant-water','pre',[0,1,2]).score,33);
+const correct=COURSE_ASSESSMENTS['plant-water'].pre.map(q=>q[2]);
+const wrong=correct.map(value=>(value+1)%4);
+assert.equal(scoreCourseAssessment('plant-water','pre',wrong).score,0);
+assert.equal(scoreCourseAssessment('plant-water','pre',[correct[0],wrong[1],wrong[2]]).score,33);
+assert.equal(scoreCourseAssessment('plant-water','pre',[correct[0],correct[1],wrong[2]]).score,67);
 assert.throws(()=>scoreCourseAssessment('plant-water','pre',[0,1]),/invalid_course_assessment_answers/);
 assert.throws(()=>scoreCourseAssessment('plant-water','pre',[0,1,4]),/invalid_course_assessment_answers/);
 assert.throws(()=>scoreCourseAssessment('unknown','pre',[0,1,2]),/invalid_course_assessment_answers/);
