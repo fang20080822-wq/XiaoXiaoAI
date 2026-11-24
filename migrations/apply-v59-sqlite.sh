@@ -16,6 +16,14 @@ CREATE TABLE IF NOT EXISTS events (
  hint_level INTEGER, field_key TEXT NOT NULL DEFAULT '', ts TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
  CHECK ((action='hint' AND hint_level BETWEEN 1 AND 4) OR (action<>'hint' AND hint_level IS NULL))
 );
+CREATE TRIGGER IF NOT EXISTS trg_science_class_group_insert
+BEFORE INSERT ON science_classes
+WHEN NEW."group" NOT IN ('experimental','control')
+BEGIN SELECT RAISE(ABORT,'invalid class group'); END;
+CREATE TRIGGER IF NOT EXISTS trg_science_class_group_update
+BEFORE UPDATE OF "group" ON science_classes
+WHEN NEW."group" NOT IN ('experimental','control')
+BEGIN SELECT RAISE(ABORT,'invalid class group'); END;
 CREATE INDEX IF NOT EXISTS idx_events_student_ts ON events(student_id,ts DESC);
 CREATE INDEX IF NOT EXISTS idx_events_record_action_ts ON events(record_id,action,ts);
 CREATE TABLE IF NOT EXISTS surveys (
