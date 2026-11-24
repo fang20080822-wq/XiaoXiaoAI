@@ -30,6 +30,12 @@ const featured = [
       await card.locator('button').click();
       await page.waitForFunction(id => document.querySelector('#courseLearningPanel')?.dataset.courseId === id, course.id);
       assert.equal(await page.locator('#courseLearningTag').innerText(), course.title);
+      const resourcePack=page.locator('.course[data-course="'+course.id+'"] details.course-resource-pack');
+      assert.equal(await resourcePack.count(),1,course.title+' must show its teacher resource pack');
+      await resourcePack.locator('summary').click();
+      const resourceText=await resourcePack.innerText();
+      for(const heading of ['学习成果与教学目标','材料清单','活动流程','学生任务单','学习评价量规','安全与风险控制']) assert.ok(resourceText.includes(heading),course.title+' resource pack missing '+heading);
+
       assert.ok(await page.locator('#courseObjectives li').count() >= 3, course.title + ' must render learning objectives');
       assert.ok(await page.locator('#courseMisconceptions .course-misconception').count() >= 2, course.title + ' must render misconceptions');
       assert.equal(await page.locator('#topic').inputValue(), course.question);
@@ -51,6 +57,17 @@ const featured = [
     assert.ok(curriculumResponse.ok(), 'curriculum API must return HTTP 2xx');
     const curriculum = await curriculumResponse.json();
     assert.equal(curriculum.topics.length, 12, 'curriculum API must return all 12 topics');
+
+    for (const topic of curriculum.topics) {
+      const pack=topic.resourcePack;
+      assert.ok(pack && pack.duration, topic.title+' must expose a teaching resource pack');
+      assert.ok(pack.objectives?.length>=3 && pack.materials?.length>=3, topic.title+' resource pack must include objectives and materials');
+      assert.ok(pack.steps?.length>=5 && pack.steps.every(step=>step.teacher&&step.student&&step.time), topic.title+' resource pack must include teacher/student lesson steps');
+      assert.ok(pack.taskSheet?.length>=3, topic.title+' resource pack must include student task sheet');
+      assert.ok(pack.rubric?.length>=3 && pack.rubric.every(row=>row.levels?.length===4), topic.title+' resource pack must include four-level rubric');
+      assert.ok(pack.safety?.length>=2, topic.title+' resource pack must include safety notes');
+    }
+
     await page.locator('#nav button[data-tab="learn"]').click();
     await page.waitForFunction(() => document.querySelectorAll('#curriculumMapV56 article').length === 9);
     const cards = page.locator('#curriculumMapV56 article');
@@ -59,6 +76,11 @@ const featured = [
       const topic = curriculum.topics[i + 3];
       await page.waitForFunction(id => document.querySelector('#courseLearningPanel')?.dataset.courseId === id, topic.id);
       assert.equal(await page.locator('#courseLearningTag').innerText(), topic.title);
+      const resourcePack=cards.nth(i).locator('details.course-resource-pack');
+      assert.equal(await resourcePack.count(),1,topic.title+' must render its teacher resource pack');
+      await resourcePack.locator('summary').click();
+      assert.ok((await resourcePack.innerText()).includes('学生任务单'),topic.title+' must show student task sheet');
+
       assert.equal(await page.locator('#topic').inputValue(), topic.question);
       assert.ok(await page.locator('#lab').evaluate(el => el.classList.contains('active')));
       await page.locator('#nav button[data-tab="learn"]').click();
