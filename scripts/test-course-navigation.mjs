@@ -4,11 +4,11 @@ import assert from 'node:assert/strict';
 
 const html = readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
 const curriculumSource = readFileSync(new URL('../upgrade-v56.js', import.meta.url), 'utf8');
-const inline = html.match(/<script>([\\s\\S]*?)<\\/script>/)?.[1];
+const inline = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 assert.ok(inline, 'main inline application script must exist');
 
 const dataStart = inline.indexOf('const courseLearningContent={');
-const dataEnd = inline.indexOf('};\\nfunction renderCourseLearning', dataStart);
+const dataEnd = inline.indexOf('};\nfunction renderCourseLearning', dataStart);
 assert.ok(dataStart >= 0 && dataEnd > dataStart, 'course-specific learning content must be present');
 const dataCode = inline.slice(dataStart, dataEnd + 1);
 
@@ -21,14 +21,13 @@ const curriculumStart = curriculumSource.indexOf('export const CURRICULUM_12 = [
 const curriculumEnd = curriculumSource.indexOf('];', curriculumStart);
 assert.ok(curriculumStart >= 0 && curriculumEnd > curriculumStart, '12-topic curriculum must be present');
 const curriculumCode = curriculumSource.slice(curriculumStart, curriculumEnd + 2)
-  .replace('export const CURRICULUM_12 =', 'const CURRICULUM_12 =') + '\\nthis.CURRICULUM_12 = CURRICULUM_12;';
+  .replace('export const CURRICULUM_12 =', 'const CURRICULUM_12 =') + '\nthis.CURRICULUM_12 = CURRICULUM_12;';
 
 const storage = new Map();
 const topicInput = { value: '' };
-const selected = [];
 const cards = ['plant','rainbow','magnet'].map(id => ({
   dataset: { course: id },
-  classList: { toggle: (name, active) => { if (name === 'selected' && active) selected.push(id); } }
+  classList: { toggle() {} }
 }));
 let activeTab = '';
 const context = {
@@ -41,7 +40,7 @@ const context = {
   renderCourseLearning: id => Boolean(context.courseLearningContent?.[id])
 };
 vm.createContext(context);
-vm.runInContext(dataCode + '\\nthis.courseLearningContent=courseLearningContent;', context);
+vm.runInContext(dataCode + '\nthis.courseLearningContent=courseLearningContent;', context);
 vm.runInContext(curriculumCode, context);
 vm.runInContext(fnCode, context);
 
