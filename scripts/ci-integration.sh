@@ -38,6 +38,7 @@ register_teacher() {
   jq -e '.status=="approved" and (.token|length>20)' <<<"$response" >/dev/null
   local token
   token="$(jq -r '.token' <<<"$response")"
+  if [[ "$email" == "$TEACHER_EMAIL" ]]; then TEACHER_A_TOKEN="$token"; else TEACHER_B_TOKEN="$token"; fi
   curl -fsS "$BASE_URL/api/teacher/dashboard" -H "Authorization: Bearer $token" | jq -e '.classes|type=="array"' >/dev/null
 }
 register_teacher "$TEACHER_EMAIL" "$TEACHER_PASSWORD"
