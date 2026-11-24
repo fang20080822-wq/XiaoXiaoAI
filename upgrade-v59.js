@@ -15,7 +15,8 @@ export function scoreSurvey(answers) {
 }
 
 export function csvEscape(value) {
-  const text = String(value ?? "").replace(/[\r\n]+/g," ");
+  const raw = value instanceof Date ? value.toISOString() : String(value ?? "");
+  const text = raw.replace(/[\r\n]+/g," ");
   return /[",]/.test(text) ? '"' + text.replace(/"/g,'""') + '"' : text;
 }
 
