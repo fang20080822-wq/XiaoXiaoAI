@@ -404,17 +404,40 @@ function renderCourseLearning(courseId){
   $('courseMisconceptions').replaceChildren(...data.misconceptions.map(([wrong,prompt])=>{const box=document.createElement('div');box.className='course-misconception';const misconception=document.createElement('div');misconception.className='wrong';misconception.textContent=wrong;const question=document.createElement('div');question.className='prompt';const label=document.createElement('b');label.textContent='→ 追问：';question.append(label,document.createTextNode(prompt));box.append(misconception,question);return box}));
   return true;
 }
-function selectTopic(t,courseId){
+function selectTopic(t,courseId,curriculumTopic){
+  if(!courseLearningContent[courseId] && curriculumTopic){
+    const title=curriculumTopic.title||'拓展科学主题';
+    const concept=curriculumTopic.concept||curriculumTopic.domain||'本课核心概念';
+    const question=curriculumTopic.question||t;
+    courseLearningContent[courseId]={
+      name:title,
+      intro:'围绕“'+question+'”开展探究，结合'+concept+'收集证据、检验解释。',
+      objectives:[
+        '我能围绕“'+question+'”提出一个可以通过观察、比较或测量回答的问题。',
+        '我能结合“'+concept+'”提出有依据的预测，并说明实验中需要保持不变的条件。',
+        '我能记录至少三次观察或测量结果，用实际证据解释现象，而不是只凭直觉下结论。'
+      ],
+      misconceptions:[
+        ['❌ 把关于“'+concept+'”的生活经验直接当作科学结论','这个想法能通过什么观察或实验检验？需要记录哪些现象或数据，才能判断它是否成立？'],
+        ['❌ 只凭一次观察就认定“'+question+'”有固定答案','如果换一个时间、对象或条件再做一次，结果还一样吗？怎样重复观察，才能排除偶然情况？']
+      ]
+    };
+  }
   if(!courseLearningContent[courseId]){
-    console.error('课程ID无效，已阻止显示其他课程的学习内容：',courseId);
+    console.error('课程缺少专属学习内容：',courseId);
+    $('topic').value=t;
+    tab('assistant');
+    const q=$('question');
+    if(q)q.value=t;
     return;
   }
   $('topic').value=t;
-  localStorage.setItem('scienceSelectedCourse',courseId);
+  try{localStorage.setItem('scienceSelectedCourse',courseId)}catch(e){console.warn('无法保存课程选择：',e)}
   document.querySelectorAll('.course[data-course]').forEach(card=>card.classList.toggle('selected',card.dataset.course===courseId));
   renderCourseLearning(courseId);
   tab('lab');
 }
+window.selectTopic=selectTopic;
 function initCourseVideos(){
   document.querySelectorAll('video[data-video-id]').forEach(video=>{
     const id=video.dataset.videoId,key='scienceVideoProgress:'+id,saved=Number(localStorage.getItem(key)||0),label=document.querySelector('[data-progress="'+id+'"]');
