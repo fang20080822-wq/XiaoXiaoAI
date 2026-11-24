@@ -82,7 +82,7 @@ const LEVEL_TEXT = {
 };
 
 export function nextHintState(previous = {}, message = "") {
-  let level = Math.max(1,Math.min(4,Number(previous.level)||1));
+  let level = Math.max(1,Math.min(3,Number(previous.level)||1));
   let streak = Math.max(0,Number(previous.streak)||0);
   const text = String(message);
   const selfCorrection = text.length >= 18 && /(我发现|我改成|应该是|因为.*所以|数据说明)/.test(text);
