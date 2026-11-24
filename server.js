@@ -264,7 +264,7 @@ app.get("/api/chat/history/:sessionId",chatLimiter,requireStudent,requireDatabas
 app.delete("/api/chat/history/:sessionId",chatLimiter,requireStudent,requireDatabase,async(req,res)=>{
   const sessionId=String(req.params.sessionId||"");
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId))return res.status(400).json({error:"对话会话标识无效。"});
-  try{await db.query("DELETE FROM messages WHERE session_id=$1 AND student_id=$2",[sessionId,req.student.learnerId]);res.json({cleared:true});}
+  try{await db.query("DELETE FROM messages WHERE session_id=$1 AND student_id=$2",[sessionId,req.student.learnerId]);await db.query("DELETE FROM chat_memory_summaries WHERE session_id=$1 AND student_id=$2",[sessionId,req.student.learnerId]);res.json({cleared:true});}
   catch(e){console.error("chat_history_delete_failed",e.message);res.status(500).json({error:"清除对话历史失败。"});}
 });
 async function callDeepSeekStream(messages,onDelta,maxTokens=1000) {
@@ -379,7 +379,7 @@ app.post("/api/chat/stream",chatLimiter,async(req,res)=>{
     }
     if(req.scienceHintLevel===4&&!/参考答案/.test(answer))answer="参考答案（仅供参考，请用自己的话复述）\n"+answer+"\n\n请先遮住上面的内容，用自己的话复述你的理解。";
     if(looksLikePII(answer)){answer="回答可能包含个人信息，已隐藏。请用匿名信息继续。";mode="offline";emit({delta:"\n"+answer})}
-    if(ownsSession){const isDirectAnswer=(/答案是|结论是|应该选|正确选项/.test(answer)||(answer.length>400&&!/[？?]/.test(answer)))?1:0;await db.query("INSERT INTO messages(session_id,student_id,role,content,mode,is_direct_answer) VALUES($1,$2,'assistant',$3,$4,$5)",[sessionId,ownerLearnerId,answer,mentorMode,isDirectAnswer]);void refreshChatMemory(ownerLearnerId,sessionId);}
+    if(ownsSession){const isDirectAnswer=(/答案是|结论是|应该选|正确选项/.test(answer)||(answer.length>400&&!/[？?]/.test(answer)))?1:0;await db.query("INSERT INTO messages(session_id,student_id,role,content,mode,is_direct_answer) VALUES($1,$2,'assistant',$3,$4,$5)",[sessionId,ownerLearnerId,answer,mentorMode,isDirectAnswer]);void refreshChatMemory(ownerLearnerId,sessionId);await db.query("DELETE FROM messages WHERE session_id=$1 AND student_id=$2 AND id NOT IN (SELECT id FROM messages WHERE session_id=$1 AND student_id=$2 ORDER BY created_at DESC LIMIT 100)",[sessionId,ownerLearnerId]);}
     emit({done:true,mode,model:MODEL,...(notice?{notice}:{})});
     res.end();
   }catch(error){
