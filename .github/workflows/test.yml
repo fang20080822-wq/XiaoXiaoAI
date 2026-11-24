@@ -44,5 +44,4 @@ jobs:
       - name: SQLite V5.9 migration and idempotency
         run: bash scripts/test-v59-sqlite.sh
       - name: PostgreSQL end-to-end acceptance (V5.9)
-
         run: bash scripts/ci-integration.sh
