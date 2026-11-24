@@ -41,14 +41,14 @@ register_teacher() {
   if [[ "$email" == "$TEACHER_EMAIL" ]]; then TEACHER_A_TOKEN="$token"; else TEACHER_B_TOKEN="$token"; fi
   curl -fsS "$BASE_URL/api/teacher/dashboard" -H "Authorization: Bearer $token" | jq -e '.classes|type=="array"' >/dev/null
 }
+TEACHER_A_TOKEN=""
+TEACHER_B_TOKEN=""
 register_teacher "$TEACHER_EMAIL" "$TEACHER_PASSWORD"
 register_teacher "$TEACHER_B_EMAIL" "$TEACHER_B_PASSWORD"
 
 RUN_CLASS_STATS_ACCEPTANCE=1 bash scripts/accept-v57.sh
 
 # V5.9 end-to-end acceptance: one populated class and one empty class.
-TEACHER_A_TOKEN="$(curl -fsS -X POST "$BASE_URL/api/teacher/login" -H 'Content-Type: application/json' -d "$(jq -nc --arg e "$TEACHER_EMAIL" --arg p "$TEACHER_PASSWORD" '{email:$e,password:$p}')" | jq -r '.token')"
-TEACHER_B_TOKEN="$(curl -fsS -X POST "$BASE_URL/api/teacher/login" -H 'Content-Type: application/json' -d "$(jq -nc --arg e "$TEACHER_B_EMAIL" --arg p "$TEACHER_B_PASSWORD" '{email:$e,password:$p}')" | jq -r '.token')"
 CLASS_A="$(curl -fsS -X POST "$BASE_URL/api/teacher/classes" -H "Authorization: Bearer $TEACHER_A_TOKEN" -H 'Content-Type: application/json' -d '{"className":"V59 CI populated class"}')"
 CLASS_ID="$(jq -r '.class.id' <<<"$CLASS_A")"
 INVITE_CODE="$(jq -r '.class.invite_code' <<<"$CLASS_A")"
