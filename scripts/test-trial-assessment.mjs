@@ -18,7 +18,7 @@ class FakeNode{
   appendChild(node){this.children.push(node);if(this.tagName==='select'&&node.tagName==='option')this.options.push(node);return node;}
   replaceChildren(...items){this.children=[];this.append(...items);}
   addEventListener(name,fn){this.listeners[name]=fn;}
-  click(){this.listeners.click?.();}
+  click(){if(this.tagName==='a')downloaded=true;this.listeners.click?.();}
   setAttribute(name,value){this.attributes[name]=value;}
 }
 const panel=new FakeNode('section');panel.id='teacherPanel';
@@ -43,7 +43,7 @@ vm.createContext(context);
 vm.runInContext(fn,context);
 await context.addTrialAssessmentUI();
 assert.ok(nodes.trialAssessmentV56,'trial tool must be mounted inside teacher workspace');
-assert.match(nodes.trialAssessmentV56.textContent,/课程试教与学习效果记录/);
+assert.ok(nodes.trialAssessmentV56.children.some(node=>node.textContent==='课程试教与学习效果记录'));
 
 nodes.trialParticipantCode.value='S001';
 nodes.trialCourse.value='plant-water';
@@ -82,5 +82,5 @@ assert.match(rows[0].teacherNote,/变量控制/);
 
 const actions=nodes.trialAssessmentV56.children.find(n=>n.tagName==='div'&&n.className==='actions');
 actions.children[1].click();
-assert.equal(downloaded,false);
+assert.equal(downloaded,true,'CSV export must create and click a download link');
 console.log('Trial assessment regression passed: required score validation, anonymous local storage, duplicate update, PII guard, and CSV export action.');
