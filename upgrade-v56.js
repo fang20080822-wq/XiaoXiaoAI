@@ -144,7 +144,7 @@ export function registerV56Routes({app,db,apiLimiter,loginLimiter,requireTeacher
     try {
       await ensureTables();
       const tid=teacherId(req);
-      const q=await db.query(`SELECT c.id,c.class_name,
+      const q=await db.query(`SELECT c.id,c.class_name,c."group",
         COUNT(DISTINCT l.id)::int AS learner_count,
         COUNT(DISTINCT r.id)::int AS record_count,
         CASE WHEN COUNT(DISTINCT l.id)=0 THEN 0 ELSE ROUND(COUNT(DISTINCT r.learner_id)::numeric/COUNT(DISTINCT l.id)*100,1) END AS submission_rate,
@@ -153,7 +153,7 @@ export function registerV56Routes({app,db,apiLimiter,loginLimiter,requireTeacher
         COUNT(DISTINCT r.id) FILTER (WHERE r.question ~ '什么是|是什么|定义')::int AS question_concept,
         COUNT(DISTINCT r.id) FILTER (WHERE r.question !~ '为什么|怎样|如何|是否|什么是|是什么|定义')::int AS question_other
         FROM science_classes c LEFT JOIN science_learners l ON l.class_id=c.id LEFT JOIN science_records r ON r.class_id=c.id
-        WHERE c.teacher_id=$1 GROUP BY c.id,c.class_name ORDER BY c.created_at DESC`,[tid]);
+        WHERE c.teacher_id=$1 GROUP BY c.id,c.class_name,c."group" ORDER BY c.created_at DESC`,[tid]);
       await audit(tid,"view_dashboard","teacher","all");
       res.json({classes:q.rows,totals:{classes:q.rows.length,learners:q.rows.reduce((n,x)=>n+x.learner_count,0),records:q.rows.reduce((n,x)=>n+x.record_count,0)}});
     } catch(error){console.error("teacher_dashboard_failed",error.message);res.status(503).json({error:"教师看板暂不可用。"});}
