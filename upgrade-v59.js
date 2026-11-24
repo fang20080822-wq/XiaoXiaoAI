@@ -116,13 +116,14 @@ export function registerV59Routes({app,db,apiLimiter,requireTeacher,requireStude
           SELECT r.id,
             COUNT(e.id) FILTER (WHERE e.action='edit')::numeric AS edits,
             BOOL_OR(e.action='hint') AS got_hint,
-            BOOL_OR(e.action='edit' AND e.ts>h.first_hint AND e.ts<=h.first_hint+INTERVAL '10 minutes') AS edited_after_hint
+            BOOL_OR(e.action='edit' AND EXISTS (
+              SELECT 1 FROM events h
+              WHERE h.record_id=r.id AND h.action='hint'
+                AND e.ts>h.ts AND e.ts<=h.ts+INTERVAL '10 minutes'
+            )) AS edited_after_hint
           FROM class_records r
           LEFT JOIN events e ON e.record_id=r.id
-          LEFT JOIN LATERAL (
-            SELECT MIN(ts) AS first_hint FROM events WHERE record_id=r.id AND action='hint'
-          ) h ON TRUE
-          GROUP BY r.id,h.first_hint
+          GROUP BY r.id
         ), stats AS (
           SELECT
             COALESCE(ROUND(100.0*COUNT(*) FILTER (WHERE got_hint AND edited_after_hint)/NULLIF(COUNT(*) FILTER (WHERE got_hint),0),1),0) AS hint_adherence_rate,
