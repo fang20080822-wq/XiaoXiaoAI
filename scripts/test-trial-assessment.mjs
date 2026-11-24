@@ -68,6 +68,10 @@ assert.equal(rows[0].participantCode,'S001');
 assert.equal(rows[0].courseTitle,'植物怎样喝水');
 assert.equal(rows[0].postScore-rows[0].preScore,20);
 assert.equal(rows[0].questionScore+rows[0].dataScore+rows[0].reasoningScore,7);
+assert.ok(nodes.trialCourseAnalytics,'course-level analytics panel must render');
+assert.match(nodes.trialCourseAnalytics.children.map(n=>n.textContent).join(' '),/植物怎样喝水/);
+assert.match(nodes.trialCourseAnalytics.children.map(n=>n.textContent).join(' '),/有效前后测 1 人/);
+assert.match(nodes.trialCourseAnalytics.children.map(n=>n.textContent).join(' '),/样本少于5人/);
 
 nodes.trialTeacherNote.value='请联系我 13800138000';
 nodes.trialAssessmentV56.children.find(n=>n.tagName==='div'&&n.className==='actions').children[0].click();
