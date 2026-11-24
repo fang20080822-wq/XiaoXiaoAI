@@ -3,7 +3,7 @@ set -euo pipefail
 DB_FILE="${1:?Usage: bash migrations/apply-v59-sqlite.sh path/to/database.sqlite}"
 command -v sqlite3 >/dev/null 2>&1 || { echo "sqlite3 CLI is required" >&2; exit 1; }
 has_column() { sqlite3 "$DB_FILE" "PRAGMA table_info($1);" | awk -F'|' -v c="$2" '$2==c{found=1} END{exit !found}'; }
-add_column() { if ! has_column "$1" "$2"; then sqlite3 "$DB_FILE" "ALTER TABLE $1 ADD COLUMN "$2" $3;"; fi; }
+add_column() { if ! has_column "$1" "$2"; then sqlite3 "$DB_FILE" "ALTER TABLE $1 ADD COLUMN \\"$2\\" $3;"; fi; }
 add_column science_classes group "TEXT NOT NULL DEFAULT 'experimental'"
 add_column science_learners student_code "TEXT"
 add_column messages is_direct_answer "INTEGER NOT NULL DEFAULT 0"
@@ -25,6 +25,12 @@ CREATE TABLE IF NOT EXISTS surveys (
  ts TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), UNIQUE(student_id,stage)
 );
 CREATE INDEX IF NOT EXISTS idx_surveys_student_stage ON surveys(student_id,stage);
+WITH ranked AS (
+ SELECT id,'S'||printf('%03d',ROW_NUMBER() OVER(PARTITION BY class_id ORDER BY id)) AS code
+ FROM science_learners WHERE student_code IS NULL OR student_code=''
+)
+UPDATE science_learners SET student_code=(SELECT code FROM ranked WHERE ranked.id=science_learners.id)
+WHERE student_code IS NULL OR student_code='';
 CREATE UNIQUE INDEX IF NOT EXISTS idx_learners_class_student_code ON science_learners(class_id,student_code) WHERE student_code IS NOT NULL;
 CREATE TRIGGER IF NOT EXISTS trg_assign_science_student_code
 AFTER INSERT ON science_learners
