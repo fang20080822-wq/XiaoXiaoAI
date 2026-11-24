@@ -1,3 +1,12 @@
+
+export function scoreCourseAssessment(courseId,stage,answers){
+  const course=COURSE_ASSESSMENTS[courseId],questions=course?.[stage];
+  if(!questions||!Array.isArray(answers)||answers.length!==questions.length||answers.some(value=>!Number.isInteger(value)||value<0||value>3))throw new TypeError("invalid_course_assessment_answers");
+  const correctCount=questions.reduce((sum,q,index)=>sum+(answers[index]===q[2]?1:0),0);
+  return {correctCount,total:questions.length,score:Math.round(correctCount/questions.length*100),review:questions.map((q,index)=>({question:index+1,selected:answers[index],correctIndex:q[2],correctOption:q[1][q[2]],rationale:q[3],correct:answers[index]===q[2]}))};
+}
+
+import { COURSE_ASSESSMENTS } from "./lib/course-assessments.js";
 const STEPS = new Set(["observe","question","hypothesis","variables","method","data","evidence","conclusion","reflection","submit"]);
 const ACTIONS = new Set(["edit","save","hint","submit","reload"]);
 const REVERSE_ITEMS = new Set([4,8,13,17]); // zero-based indexes: q5, q9, q14, q18
@@ -26,6 +35,52 @@ function validUuid(value) {
 }
 
 export function registerV59Routes({app,db,apiLimiter,requireTeacher,requireStudent,teacherId,requireDatabase}) {
+
+  app.get("/api/student/course-assessments/mine",apiLimiter,requireStudent,requireDatabase,async(req,res)=>{
+    try{
+      const q=await db.query("SELECT course_id,stage,score,correct_count,total,updated_at FROM course_assessment_results WHERE learner_id=$1 ORDER BY course_id,stage",[req.student.learnerId]);
+      res.json({results:q.rows.map(row=>({...row,score:Number(row.score),correct_count:Number(row.correct_count),total:Number(row.total)}))});
+    }catch(error){console.error("student_course_assessment_list_failed",error.message);res.status(503).json({error:"测评记录读取暂不可用。"});}
+  });
+
+  app.get("/api/student/course-assessments/:courseId",apiLimiter,requireStudent,requireDatabase,async(req,res)=>{
+    const course=COURSE_ASSESSMENTS[req.params.courseId],stage=String(req.query.stage||"");
+    if(!course||!["pre","post"].includes(stage))return res.status(404).json({error:"课程或测评阶段不存在。"});
+    res.json({courseId:req.params.courseId,title:course.title,stage,questions:course[stage].map(q=>({prompt:q[0],options:q[1]}))});
+  });
+
+  app.post("/api/student/course-assessments/:courseId",apiLimiter,requireStudent,requireDatabase,async(req,res)=>{
+    const courseId=req.params.courseId,stage=String(req.body?.stage||"");
+    if(!COURSE_ASSESSMENTS[courseId]||!["pre","post"].includes(stage))return res.status(404).json({error:"课程或测评阶段不存在。"});
+    let scored;
+    try{scored=scoreCourseAssessment(courseId,stage,req.body?.answers);}catch{return res.status(400).json({error:"请完成3道题，每题选择A、B、C或D。"});}
+    try{
+      const q=await db.query(`
+        INSERT INTO course_assessment_results(class_id,learner_id,course_id,stage,answers,score,correct_count,total,updated_at)
+        VALUES($1,$2,$3,$4,$5::jsonb,$6,$7,$8,NOW())
+        ON CONFLICT(learner_id,course_id,stage) DO UPDATE SET
+          answers=EXCLUDED.answers,score=EXCLUDED.score,correct_count=EXCLUDED.correct_count,total=EXCLUDED.total,updated_at=NOW()
+        RETURNING score,correct_count,total,updated_at
+      `,[req.student.classId,req.student.learnerId,courseId,stage,JSON.stringify(req.body.answers),scored.score,scored.correctCount,scored.total]);
+      const row=q.rows[0];
+      res.json({saved:true,courseId,title:COURSE_ASSESSMENTS[courseId].title,stage,score:Number(row.score),correctCount:Number(row.correct_count),total:Number(row.total),updatedAt:row.updated_at,review:scored.review});
+    }catch(error){console.error("course_assessment_submit_failed",error.message);res.status(503).json({error:"测评提交暂不可用，请稍后重试。"});}
+  });
+
+  app.get("/api/teacher/classes/:id/course-assessments",apiLimiter,requireTeacher,requireDatabase,async(req,res)=>{
+    try{
+      const own=await db.query("SELECT id FROM science_classes WHERE id=$1 AND teacher_id=$2",[req.params.id,teacherId(req)]);
+      if(!own.rowCount)return res.status(404).json({error:"班级不存在或无权查看。"});
+      const q=await db.query(`
+        SELECT course_id,stage,COUNT(DISTINCT learner_id)::int AS participant_count,
+          ROUND(AVG(score),1)::numeric AS average_score,MAX(score)::int AS highest_score,
+          MIN(score)::int AS lowest_score,MAX(updated_at) AS latest_update
+        FROM course_assessment_results WHERE class_id=$1
+        GROUP BY course_id,stage ORDER BY course_id,stage
+      `,[req.params.id]);
+      res.json({results:q.rows.map(row=>({...row,average_score:Number(row.average_score),highest_score:Number(row.highest_score),lowest_score:Number(row.lowest_score)}))});
+    }catch(error){console.error("teacher_course_assessment_summary_failed",error.message);res.status(503).json({error:"班级测评汇总暂不可用。"});}
+  });
   app.post("/api/student/events",apiLimiter,requireStudent,requireDatabase,async(req,res)=>{
     const step=String(req.body?.step||"");
     const action=String(req.body?.action||"");
