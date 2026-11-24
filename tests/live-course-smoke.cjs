@@ -13,6 +13,18 @@ const featured = [
   const page = await browser.newPage();
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
+  await page.route('**/api/teacher/classes', async route => route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({classes:[{id:'class-smoke',class_name:'浏览器测试班',learner_count:2}]})}));
+  await page.route('**/api/teacher/classes/*/learning-evidence', async route => route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
+    unmatchedRecordCount:0,
+    note:'仅作描述性分析，不作因果推断。',
+    results:[{
+      courseId:'plant-water',title:'植物怎样喝水',
+      pre:{participants:2,averageScore:50,items:[{index:1,objective:'说明根吸收水分',prompt:'植物如何吸水？',answered:2,incorrect:1,errorRate:50},{index:2,objective:'记录颜色位置',prompt:'如何记录证据？',answered:2,incorrect:1,errorRate:50},{index:3,objective:'控制实验变量',prompt:'如何公平比较？',answered:2,incorrect:0,errorRate:0}]},
+      post:{participants:2,averageScore:83.5,items:[{index:1,objective:'说明根吸收水分',prompt:'植物如何吸水？',answered:2,incorrect:0,errorRate:0},{index:2,objective:'记录颜色位置',prompt:'如何记录证据？',answered:2,incorrect:0,errorRate:0},{index:3,objective:'控制实验变量',prompt:'如何公平比较？',answered:2,incorrect:1,errorRate:50}]},
+      paired:{participants:2,averagePre:50,averagePost:83.5,averageChange:33.5},
+      inquiry:{records:2,learners:2,averageElementCoverage:91.7,elements:[{key:'question',label:'探究问题',completed:2,total:2,rate:100},{key:'hypothesis',label:'研究假设',completed:2,total:2,rate:100},{key:'method',label:'实验方法',completed:2,total:2,rate:100},{key:'data',label:'数据或观察证据',completed:2,total:2,rate:100},{key:'conclusion',label:'结论',completed:2,total:2,rate:100},{key:'reasoning',label:'证据解释',completed:1,total:2,rate:50}]}
+    }]
+  })}));
   try {
     const response = await page.goto(baseURL, { waitUntil: 'domcontentloaded', timeout: 120000 });
     assert.ok(response && response.ok(), 'production homepage must return HTTP 2xx');
@@ -55,6 +67,13 @@ const featured = [
     await assessmentBank.getByRole('button',{name:'导出教师答案 HTML'}).click();
     const teacherFile=await teacherDownload;
     assert.match(teacherFile.suggestedFilename(),/教师答案\.html$/);
+
+    const learningEvidence=page.locator('#learningEvidenceReportV510');
+    assert.equal(await learningEvidence.count(),1,'teacher workspace must include linked learning evidence report');
+    await learningEvidence.locator('#learningEvidenceClass').selectOption('class-smoke');
+    await learningEvidence.getByRole('button',{name:'生成学习证据报告'}).click();
+    await page.waitForFunction(()=>document.querySelector('#learningEvidenceResults')?.textContent.includes('平均变化 +33.5 分'),null,{timeout:10000});
+    assert.match(await learningEvidence.innerText(),/六项作品要素平均覆盖率/);
 
     await page.route('**/api/student/course-assessments/**',async route=>{
       const request=route.request(),url=new URL(request.url());
