@@ -23,6 +23,13 @@ const featured = [
     const healthData = await health.json();
     assert.equal(healthData.ok, true, 'health endpoint must report ok=true');
 
+    await page.waitForFunction(() => !!document.getElementById('trialAssessmentV56'), null, { timeout: 30000 });
+    const trialToolText=await page.locator('#trialAssessmentV56').evaluate(el=>el.textContent);
+    assert.match(trialToolText,/课程试教与学习效果记录/,'teacher workspace must include the classroom trial assessment tool');
+    assert.match(trialToolText,/仅保存在当前教师设备浏览器中/,'trial data must clearly disclose local-only storage');
+    assert.equal(await page.evaluate(()=>localStorage.getItem('scienceTrialAssessmentsV1')),null,'page load must not create fake trial evidence');
+
+
     await page.locator('#nav button[data-tab="learn"]').click();
     for (const course of featured) {
       await page.locator('#nav button[data-tab="learn"]').click();
