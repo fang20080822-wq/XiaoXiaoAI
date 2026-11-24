@@ -3,7 +3,7 @@ set -euo pipefail
 
 : "${BASE_URL:?Set BASE_URL, e.g. https://xiaoxiaai-scientist.onrender.com}"
 : "${STUDENT_TOKEN:?Set STUDENT_TOKEN to a valid student session token}"
-: "${TEACHER_TOKEN:?Set TEACHER_TOKEN to the class owner's teacher token}"
+: "${TEACHER_TOKEN:?Set TEACHER_TOKEN to the class owner teacher token}"
 : "${OTHER_TEACHER_TOKEN:?Set OTHER_TEACHER_TOKEN to a different teacher token}"
 : "${CLASS_ID:?Set CLASS_ID to a class owned by TEACHER_TOKEN}"
 
