@@ -1,0 +1,29 @@
+name: Live browser course smoke test
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 2 * * *'
+
+jobs:
+  live-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install project dependencies
+        run: npm ci
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify production course flows in Chromium
+        env:
+          BASE_URL: https://xiaoxiaai-scientist.onrender.com
+        run: node tests/live-course-smoke.cjs
