@@ -68,6 +68,17 @@ for (const topic of context.CURRICULUM_12.slice(3)) {
 
 assert.equal(context.CURRICULUM_12.length, 12, 'the curriculum regression suite must cover all 12 topics');
 
+for (const topic of context.CURRICULUM_12) {
+  const pack=topic.resourcePack;
+  assert.ok(pack, topic.title+' must provide a complete teaching resource pack');
+  assert.ok(pack.duration && pack.objectives.length>=3 && pack.materials.length>=3, topic.title+' must include duration, objectives and materials');
+  assert.ok(pack.steps.length>=5 && pack.steps.every(step=>step.time&&step.teacher&&step.student), topic.title+' must include an executable teacher/student activity flow');
+  assert.ok(pack.taskSheet.length>=3, topic.title+' must include a student task sheet');
+  assert.ok(pack.rubric.length>=3 && pack.rubric.every(row=>row.levels.length===4), topic.title+' must include a four-level assessment rubric');
+  assert.ok(pack.safety.length>=2, topic.title+' must include safety guidance');
+}
+
+
 const uiSource = readFileSync(new URL('../public/upgrade-v56-ui.js', import.meta.url), 'utf8');
 const uiStart = uiSource.indexOf('async function loadCurriculum(){');
 const uiEnd = uiSource.indexOf('\n  function addTeacherAccountUI(){', uiStart);
@@ -92,7 +103,7 @@ const learn = new FakeNode('section');
 learn.querySelectorAll = selector => selector === '.course' ? staticCards : [];
 const uiContext = {
   console,
-  document: { createElement: tag => new FakeNode(tag) },
+  document: { createElement: tag => new FakeNode(tag), createTextNode: text => { const node=new FakeNode('#text'); node.textContent=text; return node; } },
   window: { selectTopic: (...args) => context.selectTopic(...args) },
   $: id => id === 'learn' ? learn : null,
   api: async () => ({ topics: context.CURRICULUM_12 }),
@@ -102,11 +113,13 @@ vm.createContext(uiContext);
 vm.runInContext(uiFunction, uiContext);
 await uiContext.loadCurriculum();
 for (let i=0;i<3;i++) assert.ok(staticCards[i].textContent.includes(context.CURRICULUM_12[i].title), 'curriculum topic must map to its featured course card');
+for (const card of staticCards) assert.ok(card.children.some(node=>node.tagName==='details'&&node.className==='course-resource-pack'),'featured course must render a complete resource pack');
 const curriculumGrid = learn.children.find(node => node.id === 'curriculumMapV56');
 assert.ok(curriculumGrid, '12-topic curriculum map must render');
 assert.equal(curriculumGrid.children.length, 9, 'nine additional course cards must render');
 for (let i=0;i<curriculumGrid.children.length;i++) {
   const card=curriculumGrid.children[i];
+  assert.ok(card.children.some(node=>node.tagName==='details'&&node.className==='course-resource-pack'),'extended course must render a complete resource pack');
   const button=card.children.find(node=>node.tagName==='button');
   assert.ok(button && button.listeners.click, 'every additional course card must have a working start button');
   button.click();
