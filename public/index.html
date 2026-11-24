@@ -80,6 +80,7 @@ main{max-width:1180px;margin:0 auto;padding:34px 24px 72px}
 .progressbox{display:flex;align-items:center;gap:16px;padding:18px 20px;background:#fff;border:1px solid var(--line);border-radius:18px}.progress-icon{width:42px;height:42px;border-radius:13px;background:#edf3ff;display:grid;place-items:center;font-size:20px}.progress-info{flex:1}.progress-info b{font-size:13px}.progress-track{height:7px;background:#edf0f6;border-radius:99px;overflow:hidden;margin-top:7px}.progress-fill{height:100%;width:0;background:linear-gradient(90deg,#3978f6,#8665f6);border-radius:99px;transition:width .3s}
 .pageintro{padding:28px 30px;border-radius:23px;background:linear-gradient(120deg,#eaf2ff,#f3efff);border:1px solid #e2e8fa;margin-bottom:18px}.pageintro h1{margin:5px 0 8px;font-size:30px}.pageintro p{margin:0;color:#667590;font-size:13px}
 .unit{padding:19px;transition:.2s}.unit h3{margin:0 0 8px}.unit p{color:var(--muted);font-size:12px}.unit button{margin-top:6px}
+.quiz-question{padding:20px;margin:0 0 14px;border:1px solid #dfe6f2;border-radius:18px;background:linear-gradient(135deg,#fff,#f4f7fc);box-shadow:0 5px 18px rgba(26,45,82,.06);transition:background .25s,border-color .25s,box-shadow .25s}.quiz-question.correct{background:linear-gradient(125deg,#e4f9ed 0%,#bcefd1 52%,#8fe0b4 100%);border:2px solid #20a765;box-shadow:0 10px 26px rgba(25,153,91,.16)}.quiz-question.incorrect{background:linear-gradient(125deg,#fff0ef 0%,#ffd1cf 52%,#ffb4b2 100%);border:2px solid #df4d4d;box-shadow:0 10px 26px rgba(203,55,55,.15)}.quiz-question.unanswered{background:linear-gradient(125deg,#fff9e9,#ffefc8);border:2px solid #e3ad37}.quiz-question .quiz-title{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;color:#182844;font-weight:850}.quiz-question .quiz-state{flex:none;padding:5px 11px;border-radius:99px;background:#fff;color:#46546c;font-size:11px;font-weight:900;border:1px solid #ffffffb8}.quiz-question.correct .quiz-state{color:#08683d;border-color:#39ad72}.quiz-question.incorrect .quiz-state{color:#a3232b;border-color:#e46a6a}.quiz-question.unanswered .quiz-state{color:#805600;border-color:#d9a52d}.quiz-question label{color:#263650}.quiz-question .quiz-explanation{margin:14px 0 0;padding:11px 13px;border-radius:12px;background:rgba(255,255,255,.76);color:#263650;font-size:13px;line-height:1.8}.quiz-question.correct .quiz-explanation{border-left:4px solid #169b5b}.quiz-question.incorrect .quiz-explanation{border-left:4px solid #d94343}.quiz-question.unanswered .quiz-explanation{border-left:4px solid #d49b1c}.quiz-question input[type=radio]:disabled{accent-color:#526b91}.quiz-question.correct input[type=radio]:checked{accent-color:#087b45}.quiz-question.incorrect input[type=radio]:checked{accent-color:#c52e36}
 label{display:block;margin:13px 0 6px;font-size:12px;font-weight:800;color:#43516d}
 input,textarea,select{display:block;width:100%;padding:12px 13px;border:1px solid #dce3ef;border-radius:12px;background:#fff;color:var(--ink);transition:border .2s,box-shadow .2s}
 input:focus,textarea:focus,select:focus{outline:none;border-color:#82a4f7;box-shadow:0 0 0 4px #6c91f51a}
@@ -366,7 +367,7 @@ const questionBank=[
 let questions=[];
 function renderQuiz(){
   questions=[...questionBank].sort(()=>Math.random()-.5).slice(0,4);
-  $('questions').innerHTML=questions.map((q,i)=>'<div class="unit" style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;gap:8px"><b>'+(i+1)+'. '+q[0]+'</b><span class="pill">'+q[4]+'</span></div>'+q[1].map((a,j)=>'<label style="font-weight:500"><input style="display:inline-block;width:auto;margin-right:7px" type="radio" name="q'+i+'" value="'+j+'"> '+a+'</label>').join('')+'<p class="muted" id="ex'+i+'"></p></div>').join('');
+  $('questions').innerHTML=questions.map((q,i)=>'<article class="quiz-question" id="quizQuestion'+i+'"><div class="quiz-title"><b>'+(i+1)+'. '+q[0]+'</b><span class="pill">'+q[4]+'</span><span class="quiz-state" id="quizState'+i+'">待作答</span></div>'+q[1].map((a,j)=>'<label style="font-weight:500"><input style="display:inline-block;width:auto;margin-right:7px" type="radio" name="q'+i+'" value="'+j+'"> '+a+'</label>').join('')+'<p class="quiz-explanation" id="ex'+i+'" aria-live="polite"></p></article>').join('');
   $('score').textContent='本轮共4题，完成后查看得分和逐题解析。';
 }
 function grade(){
@@ -375,7 +376,12 @@ function grade(){
     const v=document.querySelector('input[name="q'+i+'"]:checked');
     if(v)answered++;
     const correct=Boolean(v&&Number(v.value)===q[2]);if(correct)n++;
-    $('ex'+i).textContent=(correct?'✓ 回答正确。':v?'✦ 再想一想。':'○ 尚未作答。')+'解析：'+q[3];
+    const questionCard=$('quizQuestion'+i),state=$('quizState'+i);
+    questionCard.classList.remove('correct','incorrect','unanswered');
+    questionCard.classList.add(correct?'correct':v?'incorrect':'unanswered');
+    state.textContent=correct?'✓ 回答正确':v?'✕ 回答错误':'— 未作答';
+    state.setAttribute('aria-label',correct?'回答正确':v?'回答错误':'尚未作答');
+    $('ex'+i).textContent=(correct?'✓ 很好！你的选择正确。':v?'✕ 这道题答错了，别着急，看看解析。':'○ 这道题还没有作答。')+' 解析：'+q[3];
     document.querySelectorAll('input[name="q'+i+'"]').forEach(x=>x.disabled=true);
   });
   const percent=Math.round(n/questions.length*100);
