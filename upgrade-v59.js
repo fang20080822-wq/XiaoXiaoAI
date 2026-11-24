@@ -47,10 +47,10 @@ export function registerV59Routes({app,db,apiLimiter,requireTeacher,requireStude
           SELECT COALESCE($3::uuid,(SELECT id FROM science_records WHERE learner_id=$1 AND class_id=$4 ORDER BY created_at DESC,id DESC LIMIT 1)) AS record_id
           FROM lock_row
         ), inserted AS (
-          INSERT INTO science_events(student_id,record_id,step,action,hint_level,field_key,ts)
+          INSERT INTO events(student_id,record_id,step,action,hint_level,field_key,ts)
           SELECT $1,candidate.record_id,$5,$6,$7,$8,NOW() FROM candidate
           WHERE NOT EXISTS (
-            SELECT 1 FROM science_events e
+            SELECT 1 FROM events e
             WHERE e.student_id=$1 AND e.step=$5 AND e.action=$6
               AND e.ts >= NOW() - CASE WHEN $6='edit' THEN INTERVAL '30 seconds' ELSE INTERVAL '10 seconds' END
               AND ($6<>'edit' OR e.field_key=$8)
@@ -60,7 +60,7 @@ export function registerV59Routes({app,db,apiLimiter,requireTeacher,requireStude
         SELECT id FROM inserted
       `,[studentId,step,recordId,req.student.classId,step,action,action==="hint"?hintLevel:null,fieldKey]);
       if(action==="submit" && recordId){
-        await db.query("UPDATE science_events SET record_id=$1 WHERE student_id=$2 AND record_id IS NULL AND ts>=NOW()-INTERVAL '24 hours'",[recordId,studentId]);
+        await db.query("UPDATE events SET record_id=$1 WHERE student_id=$2 AND record_id IS NULL AND ts>=NOW()-INTERVAL '24 hours'",[recordId,studentId]);
       }
       res.status(result.rowCount?201:200).json({ok:true,stored:Boolean(result.rowCount),deduplicated:!result.rowCount});
     } catch(error) {
@@ -77,7 +77,7 @@ export function registerV59Routes({app,db,apiLimiter,requireTeacher,requireStude
     catch { return res.status(400).json({error:"问卷必须包含20道题，每题只能选择1至5的整数。"}); }
     try {
       const q=await db.query(`
-        INSERT INTO science_surveys(student_id,stage,answers,total,d1,d2,d3,d4,d5,ts)
+        INSERT INTO surveys(student_id,stage,answers,total,d1,d2,d3,d4,d5,ts)
         VALUES($1,$2,$3::jsonb,$4,$5,$6,$7,$8,$9,NOW())
         ON CONFLICT(student_id,stage) DO UPDATE SET
           answers=EXCLUDED.answers,total=EXCLUDED.total,
@@ -94,7 +94,7 @@ export function registerV59Routes({app,db,apiLimiter,requireTeacher,requireStude
 
   app.get("/api/survey/mine",apiLimiter,requireStudent,requireDatabase,async(req,res)=>{
     try {
-      const q=await db.query("SELECT stage,total,d1,d2,d3,d4,d5,ts FROM science_surveys WHERE student_id=$1 ORDER BY stage",[req.student.learnerId]);
+      const q=await db.query("SELECT stage,total,d1,d2,d3,d4,d5,ts FROM surveys WHERE student_id=$1 ORDER BY stage",[req.student.learnerId]);
       const result={pre:null,post:null};
       for(const row of q.rows)result[row.stage]={total:Number(row.total),dims:{d1:Number(row.d1),d2:Number(row.d2),d3:Number(row.d3),d4:Number(row.d4),d5:Number(row.d5)},ts:row.ts};
       res.json(result);
@@ -119,9 +119,9 @@ export function registerV59Routes({app,db,apiLimiter,requireTeacher,requireStude
             BOOL_OR(e.action='hint') AS got_hint,
             BOOL_OR(e.action='edit' AND e.ts>h.first_hint AND e.ts<=h.first_hint+INTERVAL '10 minutes') AS edited_after_hint
           FROM class_records r
-          LEFT JOIN science_events e ON e.record_id=r.id
+          LEFT JOIN events e ON e.record_id=r.id
           LEFT JOIN LATERAL (
-            SELECT MIN(ts) AS first_hint FROM science_events WHERE record_id=r.id AND action='hint'
+            SELECT MIN(ts) AS first_hint FROM events WHERE record_id=r.id AND action='hint'
           ) h ON TRUE
           GROUP BY r.id,h.first_hint
         ), stats AS (
@@ -131,7 +131,7 @@ export function registerV59Routes({app,db,apiLimiter,requireTeacher,requireStude
           FROM per_record
         ), event_count AS (
           SELECT COUNT(*)::int AS events_total
-          FROM science_events e JOIN science_learners l ON l.id=e.student_id
+          FROM events e JOIN science_learners l ON l.id=e.student_id
           WHERE l.class_id=$1
         ), variable_check AS (
           SELECT COUNT(*) FILTER (
@@ -179,8 +179,8 @@ export function registerV59Routes({app,db,apiLimiter,requireTeacher,requireStude
         FROM science_records r
         JOIN science_learners l ON l.id=r.learner_id
         JOIN science_classes c ON c.id=r.class_id
-        LEFT JOIN science_surveys pre ON pre.student_id=l.id AND pre.stage='pre'
-        LEFT JOIN science_surveys post ON post.student_id=l.id AND post.stage='post'
+        LEFT JOIN surveys pre ON pre.student_id=l.id AND pre.stage='pre'
+        LEFT JOIN surveys post ON post.student_id=l.id AND post.stage='post'
         WHERE r.class_id=$1
         ORDER BY r.created_at,r.id
       `,[classId]);
