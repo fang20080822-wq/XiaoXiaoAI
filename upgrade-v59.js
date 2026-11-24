@@ -1,4 +1,4 @@
-
+import { COURSE_ASSESSMENTS } from "./lib/course-assessments.js";
 export function scoreCourseAssessment(courseId,stage,answers){
   const course=COURSE_ASSESSMENTS[courseId],questions=course?.[stage];
   if(!questions||!Array.isArray(answers)||answers.length!==questions.length||answers.some(value=>!Number.isInteger(value)||value<0||value>3))throw new TypeError("invalid_course_assessment_answers");
@@ -6,7 +6,6 @@ export function scoreCourseAssessment(courseId,stage,answers){
   return {correctCount,total:questions.length,score:Math.round(correctCount/questions.length*100),review:questions.map((q,index)=>({question:index+1,selected:answers[index],correctIndex:q[2],correctOption:q[1][q[2]],rationale:q[3],correct:answers[index]===q[2]}))};
 }
 
-import { COURSE_ASSESSMENTS } from "./lib/course-assessments.js";
 const STEPS = new Set(["observe","question","hypothesis","variables","method","data","evidence","conclusion","reflection","submit"]);
 const ACTIONS = new Set(["edit","save","hint","submit","reload"]);
 const REVERSE_ITEMS = new Set([4,8,13,17]); // zero-based indexes: q5, q9, q14, q18
