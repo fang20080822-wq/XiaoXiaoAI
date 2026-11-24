@@ -14,11 +14,7 @@ base="${BASE_URL%/}"
 request() {
   local name="$1" expected="$2" token="$3" method="$4" url="$5" body="${6:-}" output="$tmp/$name.out"
   local status
-  if [[ -n "$body" ]]; then
-    status="$(curl -sS -o "$output" -w '%{http_code}' -X "$method" "$url" -H "Authorization: Bearer $token" -H 'Content-Type: application/json' --data "$body")"
-  else
-    status="$(curl -sS -o "$output" -w '%{http_code}' -X "$method" "$url" -H "Authorization: Bearer $token")"
-  fi
+  status="$(curl -sS -o "$output" -w '%{http_code}' -X "$method" "$url" -H "Authorization: Bearer $token" -H 'Content-Type: application/json' --data-binary "$body")"
   if [[ "$status" != "$expected" ]]; then
     echo "FAIL $name: expected HTTP $expected, got $status" >&2
     cat "$output" >&2
