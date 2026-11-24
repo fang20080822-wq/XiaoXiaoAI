@@ -45,6 +45,7 @@ const featured = [
       await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({courseId:id,title:item?.title||id,stage,questions})});
     });
     await assessmentBank.getByRole('button',{name:'显示教师答案与解析'}).click();
+    await page.waitForFunction(()=>document.querySelector('#assessmentQuestionPreview')?.textContent.includes('参考答案'),null,{timeout:10000});
     assert.equal(await assessmentBank.locator('#assessmentQuestionPreview').innerText().then(t=>t.includes('参考答案')),true,'teacher can reveal answer explanations');
     const studentDownload=page.waitForEvent('download');
     await assessmentBank.getByRole('button',{name:'导出学生试卷 HTML'}).click();
