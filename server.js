@@ -39,7 +39,7 @@ async function initDatabase(){
     const statements = [
       "CREATE TABLE IF NOT EXISTS science_classes(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), teacher_id TEXT NOT NULL, class_name TEXT NOT NULL, invite_code TEXT UNIQUE NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW())",
       "ALTER TABLE science_classes ADD COLUMN IF NOT EXISTS \"group\" TEXT NOT NULL DEFAULT 'experimental'",
-      "DO $ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'science_classes_group_check' AND conrelid = 'science_classes'::regclass) THEN ALTER TABLE science_classes ADD CONSTRAINT science_classes_group_check CHECK (\"group\" IN ('experimental','control')); END IF; END $",
+      "DO $v58$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'science_classes_group_check' AND conrelid = 'science_classes'::regclass) THEN ALTER TABLE science_classes ADD CONSTRAINT science_classes_group_check CHECK (\"group\" IN ('experimental','control')); END IF; END $v58$",
       "CREATE TABLE IF NOT EXISTS science_learners(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), class_id UUID REFERENCES science_classes(id) ON DELETE CASCADE, alias TEXT NOT NULL, guardian_consent BOOLEAN NOT NULL DEFAULT FALSE, consent_recorded_at TIMESTAMPTZ, UNIQUE(class_id,alias))",
       "ALTER TABLE science_learners ADD COLUMN IF NOT EXISTS guardian_consent BOOLEAN NOT NULL DEFAULT FALSE",
       "ALTER TABLE science_learners ADD COLUMN IF NOT EXISTS consent_recorded_at TIMESTAMPTZ",
