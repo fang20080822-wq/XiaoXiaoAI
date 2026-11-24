@@ -172,16 +172,14 @@
     panel.appendChild(box);render();
   }
   function addCourseAssessmentBankUI(){
-    const panel=$('teacherPanel');
-    const bank=window.COURSE_ASSESSMENTS_V1;
+    const panel=$('teacherPanel'),bank=window.COURSE_ASSESSMENTS_V1;
     if(!panel||$('courseAssessmentBankV1')||!bank)return;
     const box=el('section',undefined,'sample-card');box.id='courseAssessmentBankV1';box.style.marginTop='18px';
-    box.append(el('span','COURSE-ALIGNED CHECK · TEACHER RESOURCE','sample-tag'),el('h3','12门课程前测 / 后测试题库'),el('p','每门课程提供3道选择题前测与3道平行后测，附标准答案和简要解析。用于课堂诊断与教学反思，不是经过标准化信效度检验的量表。学生作答请使用独立学生试卷，答案仅供教师查看。'));
+    box.append(el('span','COURSE-ALIGNED CHECK · TEACHER RESOURCE','sample-tag'),el('h3','12门课程前测 / 后测试题库'),el('p','题目可预览并导出学生试卷。标准答案与解析由服务器在教师登录后单独提供；学生端不会收到答案。该题库用于课堂诊断与教学反思，不是标准化测验。'));
     const controls=el('div',undefined,'grid');controls.style.gridTemplateColumns='repeat(auto-fit,minmax(200px,1fr))';controls.style.gap='10px';
     const courseLabel=el('label','选择课程');courseLabel.style.display='block';courseLabel.style.fontWeight='700';
     const course=el('select');course.id='assessmentCourseSelect';course.style.display='block';course.style.width='100%';course.style.padding='10px';course.style.marginTop='5px';
-    Object.entries(bank).forEach(([id,item])=>{const option=el('option',item.title);option.value=id;course.appendChild(option);});
-    courseLabel.appendChild(course);
+    Object.entries(bank).forEach(([id,item])=>{const option=el('option',item.title);option.value=id;course.appendChild(option);});courseLabel.appendChild(course);
     const stageLabel=el('label','测评阶段');stageLabel.style.display='block';stageLabel.style.fontWeight='700';
     const stage=el('select');stage.id='assessmentStageSelect';stage.style.display='block';stage.style.width='100%';stage.style.padding='10px';stage.style.marginTop='5px';
     [['pre','前测（教学前）'],['post','后测（教学后）']].forEach(([value,label])=>{const option=el('option',label);option.value=value;stage.appendChild(option);});
@@ -191,36 +189,62 @@
     const studentExport=el('button','导出学生试卷 HTML','btn primary');studentExport.type='button';studentExport.style.marginRight='8px';
     const teacherExport=el('button','导出教师答案 HTML','btn soft');teacherExport.type='button';
     const actions=el('div',undefined,'actions');actions.style.marginTop='12px';actions.append(answerToggle,studentExport,teacherExport);box.appendChild(actions);
-    const status=el('p','学生试卷不含答案；教师答案文件单独导出。','muted');status.setAttribute('role','status');status.setAttribute('aria-live','polite');box.appendChild(status);
-    let showAnswers=false;
-    const getCurrent=()=>({id:course.value,item:bank[course.value],stage:stage.value,questions:bank[course.value][stage.value]||[]});
+    const status=el('p','学生试卷不含答案；教师答案需登录后从服务器读取。','muted');status.setAttribute('role','status');status.setAttribute('aria-live','polite');box.appendChild(status);
+    let showAnswers=false,teacherQuestions=null;
+    const current=()=>({id:course.value,item:bank[course.value],stage:stage.value,questions:bank[course.value][stage.value]||[]});
     const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
     const render=()=>{
-      const current=getCurrent();contentBox.replaceChildren();
-      const heading=el('h4',current.item.title+' · '+(current.stage==='pre'?'前测':'后测')+' · 3题 / 100分');contentBox.appendChild(heading);
-      current.questions.forEach((q,index)=>{
-        const card=el('article',undefined,'unit');card.style.margin='9px 0';card.style.padding='12px';card.append(el('b','第'+(index+1)+'题（约'+(index===0?34:33)+'分）'),el('p',q[0]));
-        const list=el('ol');list.type='A';list.style.paddingLeft='22px';q[1].forEach(option=>list.appendChild(el('li',option)));card.appendChild(list);
-        if(showAnswers){const answer=el('p','参考答案：'+String.fromCharCode(65+q[2])+'｜'+q[1][q[2]]+'。解析：'+q[3]);answer.style.padding='9px';answer.style.borderRadius='8px';answer.style.background='#eef5ff';card.appendChild(answer);}
+      const c=current();contentBox.replaceChildren(el('h4',c.item.title+' · '+(c.stage==='pre'?'前测':'后测')+' · 3题 / 100分'));
+      c.questions.forEach((q,index)=>{const card=el('article',undefined,'unit');card.style.margin='9px 0';card.style.padding='12px';card.append(el('b','第'+(index+1)+'题'),el('p',q[0]));const list=el('ol');list.type='A';list.style.paddingLeft='22px';q[1].forEach(option=>list.appendChild(el('li',option)));card.appendChild(list);
+        if(showAnswers&&teacherQuestions?.[index]){const a=teacherQuestions[index];const answer=el('p','参考答案：'+String.fromCharCode(65+a.correctIndex)+'｜'+a.options[a.correctIndex]+'。解析：'+a.rationale);answer.style.padding='9px';answer.style.borderRadius='8px';answer.style.background='#eef5ff';card.appendChild(answer);}
         contentBox.appendChild(card);
       });
     };
-    const download=(html,filename)=>{
-      const blob=new Blob(['<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+escapeHtml(filename)+'</title><style>body{font:16px/1.7 Arial,"Microsoft YaHei",sans-serif;max-width:850px;margin:32px auto;padding:0 22px;color:#18243b}h1{font-size:24px}li{margin:7px 0}.meta{color:#59677d;border-bottom:1px solid #ddd;padding-bottom:12px}.question{margin:22px 0;break-inside:avoid}.answer{background:#f1f5ff;padding:10px;border-radius:8px}@media print{body{margin:12mm auto}.question{break-inside:avoid}}</style><body>'+html+'</body></html>'],{type:'text/html;charset=utf-8'});
-      const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=filename;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);
-    };
-    answerToggle.addEventListener('click',()=>{showAnswers=!showAnswers;answerToggle.textContent=showAnswers?'隐藏教师答案与解析':'显示教师答案与解析';render();});
-    course.addEventListener('change',()=>{showAnswers=false;answerToggle.textContent='显示教师答案与解析';render();});
-    stage.addEventListener('change',()=>{showAnswers=false;answerToggle.textContent='显示教师答案与解析';render();});
-    studentExport.addEventListener('click',()=>{
-      const c=getCurrent();const body='<h1>'+escapeHtml(c.item.title)+' · '+(c.stage==='pre'?'前测':'后测')+'</h1><p class="meta">姓名或编号：____________　日期：____________　得分：______ / 100</p><p>请独立完成以下选择题，每题约33—34分。请勿查阅资料。</p>'+c.questions.map((q,i)=>'<section class="question"><b>第'+(i+1)+'题</b><p>'+escapeHtml(q[0])+'</p><ol type="A">'+q[1].map(o=>'<li>'+escapeHtml(o)+'</li>').join('')+'</ol><p>我的选择：□ A　□ B　□ C　□ D</p></section>').join('');
-      download(body,c.item.title+'_'+(c.stage==='pre'?'前测':'后测')+'_学生试卷.html');status.textContent='已导出不含答案的学生试卷，可用浏览器打开并打印。';
-    });
-    teacherExport.addEventListener('click',()=>{
-      const c=getCurrent();const body='<h1>'+escapeHtml(c.item.title)+' · '+(c.stage==='pre'?'前测':'后测')+'教师答案</h1><p class="meta">教师专用｜每题约33—34分</p>'+c.questions.map((q,i)=>'<section class="question"><b>第'+(i+1)+'题｜答案 '+String.fromCharCode(65+q[2])+'</b><p>'+escapeHtml(q[0])+'</p><p class="answer">正确选项：'+escapeHtml(q[1][q[2]])+'。解析：'+escapeHtml(q[3])+'</p></section>').join('');
-      download(body,c.item.title+'_'+(c.stage==='pre'?'前测':'后测')+'_教师答案.html');status.textContent='已单独导出教师答案文件，请勿与学生试卷一并发放。';
-    });
+    const download=(html,filename)=>{const blob=new Blob(['<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+escapeHtml(filename)+'</title><style>body{font:16px/1.7 Arial,"Microsoft YaHei",sans-serif;max-width:850px;margin:32px auto;padding:0 22px;color:#18243b}h1{font-size:24px}li{margin:7px 0}.meta{color:#59677d;border-bottom:1px solid #ddd;padding-bottom:12px}.question{margin:22px 0;break-inside:avoid}.answer{background:#f1f5ff;padding:10px;border-radius:8px}@media print{body{margin:12mm auto}.question{break-inside:avoid}}</style><body>'+html+'</body></html>'],{type:'text/html;charset=utf-8'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=filename;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);};
+    answerToggle.addEventListener('click',async()=>{showAnswers=!showAnswers;answerToggle.textContent=showAnswers?'隐藏教师答案与解析':'显示教师答案与解析';if(showAnswers){status.textContent='正在验证教师权限并读取答案…';try{const d=await api('/api/teacher/course-assessments/'+encodeURIComponent(course.value)+'?stage='+stage.value);teacherQuestions=d.questions;status.textContent='教师答案已从受保护接口读取。';}catch(e){showAnswers=false;answerToggle.textContent='显示教师答案与解析';teacherQuestions=null;status.textContent='无法读取教师答案：'+e.message;}}else{teacherQuestions=null;status.textContent='答案已隐藏。'}render();});
+    course.addEventListener('change',()=>{showAnswers=false;teacherQuestions=null;answerToggle.textContent='显示教师答案与解析';render();});
+    stage.addEventListener('change',()=>{showAnswers=false;teacherQuestions=null;answerToggle.textContent='显示教师答案与解析';render();});
+    studentExport.addEventListener('click',()=>{const c=current();const body='<h1>'+escapeHtml(c.item.title)+' · '+(c.stage==='pre'?'前测':'后测')+'</h1><p class="meta">匿名代号：____________　日期：____________　得分：______ / 100</p><p>请独立完成以下选择题，每题约33—34分。</p>'+c.questions.map((q,i)=>'<section class="question"><b>第'+(i+1)+'题</b><p>'+escapeHtml(q[0])+'</p><ol type="A">'+q[1].map(o=>'<li>'+escapeHtml(o)+'</li>').join('')+'</ol><p>我的选择：□ A　□ B　□ C　□ D</p></section>').join('');download(body,c.item.title+'_'+(c.stage==='pre'?'前测':'后测')+'_学生试卷.html');status.textContent='已导出不含答案的学生试卷。';});
+    teacherExport.addEventListener('click',async()=>{try{const c=current();const d=await api('/api/teacher/course-assessments/'+encodeURIComponent(c.id)+'?stage='+c.stage);const body='<h1>'+escapeHtml(c.item.title)+' · '+(c.stage==='pre'?'前测':'后测')+'教师答案</h1><p class="meta">教师专用｜每题约33—34分</p>'+d.questions.map((q,i)=>'<section class="question"><b>第'+(i+1)+'题｜答案 '+String.fromCharCode(65+q.correctIndex)+'</b><p>'+escapeHtml(q.prompt)+'</p><p class="answer">正确选项：'+escapeHtml(q.options[q.correctIndex])+'。解析：'+escapeHtml(q.rationale)+'</p></section>').join('');download(body,c.item.title+'_'+(c.stage==='pre'?'前测':'后测')+'_教师答案.html');status.textContent='教师答案已单独导出，请勿与学生试卷一并发放。';}catch(e){status.textContent='教师答案导出失败：'+e.message;}});
     panel.appendChild(box);render();
+
+    const report=el('section',undefined,'sample-card');report.id='classCourseAssessmentReport';report.style.marginTop='18px';
+    report.append(el('h3','班级课程测评汇总'),el('p','仅展示班级聚合数据，不显示学生个人答题明细。'));
+    const classSelect=el('select');classSelect.id='assessmentReportClass';classSelect.style.padding='10px';classSelect.style.minWidth='220px';
+    const refresh=el('button','读取班级汇总','btn primary');refresh.type='button';
+    const reportStatus=el('p','登录教师账号并选择班级后查看。','muted');
+    const reportRows=el('div');const reportActions=el('div',undefined,'actions');reportActions.append(classSelect,refresh);
+    report.append(reportActions,reportStatus,reportRows);panel.appendChild(report);
+    const loadReportClasses=async()=>{try{const d=await api('/api/teacher/classes');classSelect.replaceChildren();(d.classes||[]).forEach(c=>{const o=el('option',c.class_name+'（'+c.learner_count+'人）');o.value=c.id;classSelect.appendChild(o);});if(!classSelect.options.length)reportStatus.textContent='当前账号还没有班级。';}catch(e){reportStatus.textContent='班级列表读取失败：'+e.message;}};
+    refresh.addEventListener('click',async()=>{if(!classSelect.value){reportStatus.textContent='请先创建或选择班级。';return;}reportStatus.textContent='正在读取聚合数据…';reportRows.replaceChildren();try{const d=await api('/api/teacher/classes/'+encodeURIComponent(classSelect.value)+'/course-assessments');if(!d.results?.length){reportStatus.textContent='该班级尚无在线测评记录。';return;}reportStatus.textContent='以下为每门课程、每个阶段的聚合统计；同一学生同一阶段只保留最近一次提交。';d.results.forEach(r=>{const title=bank[r.course_id]?.title||r.course_id;const card=el('article',undefined,'unit');card.style.margin='8px 0';card.append(el('b',title+' · '+(r.stage==='pre'?'前测':'后测')),el('p','参与人数：'+r.participant_count+'｜平均分：'+Number(r.average_score).toFixed(1)+'｜最高分：'+r.highest_score+'｜最低分：'+r.lowest_score));reportRows.appendChild(card);});}catch(e){reportStatus.textContent='班级测评汇总读取失败：'+e.message;}});
+    loadReportClasses();
+  }
+
+  function addStudentCourseAssessmentUI(){
+    const lab=$('lab'),bank=window.COURSE_ASSESSMENTS_V1,anchor=$('courseLearningPanel');
+    if(!lab||!bank||$('studentCourseAssessment'))return;
+    const box=el('section',undefined,'card');box.id='studentCourseAssessment';box.style.margin='16px 0';
+    box.append(el('span','COURSE CHECK · ONLINE ASSESSMENT','sample-tag'),el('h3','本课在线测评'),el('p','先完成课前测评，学习和探究后再完成课后测评。系统在服务器判分并保存最近一次成绩；教师只能查看班级汇总。'));
+    const controls=el('div',undefined,'actions');
+    const stage=el('select');stage.id='studentAssessmentStage';stage.style.padding='10px';[['pre','课前测评'],['post','课后测评']].forEach(([v,t])=>{const o=el('option',t);o.value=v;stage.appendChild(o);});
+    const load=el('button','开始测评','btn primary');load.type='button';controls.append(stage,load);box.appendChild(controls);
+    const status=el('p','请先加入班级，再开始在线测评。','muted');status.setAttribute('role','status');status.setAttribute('aria-live','polite');box.appendChild(status);
+    const questionsBox=el('div');questionsBox.id='studentAssessmentQuestions';box.appendChild(questionsBox);
+    const submit=el('button','提交并查看成绩','btn primary');submit.type='button';submit.hidden=true;box.appendChild(submit);
+    const results=el('div');results.id='studentAssessmentResult';box.appendChild(results);
+    let loaded=null;
+    const selectedCourse=()=>{const id=localStorage.getItem('scienceSelectedCourse')||'plant';const mapped=id==='plant'?'plant-water':id;return bank[mapped]?mapped:null;};
+    const getToken=()=>localStorage.getItem('scienceStudentToken')||'';
+    load.addEventListener('click',async()=>{const token=getToken();if(!token){status.textContent='请先使用班级邀请码加入班级。';return;}const courseId=selectedCourse();if(!courseId){status.textContent='当前课程尚未配置在线测评。';return;}status.textContent='正在加载题目…';questionsBox.replaceChildren();results.replaceChildren();submit.hidden=true;loaded=null;
+      try{const r=await fetch('/api/student/course-assessments/'+encodeURIComponent(courseId)+'?stage='+stage.value,{headers:{Authorization:'Bearer '+token}});const d=await r.json();if(!r.ok)throw new Error(d.error||'题目读取失败');loaded={courseId,stage:stage.value,questions:d.questions};questionsBox.appendChild(el('h4',d.title+' · '+(stage.value==='pre'?'课前测评':'课后测评')));d.questions.forEach((q,i)=>{const card=el('article',undefined,'unit');card.style.margin='9px 0';card.append(el('b','第'+(i+1)+'题'),el('p',q.prompt));q.options.forEach((option,j)=>{const label=el('label');label.style.display='block';label.style.fontWeight='500';const input=el('input');input.type='radio';input.name='studentCourseAssessmentQ'+i;input.value=String(j);input.style.width='auto';input.style.marginRight='8px';label.append(input,document.createTextNode(String.fromCharCode(65+j)+'、'+option));card.appendChild(label);});questionsBox.appendChild(card);});submit.hidden=false;status.textContent='共3题，请独立完成后提交。';}
+      catch(e){status.textContent='测评加载失败：'+e.message;}
+    });
+    submit.addEventListener('click',async()=>{const token=getToken();if(!token||!loaded)return;const answers=loaded.questions.map((q,i)=>{const selected=questionsBox.querySelector('input[name="studentCourseAssessmentQ'+i+'"]:checked');return selected?Number(selected.value):-1;});if(answers.some(v=>v<0)){status.textContent='还有题目未作答，请完成全部3题。';return;}submit.disabled=true;status.textContent='正在提交并由服务器判分…';
+      try{const r=await fetch('/api/student/course-assessments/'+encodeURIComponent(loaded.courseId),{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({stage:loaded.stage,answers})});const d=await r.json();if(!r.ok)throw new Error(d.error||'提交失败');status.textContent='已保存本次成绩。再次提交会更新该课程该阶段的最近一次成绩。';results.replaceChildren(el('h4','本次得分：'+d.score+' / 100（答对 '+d.correctCount+' / '+d.total+' 题）'));d.review.forEach(item=>{const card=el('article',undefined,'unit');card.style.margin='8px 0';card.append(el('b','第'+item.question+'题 · '+(item.correct?'回答正确':'需要再想一想')),el('p','正确选项：'+String.fromCharCode(65+item.correctIndex)+'、'+item.correctOption),el('p','解析：'+item.rationale));results.appendChild(card);});sendProcessEvent?.('question','save');}
+      catch(e){status.textContent='成绩保存失败：'+e.message+'，请稍后重试。';}
+      finally{submit.disabled=false;}
+    });
+    if(anchor)anchor.after(box);else lab.prepend(box);
   }
   function addTeacherAccountUI(){
     const teacher=$('teacher');if(!teacher||$('teacherAccountBox'))return;
@@ -275,6 +299,6 @@
   }
   const oldLoad=window.loadClasses;
   if(typeof oldLoad==='function')window.loadClasses=async function(){const v=await oldLoad();loadDashboard();loadAudit();return v;};
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{loadCurriculum();addTeacherAccountUI();addTrialAssessmentUI();addCourseAssessmentBankUI();},{once:true});else{loadCurriculum();addTeacherAccountUI();addTrialAssessmentUI();addCourseAssessmentBankUI();}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{loadCurriculum();addTeacherAccountUI();addTrialAssessmentUI();addCourseAssessmentBankUI();addStudentCourseAssessmentUI();},{once:true});else{loadCurriculum();addTeacherAccountUI();addTrialAssessmentUI();addCourseAssessmentBankUI();}
   window.loadV56Dashboard=loadDashboard;
 })();
