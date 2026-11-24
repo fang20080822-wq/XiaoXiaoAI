@@ -1287,7 +1287,7 @@ export function registerV56Routes({app,db,apiLimiter,loginLimiter,requireTeacher
         state=nextHintState({},String(req.body?.message||""));
       }
       const courseId=typeof req.body?.courseId==="string"?req.body.courseId.slice(0,64):"";
-      const course=CURRICULUM_12.find(item=>item.id===courseId)||null;
+      const course=CURRICULUM_12.find(item=>item.id===normalizeCourseId(courseId))||null;
       let recentRows=[];
       if(student?.role==="student" && student.learnerId && student.classId) {
         const q=await db.query(
