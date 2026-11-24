@@ -550,7 +550,7 @@ async function ask(){
   bubble(q,'user');const hintSteps={curiosity:'question',experiment:'variables',concept:'question',evidence:'evidence',create:'method'};const hintLevels={curiosity:1,experiment:2,concept:3,evidence:3,create:3};sendProcessEvent(hintSteps[mentorMode]||'question','hint',{hintLevel:hintLevels[mentorMode]||1});$('question').value='';$('sendBtn').disabled=true;$('sendBtn').textContent='AI思考中…';
   const wait=document.createElement('div');wait.className='bubble bot';wait.textContent='导师正在思考……';$('chatlog').appendChild(wait);$('chatlog').scrollTop=$('chatlog').scrollHeight;
   try{
-    const r=await fetch('/api/chat/stream',{method:'POST',headers:{'Content-Type':'application/json',...(studentToken?{'Authorization':'Bearer '+studentToken}:{})},body:JSON.stringify({message:q,sessionId:chatSessionId,mode:mentorMode,topic:'青少年科学探究'})});
+    const r=await fetch('/api/chat/stream',{method:'POST',headers:{'Content-Type':'application/json',...(studentToken?{'Authorization':'Bearer '+studentToken}:{})},body:JSON.stringify({message:q,sessionId:chatSessionId,mode:mentorMode,topic:'青少年科学探究',courseId:(()=>{try{return localStorage.getItem('scienceSelectedCourse')||''}catch(e){return ''}})()})});
     if(r.status===429){const d=await r.json();wait.remove();bubble(d.answer||'当前对话次数已达上限，请稍后重试。','bot');return}
     if(!r.ok||!r.body){const d=await r.json().catch(()=>({}));throw new Error(d.error||'服务暂不可用')}
     wait.remove();
