@@ -53,8 +53,7 @@ export function registerV59Routes({app,db,apiLimiter,requireTeacher,requireStude
           WHERE NOT EXISTS (
             SELECT 1 FROM events e
             WHERE e.student_id=$1::uuid AND e.step=$5 AND e.action=$6
-              AND e.ts >= NOW() - CASE WHEN $6='edit' THEN INTERVAL '30 seconds' ELSE INTERVAL '10 seconds' END
-              AND ($6<>'edit' OR e.field_key=$8)
+              AND (e.ts >= NOW()-INTERVAL '10 seconds' OR ($6='edit' AND e.field_key=$8 AND e.ts>=NOW()-INTERVAL '30 seconds'))
           )
           RETURNING id
         )
