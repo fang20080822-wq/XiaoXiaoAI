@@ -91,6 +91,66 @@ export function buildLearningEvidenceReport({ assessments = [], records = [] } =
       }
       return count / EVIDENCE_FIELDS.length * 100;
     });
+    const recommendations = [];
+    const preWeak = stages.pre.items.filter(item => item.answered >= 5 && item.errorRate >= 40)
+      .sort((a,b) => b.errorRate-a.errorRate);
+    for (const item of preWeak.slice(0,2)) {
+      recommendations.push({
+        type:"pretest",
+        priority:item.errorRate>=60?"high":"medium",
+        evidence:"课前测评第"+item.index+"题错题率 "+item.errorRate+"%（"+item.incorrect+"/"+item.answered+"）",
+        focus:item.objective,
+        action:"下一课时先用一个生活情境或实物观察让学生独立表达原有想法，再围绕该目标安排一次短演示；请学生说明观察到的证据，不先公布结论。"
+      });
+    }
+    const postWeak = stages.post.items.filter(item => item.answered >= 5 && item.errorRate >= 30)
+      .sort((a,b) => b.errorRate-a.errorRate);
+    for (const item of postWeak.slice(0,2)) {
+      recommendations.push({
+        type:"posttest",
+        priority:item.errorRate>=50?"high":"medium",
+        evidence:"课后测评第"+item.index+"题仍有 "+item.errorRate+"% 错误（"+item.incorrect+"/"+item.answered+"）",
+        focus:item.objective,
+        action:"安排针对该目标的二次解释与迁移任务：更换材料或情境，让学生预测、观察、解释，并用新的证据检查理解是否稳固。"
+      });
+    }
+    const inquiryActions = {
+      question:"先示范把宽泛主题改写成可观察、可比较的问题；让学生圈出研究对象和要比较的条件。",
+      hypothesis:"增加“我猜……因为……”预测卡，要求学生在实验前写下依据，实验后再回看是否需要修订。",
+      method:"用步骤图让学生说明材料、操作顺序和只改变的一个条件，再由同伴检查是否可重复。",
+      data:"提供带单位和时间栏的记录表，要求至少记录两个以上观察时点或条件，并保留原始观察。",
+      conclusion:"使用“我观察到……因此我认为……”句式，要求结论只覆盖实际观察到的范围。",
+      reasoning:"增加证据配对活动：每个结论必须指向一条具体数据，并补充这条证据能支持什么、不能证明什么。"
+    };
+    const inquiryWeak = elements.filter(item => item.total >= 3 && item.rate !== null && item.rate < 70)
+      .sort((a,b) => a.rate-b.rate);
+    for (const item of inquiryWeak.slice(0,2)) {
+      recommendations.push({
+        type:"inquiry",
+        priority:item.rate<40?"high":"medium",
+        evidence:item.label+"仅 "+item.completed+"/"+item.total+" 条探究记录有填写（"+item.rate+"%）",
+        focus:item.label,
+        action:inquiryActions[item.key]
+      });
+    }
+    if (!recommendations.length) {
+      const enoughAssessment = stages.pre.items.some(item=>item.answered>=5) || stages.post.items.some(item=>item.answered>=5);
+      const enoughInquiry = courseRecords.length>=3;
+      if (!enoughAssessment && !enoughInquiry) recommendations.push({
+        type:"data",
+        priority:"low",
+        evidence:"当前可用样本不足以识别稳定的班级薄弱点",
+        focus:"补充完整学习证据",
+        action:"先组织学生完成课前测评、课程探究记录和课后测评；积累至少5份测评作答或3份探究记录后，再据此制定针对性改进。"
+      });
+      else recommendations.push({
+        type:"review",
+        priority:"low",
+        evidence:"当前达到初步观察条件，未触发明显薄弱项阈值",
+        focus:"验证迁移与证据质量",
+        action:"下一轮增加一道新情境迁移题，并抽查学生能否用具体观察解释结论；不要仅凭当前分数认定已经掌握。"
+      });
+    }
     return {
       courseId: course.id,
       title: course.title,
@@ -107,7 +167,8 @@ export function buildLearningEvidenceReport({ assessments = [], records = [] } =
         learners: new Set(courseRecords.map(row => String(row.learner_id))).size,
         averageElementCoverage: numericMean(perRecordCoverage),
         elements
-      }
+      },
+      recommendations
     };
   });
   return {
