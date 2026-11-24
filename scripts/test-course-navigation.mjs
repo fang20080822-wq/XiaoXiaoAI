@@ -103,6 +103,7 @@ const learn = new FakeNode('section');
 learn.querySelectorAll = selector => selector === '.course' ? staticCards : [];
 const uiContext = {
   console,
+  fetch: async () => ({ok:true,json:async()=>({topics:context.CURRICULUM_12})}),
   document: { createElement: tag => new FakeNode(tag), createTextNode: text => { const node=new FakeNode('#text'); node.textContent=text; return node; } },
   window: { selectTopic: (...args) => context.selectTopic(...args) },
   $: id => id === 'learn' ? learn : null,
