@@ -1,12 +1,12 @@
 {
   "name": "little-ai-scientists",
-  "version": "5.7.1",
+  "version": "5.9.0",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node --check server.js && node --check lib/auth.js && node --check lib/inquiry.js && node --check upgrade-v56.js && node --check upgrade-v57.js && node --check upgrade-v58.js && node --check public/upgrade-v56-ui.js && bash -n scripts/accept-v57.sh && bash -n scripts/accept-class-stats.sh && bash -n migrations/apply-v57-sqlite.sh && bash -n scripts/test-sqlite-migration.sh && node scripts/check-frontend.mjs && node scripts/test-v56.mjs && node scripts/test-v57.mjs && node scripts/test-v58.mjs"
+    "test": "node --check server.js && node --check lib/auth.js && node --check lib/inquiry.js && node --check upgrade-v56.js && node --check upgrade-v57.js && node --check upgrade-v58.js && node --check upgrade-v59.js && node --check public/upgrade-v56-ui.js && bash -n scripts/accept-v57.sh && bash -n scripts/accept-class-stats.sh && bash -n scripts/accept-v59.sh && bash -n migrations/apply-v59-sqlite.sh && bash -n migrations/apply-v57-sqlite.sh && bash -n scripts/test-sqlite-migration.sh && node scripts/check-frontend.mjs && node scripts/test-v56.mjs && node scripts/test-v57.mjs && node scripts/test-v58.mjs && node scripts/test-v59.mjs"
   },
   "engines": {
     "node": ">=20"
