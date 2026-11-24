@@ -68,7 +68,7 @@ const fakeDb={query:async(sql,params=[])=>{
   return {rows:[],rowCount:0};
 }};
 const pass=(req,res,next)=>next();
-const studentAuth=(req,res,next)=>{req.student={learnerId:'learner-1',classId:'class-1'};next();};
+const studentAuth=(req,res,next)=>{req.student={learnerId:'learner-1',classId:'class-1'};return next();};
 registerV59Routes({app:fakeApp,db:fakeDb,apiLimiter:pass,requireTeacher:pass,requireStudent:studentAuth,teacherId:()=> 'teacher-1',requireDatabase:pass});
 async function callRoute(method,path,req={}){
   const handlers=routeMap.get(method+' '+path);assert.ok(handlers,method+' '+path+' must be registered');
