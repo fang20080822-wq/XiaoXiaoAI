@@ -11,6 +11,7 @@ import { registerV56Routes } from "./upgrade-v56.js";
 import { registerV57Routes } from "./upgrade-v57.js";
 import { registerV58Routes } from "./upgrade-v58.js";
 import { registerV59Routes } from "./upgrade-v59.js";
+import { registerV510Routes } from "./upgrade-v510.js";
 import { buildChatMessages, buildChatSummaryMessages, formatChatHistory, normalizeChatSummary } from "./lib/chat-memory.js";
 import { scoreRecord,validateAlias,containsPII,offlineAnswer } from "./lib/inquiry.js";
 import { readSession,issueSession,hashSessionToken } from "./lib/auth.js";
@@ -243,6 +244,7 @@ registerV56Routes({app,db,apiLimiter,loginLimiter,requireTeacher,teacherId,ADMIN
 registerV57Routes({app,db,apiLimiter,requireTeacher,teacherId,requireDatabase});
 registerV58Routes({app,db,apiLimiter,requireTeacher,teacherId,requireDatabase});
 registerV59Routes({app,db,apiLimiter,requireTeacher,requireStudent,teacherId,requireDatabase});
+registerV510Routes({app,db,apiLimiter,requireTeacher,teacherId,requireDatabase});
 
 app.get("/api/health",async(req,res)=>{
   let database = DATABASE_URL ? (dbReady ? "ready" : "connecting") : "not_configured";
