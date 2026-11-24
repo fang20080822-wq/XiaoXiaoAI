@@ -49,7 +49,7 @@ WITH missing AS (
   FROM science_learners GROUP BY class_id
 )
 UPDATE science_learners l
-SET student_code='S'||LPAD((o.base+m.rn)::TEXT,3,'0')
+SET student_code='S'||LPAD((o.base+m.rn)::TEXT,GREATEST(3,LENGTH((o.base+m.rn)::TEXT)),'0')
 FROM missing m JOIN offsets o ON o.class_id=m.class_id
 WHERE l.id=m.id;
 
@@ -63,7 +63,7 @@ BEGIN
     PERFORM pg_advisory_xact_lock(hashtext(NEW.class_id::TEXT));
     SELECT COALESCE(MAX(NULLIF(regexp_replace(student_code,'[^0-9]','','g'),'')::INTEGER),0)+1
       INTO next_code FROM science_learners WHERE class_id=NEW.class_id;
-    NEW.student_code := 'S'||LPAD(next_code::TEXT,3,'0');
+    NEW.student_code := 'S'||LPAD(next_code::TEXT,GREATEST(3,LENGTH(next_code::TEXT)),'0');
   END IF;
   RETURN NEW;
 END;
