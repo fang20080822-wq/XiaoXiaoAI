@@ -29,6 +29,26 @@ const featured = [
     assert.match(trialToolText,/仅保存在当前教师设备浏览器中/,'trial data must clearly disclose local-only storage');
     assert.equal(await page.evaluate(()=>localStorage.getItem('scienceTrialAssessmentsV1')),null,'page load must not create fake trial evidence');
 
+    assert.equal(await page.evaluate(()=>Object.keys(window.COURSE_ASSESSMENTS_V1||{}).length),12,'assessment bank must expose all 12 courses');
+    await page.locator('#teacherPanel').evaluate(el=>el.classList.remove('hidden'));
+    const assessmentBank=page.locator('#courseAssessmentBankV1');
+    assert.equal(await assessmentBank.count(),1,'teacher workspace must include course assessment bank');
+    assert.equal(await assessmentBank.locator('#assessmentQuestionPreview article').count(),3,'default pre-test must render three questions');
+    await assessmentBank.locator('#assessmentStageSelect').selectOption('post');
+    assert.equal(await assessmentBank.locator('#assessmentQuestionPreview article').count(),3,'post-test must render three questions');
+    assert.equal(await assessmentBank.locator('#assessmentQuestionPreview').innerText().then(t=>t.includes('参考答案')),false,'answer key must be hidden by default');
+    await assessmentBank.getByRole('button',{name:'显示教师答案与解析'}).click();
+    assert.equal(await assessmentBank.locator('#assessmentQuestionPreview').innerText().then(t=>t.includes('参考答案')),true,'teacher can reveal answer explanations');
+    const studentDownload=page.waitForEvent('download');
+    await assessmentBank.getByRole('button',{name:'导出学生试卷 HTML'}).click();
+    const studentFile=await studentDownload;
+    assert.match(studentFile.suggestedFilename(),/学生试卷\.html$/);
+    const teacherDownload=page.waitForEvent('download');
+    await assessmentBank.getByRole('button',{name:'导出教师答案 HTML'}).click();
+    const teacherFile=await teacherDownload;
+    assert.match(teacherFile.suggestedFilename(),/教师答案\.html$/);
+
+
 
     await page.locator('#nav button[data-tab="learn"]').click();
     for (const course of featured) {
