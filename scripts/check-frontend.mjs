@@ -128,10 +128,11 @@ if (!server.includes('if(account.rows[0].status==="rejected")')) throw new Error
 if (!upgrade.includes('loginLimiter||apiLimiter') || !server.includes('limit:5')) throw new Error('Teacher registration and login must be rate-limited');
 if (!v57Module.includes('未配置自动定期清理任务') || !v57Module.includes('没有自助删除教师账号的入口')) throw new Error('Privacy policy must disclose actual retention and account deletion limitations');
 
-for (const term of ['L1 追问','L2 给方向','L3 给示例','L4 参考答案','连续2轮','学生尚无可读取的云端结构化探究记录','validateInquiry','insufficient_data','multiple_independent','/api/curriculum','/api/teacher/dashboard','/api/teacher/register','/api/teacher/account/login','/api/admin/teachers','audit_log','mentor_progress']) {
+for (const term of ['L1 追问','L2 给方向','L3 给示例','L4 参考答案','自动支架最高为L3','该学生当前课程尚无可读取的云端探究记录','validateInquiry','insufficient_data','multiple_independent','/api/curriculum','/api/teacher/dashboard','/api/teacher/register','/api/teacher/account/login','/api/admin/teachers','audit_log','mentor_progress']) {
   if (!upgrade.includes(term)) throw new Error('V5.6 backend capability missing: '+term);
 }
-if (!upgrade.includes('SELECT topic,observed_phenomenon,question') || !upgrade.includes('FROM science_records WHERE learner_id=$1 AND class_id=$2 ORDER BY created_at DESC LIMIT 1')) throw new Error('AI must automatically read the latest structured inquiry record for the authenticated student');
+if (!upgrade.includes('SELECT topic,observed_phenomenon,question') || !upgrade.includes("FROM science_records WHERE learner_id=$1 AND class_id=$2 AND ($3='' OR topic=$3 OR question=$3) ORDER BY created_at DESC LIMIT 3")) throw new Error('AI must retrieve recent inquiry records relevant to the selected course');
+if (!upgrade.includes('buildCourseLearningContext(courseId') || !upgrade.includes('detectCourseMisconception(courseId') || !html.includes("courseId:(()=>{try{return localStorage.getItem('scienceSelectedCourse')")) throw new Error('AI mentor must receive the active course and analyze course-specific misconceptions');
 for (const term of ['12个主题课程地图','课标映射','教师账号注册与登录','班级学习数据看板','我的操作审计记录','/api/teacher/dashboard','/api/admin/teachers']) {
   if (!upgradeUI.includes(term)) throw new Error('V5.6.1 frontend capability missing: '+term);
 }
