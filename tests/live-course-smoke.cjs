@@ -39,7 +39,7 @@ const featured = [
     assert.equal(await assessmentBank.locator('#assessmentQuestionPreview article').count(),3,'post-test must render three questions');
     assert.equal(await assessmentBank.locator('#assessmentQuestionPreview').innerText().then(t=>t.includes('参考答案')),false,'answer key must be hidden by default');
     const publicBank=await page.evaluate(()=>window.COURSE_ASSESSMENTS_V1);
-    await page.route('**/api/teacher/course-assessments/*',async route=>{
+    await page.route('**/api/teacher/course-assessments/**',async route=>{
       const url=new URL(route.request().url()),id=decodeURIComponent(url.pathname.split('/').pop()),stage=url.searchParams.get('stage')||'pre';
       const item=publicBank[id],questions=(item?.[stage]||[]).map(q=>({prompt:q[0],options:q[1],correctIndex:0,rationale:'浏览器测试用解析'}));
       await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({courseId:id,title:item?.title||id,stage,questions})});
