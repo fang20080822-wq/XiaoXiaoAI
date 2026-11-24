@@ -30,6 +30,7 @@ const featured = [
     assert.equal(await page.evaluate(()=>localStorage.getItem('scienceTrialAssessmentsV1')),null,'page load must not create fake trial evidence');
 
     assert.equal(await page.evaluate(()=>Object.keys(window.COURSE_ASSESSMENTS_V1||{}).length),12,'assessment bank must expose all 12 courses');
+    await page.locator('#nav button[data-tab="teacher"]').click();
     await page.locator('#teacherPanel').evaluate(el=>el.classList.remove('hidden'));
     const assessmentBank=page.locator('#courseAssessmentBankV1');
     assert.equal(await assessmentBank.count(),1,'teacher workspace must include course assessment bank');
