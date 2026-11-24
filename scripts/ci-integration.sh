@@ -15,7 +15,9 @@ export PORT=3000
 LOG_FILE="$(mktemp)"
 SERVER_PID=""
 cleanup() {
+  local exit_code=$?
   if [[ -n "$SERVER_PID" ]]; then kill "$SERVER_PID" 2>/dev/null || true; wait "$SERVER_PID" 2>/dev/null || true; fi
+  if [[ "$exit_code" -ne 0 ]]; then cat "$LOG_FILE"; fi
   rm -f "$LOG_FILE"
 }
 trap cleanup EXIT
