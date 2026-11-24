@@ -51,16 +51,16 @@ export function registerV59Routes({app,db,apiLimiter,requireTeacher,requireStude
           SELECT $3::uuid AS record_id FROM lock_row
         ), inserted AS (
           INSERT INTO events(student_id,record_id,step,action,hint_level,field_key,ts)
-          SELECT $1::uuid,candidate.record_id,$5,$6,$7,$8,NOW() FROM candidate
+          SELECT $1::uuid,candidate.record_id,$4,$5,$6,$7,NOW() FROM candidate
           WHERE NOT EXISTS (
             SELECT 1 FROM events e
-            WHERE e.student_id=$1::uuid AND e.step=$5 AND e.action=$6
-              AND (e.ts >= NOW()-INTERVAL '10 seconds' OR ($6='edit' AND e.field_key=$8 AND e.ts>=NOW()-INTERVAL '30 seconds'))
+            WHERE e.student_id=$1::uuid AND e.step=$4 AND e.action=$5
+              AND (e.ts >= NOW()-INTERVAL '10 seconds' OR ($5='edit' AND e.field_key=$7 AND e.ts>=NOW()-INTERVAL '30 seconds'))
           )
           RETURNING id
         )
         SELECT id FROM inserted
-      `,[studentId,step,recordId,req.student.classId,step,action,action==="hint"?hintLevel:null,fieldKey]);
+      `,[studentId,step,recordId,step,action,action==="hint"?hintLevel:null,fieldKey]);
       if(action==="submit" && recordId){
         await db.query("UPDATE events SET record_id=$1 WHERE student_id=$2 AND record_id IS NULL AND ts>=NOW()-INTERVAL '24 hours'",[recordId,studentId]);
       }
