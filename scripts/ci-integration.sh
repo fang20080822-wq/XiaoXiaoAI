@@ -44,3 +44,17 @@ register_teacher "$TEACHER_EMAIL" "$TEACHER_PASSWORD"
 register_teacher "$TEACHER_B_EMAIL" "$TEACHER_B_PASSWORD"
 
 RUN_CLASS_STATS_ACCEPTANCE=1 bash scripts/accept-v57.sh
+
+# V5.9 end-to-end acceptance: one populated class and one empty class.
+TEACHER_A_TOKEN="$(curl -fsS -X POST "$BASE_URL/api/teacher/login" -H 'Content-Type: application/json' -d "$(jq -nc --arg e "$TEACHER_EMAIL" --arg p "$TEACHER_PASSWORD" '{email:$e,password:$p}')" | jq -r '.token')"
+TEACHER_B_TOKEN="$(curl -fsS -X POST "$BASE_URL/api/teacher/login" -H 'Content-Type: application/json' -d "$(jq -nc --arg e "$TEACHER_B_EMAIL" --arg p "$TEACHER_B_PASSWORD" '{email:$e,password:$p}')" | jq -r '.token')"
+CLASS_A="$(curl -fsS -X POST "$BASE_URL/api/teacher/classes" -H "Authorization: Bearer $TEACHER_A_TOKEN" -H 'Content-Type: application/json' -d '{"className":"V59 CI populated class"}')"
+CLASS_ID="$(jq -r '.class.id' <<<"$CLASS_A")"
+INVITE_CODE="$(jq -r '.class.invite_code' <<<"$CLASS_A")"
+EMPTY_CLASS="$(curl -fsS -X POST "$BASE_URL/api/teacher/classes" -H "Authorization: Bearer $TEACHER_A_TOKEN" -H 'Content-Type: application/json' -d '{"className":"V59 CI empty class"}')"
+EMPTY_CLASS_ID="$(jq -r '.class.id' <<<"$EMPTY_CLASS")"
+STUDENT_JOIN="$(curl -fsS -X POST "$BASE_URL/api/student/join" -H 'Content-Type: application/json' -d "$(jq -nc --arg code "$INVITE_CODE" '{inviteCode:$code,alias:"V59-CI-STUDENT",grade:"3-4",guardianConsent:true}')")"
+STUDENT_TOKEN="$(jq -r '.token' <<<"$STUDENT_JOIN")"
+curl -fsS -X POST "$BASE_URL/api/student/records" -H "Authorization: Bearer $STUDENT_TOKEN" -H 'Content-Type: application/json' -d '{"topic":"CI plant inquiry","question":"Does light affect growth?","hypothesis":"More light may increase growth","independentVariable":"light level","dependentVariable":"plant height","controlVariables":"same plant type, same water","method":"Measure height daily","evidence":"Day 1: 2 cm; Day 2: 3 cm","conclusion":"The sample grew","repetitionCount":3}' >/dev/null
+export STUDENT_TOKEN TEACHER_TOKEN="$TEACHER_A_TOKEN" OTHER_TEACHER_TOKEN="$TEACHER_B_TOKEN" CLASS_ID EMPTY_CLASS_ID
+bash scripts/accept-v59.sh
