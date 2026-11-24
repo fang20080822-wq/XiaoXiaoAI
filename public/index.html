@@ -77,6 +77,22 @@ main{max-width:1180px;margin:0 auto;padding:34px 24px 72px}
 .course-top{padding:22px;background:linear-gradient(135deg,#eaf3ff,#f1edff);font-size:38px}.course-body{padding:18px}.course-body h3{margin:0 0 7px}.course-body p{font-size:12px;color:var(--muted);min-height:42px}
 .course-video{margin:14px 0 12px;border-radius:14px;overflow:hidden;background:#101a3a;border:1px solid #e4e9f3}.course-video video{display:block;width:100%;max-height:260px;aspect-ratio:16/9;object-fit:contain;background:#0b1020}.course-video-note{padding:7px 10px;color:#d2def6;font-size:11px;background:#172653}.course-meta{display:flex;justify-content:space-between;color:#8490a7;font-size:11px;margin:13px 0}
  .course-guide{margin:12px 0;padding:11px 12px;border:1px solid #e2e9f5;border-radius:13px;background:linear-gradient(145deg,#f8faff,#f7f5ff)}.course-guide summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;color:#3c568f;font-size:12px;font-weight:850}.course-guide summary::-webkit-details-marker{display:none}.course-guide summary:after{content:'＋';font-size:15px;color:#7185b8}.course-guide[open] summary:after{content:'−'}.course-guide-content{display:grid;gap:10px;margin-top:12px}.course-guide-block{padding-top:9px;border-top:1px solid #e5eaf4}.course-guide-block h4{margin:0 0 5px;color:#344b79;font-size:11px}.course-guide-block ul{margin:0;padding-left:17px;color:#667590;font-size:11px;line-height:1.75}.course-guide-block li{margin:2px 0}.course-guide-block p{margin:0;color:#667590;font-size:11px;line-height:1.75;min-height:0}
+.course-learning-panel{margin:0 0 16px;border-color:#dce5f7;background:linear-gradient(145deg,#fff 0%,#f7f9ff 62%,#f6f3ff 100%)}
+.course-learning-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:15px}
+.course-learning-head h2{margin:4px 0 3px;font-size:21px}
+.course-learning-head .muted{margin:0}
+.course-learning-grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:13px}
+.course-learning-section{padding:17px;border:1px solid #e3eaf7;border-radius:16px;background:rgba(255,255,255,.82)}
+.course-learning-section h3{margin:0 0 11px;font-size:14px;color:#344b79}
+.course-learning-section ul{margin:0;padding-left:20px;color:#536581;font-size:13px;line-height:1.9}
+.course-learning-section li{padding-left:2px;margin:4px 0}
+.course-misconception{padding:10px 12px;border-radius:12px;background:#fff8f7;border:1px solid #f4dfdd;margin:8px 0}
+.course-misconception:last-child{margin-bottom:0}
+.course-misconception .wrong{font-size:12px;font-weight:800;color:#b74747;line-height:1.7}
+.course-misconception .prompt{font-size:12px;color:#536581;line-height:1.75;margin-top:3px}
+.course-misconception .prompt b{color:#4268bb}
+@media(max-width:650px){.course-learning-grid{grid-template-columns:1fr}.course-learning-head h2{font-size:19px}}
+
 .steps{display:grid;grid-template-columns:repeat(6,1fr);gap:9px}.step{padding:15px 11px;border:1px solid var(--line);border-radius:15px;background:#fff}.step b{display:block;color:#6685d4;font-size:11px}.step strong{display:block;font-size:12px;margin:7px 0 3px}.step span{display:block;color:var(--muted);font-size:10px}
 .progressbox{display:flex;align-items:center;gap:16px;padding:18px 20px;background:#fff;border:1px solid var(--line);border-radius:18px}.progress-icon{width:42px;height:42px;border-radius:13px;background:#edf3ff;display:grid;place-items:center;font-size:20px}.progress-info{flex:1}.progress-info b{font-size:13px}.progress-track{height:7px;background:#edf0f6;border-radius:99px;overflow:hidden;margin-top:7px}.progress-fill{height:100%;width:0;background:linear-gradient(90deg,#3978f6,#8665f6);border-radius:99px;transition:width .3s}
 .pageintro{padding:28px 30px;border-radius:23px;background:linear-gradient(120deg,#eaf2ff,#f3efff);border:1px solid #e2e8fa;margin-bottom:18px}.pageintro h1{margin:5px 0 8px;font-size:30px}.pageintro p{margin:0;color:#667590;font-size:13px}
@@ -172,9 +188,9 @@ textarea{min-height:105px;resize:vertical}
 <section id="learn" class="panel">
   <div class="pageintro"><div class="kicker">LEARNING PATH</div><h1>探索课程</h1><p>选择一个你感兴趣的科学主题，开始一段有问题、有实验、有证据的探索。</p></div>
   <div class="grid">
-    <article class="unit course selected" aria-label="默认推荐课程" data-course="plant"><div class="course-top">🌱</div><div class="course-body"><span class="pill">生命科学</span><h3>植物怎样喝水？</h3><p>观察植物吸水现象，探索水分在植物体内的运输方式。</p><div class="course-video"><video controls playsinline preload="metadata" poster="/videos/poster-plant.svg" data-video-id="plant"><source src="/videos/video1.mp4" type="video/mp4"><track kind="captions" src="/videos/video1.zh-CN.vtt" srclang="zh-CN" label="学习提示字幕（非逐字转写）">你的浏览器暂不支持视频播放。</video><div class="video-progress" data-progress="plant">播放进度会自动保存</div><div class="course-video-note">课程视频 · 植物怎样喝水</div></div><details class="course-guide"><summary>学习目标 · 课标对应 · 常见误解</summary><div class="course-guide-content"><div class="course-guide-block"><h4>🎯 学习目标</h4><ul><li>观察并描述植物吸水后出现的可见变化。</li><li>用简单图示说明水分由根部吸收，经茎向叶等部位运输。</li><li>能根据染色水实验提出证据，并说明实验现象能支持什么结论。</li></ul></div><div class="course-guide-block"><h4>📘 课标对应</h4><p>义务教育科学课程标准（2022年版）生命科学领域：植物的生存与生长、植物体的结构与功能。建议结合三至六年级学生已有的植物观察经验开展。</p></div><div class="course-guide-block"><h4>💡 常见误解</h4><ul><li>误以为植物主要靠叶片吸收水分；植物吸收水分的主要部位是根。</li><li>误以为水只停留在茎中；水分会运输到叶等地上部分。</li><li>误以为染色水实验能直接展示全部运输机制；颜色变化是水分运输的可观察线索，不等于完整解释。</li></ul></div></div></details><div class="course-meta"><span>入门 · 约30分钟</span><span>观察与实验</span></div><button class="btn soft" onclick="selectTopic('植物怎样吸收和运输水分？','plant')">开始学习 →</button></div></article>
-    <article class="unit course"><div class="course-top">🌈</div><div class="course-body"><span class="pill">物理科学</span><h3>彩虹如何形成？</h3><p>探索光的折射、反射与色散，发现白光里的色彩秘密。</p><div class="course-video"><video controls playsinline preload="metadata" poster="/videos/poster-rainbow.svg" data-video-id="rainbow"><source src="/videos/video2.mp4" type="video/mp4"><track kind="captions" src="/videos/video2.zh-CN.vtt" srclang="zh-CN" label="学习提示字幕（非逐字转写）">你的浏览器暂不支持视频播放。</video><div class="video-progress" data-progress="rainbow">播放进度会自动保存</div><div class="course-video-note">课程视频 · 彩虹如何形成</div></div><details class="course-guide"><summary>学习目标 · 课标对应 · 常见误解</summary><div class="course-guide-content"><div class="course-guide-block"><h4>🎯 学习目标</h4><ul><li>描述阳光照到水滴后，光的传播方向和颜色会发生变化。</li><li>借助棱镜或喷水雾实验，观察白光分散成不同颜色的现象。</li><li>用“折射、色散、反射”等词语初步解释彩虹形成过程。</li></ul></div><div class="course-guide-block"><h4>📘 课标对应</h4><p>义务教育科学课程标准（2022年版）物质科学领域：光的传播及光与物质相互作用等相关学习内容。建议在已有光现象观察经验基础上，面向五至六年级作拓展探究。</p></div><div class="course-guide-block"><h4>💡 常见误解</h4><ul><li>误以为彩虹是云本身的颜色；彩虹与阳光进入空气中的水滴后发生的光学现象有关。</li><li>误以为只有雨后才会出现彩虹；喷水雾等细小水滴在合适光线下也可能形成彩虹。</li><li>误以为彩虹只由单一的“反射”造成；光的折射、色散和水滴内部反射共同参与形成过程。</li></ul></div></div></details><div class="course-meta"><span>入门 · 约30分钟</span><span>光学探究</span></div><button class="btn soft" onclick="selectTopic('彩虹是怎样形成的？','rainbow')">开始学习 →</button></div></article>
-    <article class="unit course"><div class="course-top">🧲</div><div class="course-body"><span class="pill">物理科学</span><h3>磁铁的秘密</h3><p>比较不同材料与磁铁的相互作用，寻找磁性规律。</p><div class="course-video"><video controls playsinline preload="metadata" poster="/videos/poster-magnet.svg" data-video-id="magnet"><source src="/videos/video3.mp4" type="video/mp4"><track kind="captions" src="/videos/video3.zh-CN.vtt" srclang="zh-CN" label="学习提示字幕（非逐字转写）">你的浏览器暂不支持视频播放。</video><div class="video-progress" data-progress="magnet">播放进度会自动保存</div><div class="course-video-note">课程视频 · 磁铁的秘密</div></div><details class="course-guide"><summary>学习目标 · 课标对应 · 常见误解</summary><div class="course-guide-content"><div class="course-guide-block"><h4>🎯 学习目标</h4><ul><li>通过分类实验判断常见材料能否被磁铁吸引，并记录结果。</li><li>发现磁铁有两个磁极，观察同极相斥、异极相吸的现象。</li><li>能依据实验结果概括磁铁的基本性质，并用证据解释判断。</li></ul></div><div class="course-guide-block"><h4>📘 课标对应</h4><p>义务教育科学课程标准（2022年版）物质科学领域：常见材料的性质、磁铁的性质及磁极间相互作用等相关学习内容。建议三至四年级开展基础探究。</p></div><div class="course-guide-block"><h4>💡 常见误解</h4><ul><li>误以为所有金属都能被磁铁吸引；铁、部分钢材等会被明显吸引，铜和铝通常不会。</li><li>误以为磁铁只有一端有磁性；每块磁铁都有南、北两个磁极。</li><li>误以为隔着纸或塑料磁力就会消失；磁力可穿过一些非磁性薄材料，但距离增大会影响作用效果。</li></ul></div></div></details><div class="course-meta"><span>入门 · 约25分钟</span><span>比较实验</span></div><button class="btn soft" onclick="selectTopic('哪些材料会被磁铁吸引？','magnet')">开始学习 →</button></div></article>
+    <article class="unit course selected" aria-label="默认推荐课程" data-course="plant"><div class="course-top">🌱</div><div class="course-body"><span class="pill">生命科学</span><h3>植物怎样喝水？</h3><p>观察植物吸水现象，探索水分在植物体内的运输方式。</p><div class="course-video"><video controls playsinline preload="metadata" poster="/videos/poster-plant.svg" data-video-id="plant"><source src="/videos/video1.mp4" type="video/mp4"><track kind="captions" src="/videos/video1.zh-CN.vtt" srclang="zh-CN" label="学习提示字幕（非逐字转写）">你的浏览器暂不支持视频播放。</video><div class="video-progress" data-progress="plant">播放进度会自动保存</div><div class="course-video-note">课程视频 · 植物怎样喝水</div></div><div class="course-meta"><span>入门 · 约30分钟</span><span>观察与实验</span></div><button class="btn soft" onclick="selectTopic('植物怎样吸收和运输水分？','plant')">开始学习 →</button></div></article>
+    <article class="unit course"><div class="course-top">🌈</div><div class="course-body"><span class="pill">物理科学</span><h3>彩虹如何形成？</h3><p>探索光的折射、反射与色散，发现白光里的色彩秘密。</p><div class="course-video"><video controls playsinline preload="metadata" poster="/videos/poster-rainbow.svg" data-video-id="rainbow"><source src="/videos/video2.mp4" type="video/mp4"><track kind="captions" src="/videos/video2.zh-CN.vtt" srclang="zh-CN" label="学习提示字幕（非逐字转写）">你的浏览器暂不支持视频播放。</video><div class="video-progress" data-progress="rainbow">播放进度会自动保存</div><div class="course-video-note">课程视频 · 彩虹如何形成</div></div><div class="course-meta"><span>入门 · 约30分钟</span><span>光学探究</span></div><button class="btn soft" onclick="selectTopic('彩虹是怎样形成的？','rainbow')">开始学习 →</button></div></article>
+    <article class="unit course"><div class="course-top">🧲</div><div class="course-body"><span class="pill">物理科学</span><h3>磁铁的秘密</h3><p>比较不同材料与磁铁的相互作用，寻找磁性规律。</p><div class="course-video"><video controls playsinline preload="metadata" poster="/videos/poster-magnet.svg" data-video-id="magnet"><source src="/videos/video3.mp4" type="video/mp4"><track kind="captions" src="/videos/video3.zh-CN.vtt" srclang="zh-CN" label="学习提示字幕（非逐字转写）">你的浏览器暂不支持视频播放。</video><div class="video-progress" data-progress="magnet">播放进度会自动保存</div><div class="course-video-note">课程视频 · 磁铁的秘密</div></div><div class="course-meta"><span>入门 · 约25分钟</span><span>比较实验</span></div><button class="btn soft" onclick="selectTopic('哪些材料会被磁铁吸引？','magnet')">开始学习 →</button></div></article>
   </div>
   <div class="card" style="margin-top:17px"><h3>课程学习方法</h3><p class="muted">先独立思考，再向 AI 导师寻求线索；用实验和可靠证据检验想法。课程建议时长为学习规划参考，实际时间以探究过程为准。</p><ol><li>观察现象，写下你注意到的细节。</li><li>提出一个清楚、可以研究的问题。</li><li>形成假设，说明你这样猜想的理由。</li><li>设计公平、安全的实验。</li><li>如实记录数据和观察结果。</li><li>依据证据解释结果，并提出新问题。</li></ol></div>
 </section>
@@ -193,6 +209,18 @@ textarea{min-height:105px;resize:vertical}
     <p id="joinStatus" class="muted" role="status" aria-live="polite">尚未加入班级。</p>
     <div class="notice">受控试点提示：当前使用的 Render 免费数据库将在 2026 年 12 月 23 日到期，正式长期使用前必须完成数据迁移。学生须在教师和监护人监督下使用；本页面的勾选仅记录操作确认，不等同于已完成法律意义上的监护人身份核验。请勿提交可识别个人身份的信息。</div>
   </div>
+
+  <section class="card course-learning-panel" id="courseLearningPanel" aria-labelledby="courseLearningTitle">
+    <div class="course-learning-head"><div><span class="kicker">YOUR LEARNING GUIDE</span><h2 id="courseLearningTitle">本课学习目标与常见误解</h2><p class="muted" id="courseLearningIntro">围绕当前课程，把目标变成可以观察、测量和验证的行动。</p></div><span class="pill" id="courseLearningTag">植物怎样喝水</span></div>
+    <div class="course-learning-grid">
+      <div class="course-learning-section">
+        <h3>🎯 这节课，我希望做到</h3><ul id="courseObjectives"></ul>
+      </div>
+      <div class="course-learning-section misconceptions">
+        <h3>🧠 容易想错的地方，试着追问</h3><div id="courseMisconceptions"></div>
+      </div>
+    </div>
+  </section>
 
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><h2>我的探究记录</h2><span class="pill">本地草稿 · 班级云档案</span></div>
@@ -326,7 +354,52 @@ function tab(id,writeHash=true){
 document.querySelectorAll('#nav button').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
 window.addEventListener('hashchange',()=>tab(location.hash.slice(1)||'home',false));
 tab(location.hash.slice(1)||'home',false);
-function selectTopic(t,courseId='plant'){$('topic').value=t;document.querySelectorAll('.course[data-course]').forEach(card=>card.classList.toggle('selected',card.dataset.course===courseId));localStorage.setItem('scienceSelectedCourse',courseId);tab('lab')}
+const courseLearningContent={
+  plant:{name:'植物怎样喝水',intro:'从植物吸水与运输水分入手，练习提出可测量的问题、控制条件并用重复数据解释现象。',objectives:[
+    '我能把“植物怎样喝水”改成一个可以用尺子或量杯测量的问题。',
+    '我能只改变一个条件（如水量或光照），让植物种类、容器和观察时间等条件保持一致。',
+    '我能连续观察并记录至少三次数据，用数据说明水分变化或染色水运输现象。',
+    '我能区分亲眼看到的现象和自己的解释，不把猜想当成实验结果。'
+  ],misconceptions:[
+    ['❌ 水是被叶子“吸”上去的','只靠细细的管子，水能升到 10 米高的树顶吗？根、茎和叶分别可能起什么作用？'],
+    ['❌ 植物喝水靠根“用力往上压”','如果把叶片用透明袋轻轻罩住，过一段时间袋内出现水珠，这些水可能从哪里来？'],
+    ['❌ 做一次实验就能下结论','只测一次，你怎么知道不是偶然？重复三次后，结果是否接近？']
+  ]},
+  rainbow:{name:'彩虹如何形成',intro:'围绕阳光、水滴与颜色展开探究，用可重复的光学观察检验自己的解释。',objectives:[
+    '我能提出一个可以观察或记录的问题，例如水滴大小或观察角度变化时，彩色光带有什么不同。',
+    '我能在安全条件下用棱镜或细小水雾进行观察，并记录光源、位置和观察角度。',
+    '我能比较至少三次观察结果，描述白光分散出的颜色及其排列现象。',
+    '我能用自己的话初步说明折射、色散和水滴内部反射在彩虹形成中的作用。'
+  ],misconceptions:[
+    ['❌ 彩虹是云本身带有的颜色','没有阳光时还能看到彩虹吗？用棱镜照射白光，能不能在没有彩云的地方看到颜色？'],
+    ['❌ 只有下雨以后才会出现彩虹','在阳光合适的方向，用喷雾制造细小水滴，能否观察到彩色光带？'],
+    ['❌ 彩虹只是光反射了一次','白光为什么会分成不同颜色？如果只有反射、不发生颜色分散，还能解释彩色光带吗？']
+  ]},
+  magnet:{name:'磁铁的秘密',intro:'通过材料分类、磁极相互作用和隔物实验，形成基于证据的磁性认识。',objectives:[
+    '我能把“哪些东西能被磁铁吸引”变成可检验的问题，并先预测再实验。',
+    '我能每次只更换一种材料，保持磁铁、距离和测试方法相同，公平比较结果。',
+    '我能把至少三种材料的测试结果记录成表格，并用重复测试确认结果。',
+    '我能用实验说明磁铁有两个磁极，并观察同极相斥、异极相吸的现象。'
+  ],misconceptions:[
+    ['❌ 所有金属都能被磁铁吸住','把铁钉、铝片和铜片分别靠近同一块磁铁，结果一样吗？“金属”这个词能代表相同磁性吗？'],
+    ['❌ 磁铁只有吸力最强的一端才有磁性','把条形磁铁的两端分别靠近指南针或另一块磁铁，两端表现完全一样吗？'],
+    ['❌ 隔着纸或塑料，磁力就会消失','在磁铁和回形针之间逐渐增加纸片，吸引效果何时发生变化？距离和材料哪个在起作用？']
+  ]}
+};
+function renderCourseLearning(courseId){
+  const data=courseLearningContent[courseId]||courseLearningContent.plant;
+  $('courseLearningTag').textContent=data.name;
+  $('courseLearningIntro').textContent=data.intro;
+  $('courseObjectives').replaceChildren(...data.objectives.map(item=>{const li=document.createElement('li');li.textContent=item;return li}));
+  $('courseMisconceptions').replaceChildren(...data.misconceptions.map(([wrong,prompt])=>{const box=document.createElement('div');box.className='course-misconception';const misconception=document.createElement('div');misconception.className='wrong';misconception.textContent=wrong;const question=document.createElement('div');question.className='prompt';const label=document.createElement('b');label.textContent='→ 追问：';question.append(label,document.createTextNode(prompt));box.append(misconception,question);return box}));
+}
+function selectTopic(t,courseId='plant'){
+  $('topic').value=t;
+  document.querySelectorAll('.course[data-course]').forEach(card=>card.classList.toggle('selected',card.dataset.course===courseId));
+  localStorage.setItem('scienceSelectedCourse',courseId);
+  renderCourseLearning(courseId);
+  tab('lab');
+}
 function initCourseVideos(){
   document.querySelectorAll('video[data-video-id]').forEach(video=>{
     const id=video.dataset.videoId,key='scienceVideoProgress:'+id,saved=Number(localStorage.getItem(key)||0),label=document.querySelector('[data-progress="'+id+'"]');
@@ -339,6 +412,7 @@ function initCourseVideos(){
   document.querySelectorAll('.course[data-course]').forEach(card=>card.classList.toggle('selected',card.dataset.course===selected));
 }
 initCourseVideos();
+renderCourseLearning(localStorage.getItem('scienceSelectedCourse')||'plant');
 function getLabRecords(){try{const v=JSON.parse(localStorage.getItem('scienceLabs')||'[]');return Array.isArray(v)?v:[]}catch(e){return []}}
 function saveLab(){
   const data={...currentLab(),id:Date.now()};
