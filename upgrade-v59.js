@@ -45,7 +45,7 @@ export function registerV59Routes({app,db,apiLimiter,requireTeacher,requireStude
       }
       const result=await db.query(`
         WITH lock_row AS (
-          SELECT pg_advisory_xact_lock(hashtext($1::text),hashtext($2::text))
+          SELECT pg_advisory_xact_lock(hashtext($1::uuid::text),hashtext($2::text))
         ), candidate AS (
           SELECT $3::uuid AS record_id FROM lock_row
         ), inserted AS (
