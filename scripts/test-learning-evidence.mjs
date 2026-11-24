@@ -1,8 +1,13 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { buildLearningEvidenceReport, registerV510Routes } from "../upgrade-v510.js";
 import { COURSE_ASSESSMENTS } from "../lib/course-assessments.js";
 import { CURRICULUM_12 } from "../upgrade-v56.js";
 
+const ui = readFileSync(new URL("../public/upgrade-v56-ui.js", import.meta.url), "utf8");
+assert.match(ui, /learningEvidenceReportV510/);
+assert.match(ui, /learning-evidence/);
+assert.match(ui, /生成学习证据报告/);
 const plant = COURSE_ASSESSMENTS["plant-water"];
 const course = CURRICULUM_12.find(item => item.id === "plant-water");
 const assessments = [
