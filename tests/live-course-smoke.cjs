@@ -27,14 +27,14 @@ const featured = [
     for (const course of featured) {
       await page.locator('#nav button[data-tab="learn"]').click();
       const card = page.locator('.course[data-course="' + course.id + '"]');
-      await card.locator('button').click();
-      await page.waitForFunction(id => document.querySelector('#courseLearningPanel')?.dataset.courseId === id, course.id);
-      assert.equal(await page.locator('#courseLearningTag').innerText(), course.title);
-      const resourcePack=page.locator('.course[data-course="'+course.id+'"] details.course-resource-pack');
+      const resourcePack=card.locator('details.course-resource-pack');
       assert.equal(await resourcePack.count(),1,course.title+' must show its teacher resource pack');
       await resourcePack.locator('summary').click();
       const resourceText=await resourcePack.innerText();
       for(const heading of ['学习成果与教学目标','材料清单','活动流程','学生任务单','学习评价量规','安全与风险控制']) assert.ok(resourceText.includes(heading),course.title+' resource pack missing '+heading);
+      await card.locator('button').click();
+      await page.waitForFunction(id => document.querySelector('#courseLearningPanel')?.dataset.courseId === id, course.id);
+      assert.equal(await page.locator('#courseLearningTag').innerText(), course.title);
 
       assert.ok(await page.locator('#courseObjectives li').count() >= 3, course.title + ' must render learning objectives');
       assert.ok(await page.locator('#courseMisconceptions .course-misconception').count() >= 2, course.title + ' must render misconceptions');
@@ -72,14 +72,14 @@ const featured = [
     await page.waitForFunction(() => document.querySelectorAll('#curriculumMapV56 article').length === 9);
     const cards = page.locator('#curriculumMapV56 article');
     for (let i = 0; i < 9; i++) {
-      await cards.nth(i).getByRole('button', { name: '开始探究' }).click();
       const topic = curriculum.topics[i + 3];
-      await page.waitForFunction(id => document.querySelector('#courseLearningPanel')?.dataset.courseId === id, topic.id);
-      assert.equal(await page.locator('#courseLearningTag').innerText(), topic.title);
       const resourcePack=cards.nth(i).locator('details.course-resource-pack');
       assert.equal(await resourcePack.count(),1,topic.title+' must render its teacher resource pack');
       await resourcePack.locator('summary').click();
       assert.ok((await resourcePack.innerText()).includes('学生任务单'),topic.title+' must show student task sheet');
+      await cards.nth(i).getByRole('button', { name: '开始探究' }).click();
+      await page.waitForFunction(id => document.querySelector('#courseLearningPanel')?.dataset.courseId === id, topic.id);
+      assert.equal(await page.locator('#courseLearningTag').innerText(), topic.title);
 
       assert.equal(await page.locator('#topic').inputValue(), topic.question);
       assert.ok(await page.locator('#lab').evaluate(el => el.classList.contains('active')));
