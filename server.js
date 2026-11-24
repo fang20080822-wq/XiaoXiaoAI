@@ -11,6 +11,7 @@ import { registerV56Routes } from "./upgrade-v56.js";
 import { registerV57Routes } from "./upgrade-v57.js";
 import { registerV58Routes } from "./upgrade-v58.js";
 import { registerV59Routes } from "./upgrade-v59.js";
+import { buildChatMessages, buildChatSummaryMessages, formatChatHistory, normalizeChatSummary } from "./lib/chat-memory.js";
 import { scoreRecord,validateAlias,containsPII,offlineAnswer } from "./lib/inquiry.js";
 import { readSession,issueSession,hashSessionToken } from "./lib/auth.js";
 
@@ -66,6 +67,7 @@ async function initDatabase(){
       "CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at)",
       "CREATE TABLE IF NOT EXISTS messages(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),session_id UUID NOT NULL,student_id TEXT NOT NULL DEFAULT '',role TEXT NOT NULL CHECK(role IN ('user','assistant')),content TEXT NOT NULL,mode TEXT NOT NULL DEFAULT 'offline',created_at TIMESTAMPTZ DEFAULT NOW())",
       "CREATE INDEX IF NOT EXISTS idx_messages_owner_session_time ON messages(student_id,session_id,created_at DESC)",
+      "CREATE TABLE IF NOT EXISTS chat_memory_summaries(student_id UUID NOT NULL REFERENCES science_learners(id) ON DELETE CASCADE,session_id UUID NOT NULL,summary TEXT NOT NULL DEFAULT '',messages_since_summary INTEGER NOT NULL DEFAULT 0 CHECK(messages_since_summary>=0),summarizing BOOLEAN NOT NULL DEFAULT FALSE,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(student_id,session_id))",
       "ALTER TABLE science_learners ADD COLUMN IF NOT EXISTS student_code TEXT",
       "ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_direct_answer INTEGER NOT NULL DEFAULT 0",
       "CREATE TABLE IF NOT EXISTS events(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),student_id UUID NOT NULL REFERENCES science_learners(id) ON DELETE CASCADE,record_id UUID REFERENCES science_records(id) ON DELETE SET NULL,step TEXT NOT NULL CHECK(step IN ('observe','question','hypothesis','variables','method','data','evidence','conclusion','reflection','submit')),action TEXT NOT NULL CHECK(action IN ('edit','save','hint','submit','reload')),hint_level INTEGER,field_key TEXT NOT NULL DEFAULT '',ts TIMESTAMPTZ NOT NULL DEFAULT NOW(),CHECK((action='hint' AND hint_level BETWEEN 1 AND 4) OR (action<>'hint' AND hint_level IS NULL)))",
@@ -262,7 +264,7 @@ app.get("/api/chat/history/:sessionId",chatLimiter,requireStudent,requireDatabas
 app.delete("/api/chat/history/:sessionId",chatLimiter,requireStudent,requireDatabase,async(req,res)=>{
   const sessionId=String(req.params.sessionId||"");
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId))return res.status(400).json({error:"对话会话标识无效。"});
-  try{await db.query("DELETE FROM messages WHERE session_id=$1 AND student_id=$2",[sessionId,req.student.learnerId]);res.json({cleared:true});}
+  try{await db.query("DELETE FROM messages WHERE session_id=$1 AND student_id=$2",[sessionId,req.student.learnerId]);await db.query("DELETE FROM chat_memory_summaries WHERE session_id=$1 AND student_id=$2",[sessionId,req.student.learnerId]);res.json({cleared:true});}
   catch(e){console.error("chat_history_delete_failed",e.message);res.status(500).json({error:"清除对话历史失败。"});}
 });
 async function callDeepSeekStream(messages,onDelta,maxTokens=1000) {
@@ -299,6 +301,52 @@ async function callDeepSeekStream(messages,onDelta,maxTokens=1000) {
   } finally {clearTimeout(timer)}
 }
 
+
+async function loadChatContext(studentId,sessionId){
+  if(!studentId||!db)return {summary:"",history:[]};
+  const [memoryResult,historyResult]=await Promise.all([
+    db.query("SELECT summary FROM chat_memory_summaries WHERE student_id=$1 AND session_id=$2",[studentId,sessionId]),
+    db.query("SELECT role,content FROM messages WHERE session_id=$1 AND student_id=$2 ORDER BY created_at DESC LIMIT 16",[sessionId,studentId])
+  ]);
+  const summary=normalizeChatSummary(memoryResult.rows[0]?.summary||"");
+  return {summary,history:formatChatHistory(historyResult.rows,looksLikePII)};
+}
+async function refreshChatMemory(studentId,sessionId){
+  if(!API_KEY||!db||!studentId)return;
+  let claimed=false;
+  try{
+    const counter=await db.query(
+      "INSERT INTO chat_memory_summaries(student_id,session_id,messages_since_summary) VALUES($1,$2,2) ON CONFLICT(student_id,session_id) DO UPDATE SET messages_since_summary=chat_memory_summaries.messages_since_summary+2,updated_at=NOW() RETURNING messages_since_summary",
+      [studentId,sessionId]
+    );
+    if(Number(counter.rows[0]?.messages_since_summary||0)<8)return;
+    const claim=await db.query(
+      "UPDATE chat_memory_summaries SET summarizing=TRUE WHERE student_id=$1 AND session_id=$2 AND summarizing=FALSE AND messages_since_summary>=8 RETURNING summary",
+      [studentId,sessionId]
+    );
+    if(!claim.rowCount)return;
+    claimed=true;
+    const recent=await db.query(
+      "SELECT role,content FROM messages WHERE student_id=$1 AND session_id=$2 ORDER BY created_at DESC LIMIT 8",
+      [studentId,sessionId]
+    );
+    const dialogue=formatChatHistory(recent.rows,looksLikePII);
+    if(!dialogue.length)throw new Error("没有可整理的对话内容");
+    const nextSummary=normalizeChatSummary(await callDeepSeek(buildChatSummaryMessages(claim.rows[0].summary,dialogue),700));
+    if(!nextSummary||looksLikePII(nextSummary))throw new Error("摘要为空或包含疑似个人信息，已跳过保存");
+    await db.query(
+      "UPDATE chat_memory_summaries SET summary=$3,messages_since_summary=GREATEST(messages_since_summary-8,0),summarizing=FALSE,updated_at=NOW() WHERE student_id=$1 AND session_id=$2",
+      [studentId,sessionId,nextSummary]
+    );
+    claimed=false;
+  }catch(error){
+    if(claimed){
+      try{await db.query("UPDATE chat_memory_summaries SET summarizing=FALSE WHERE student_id=$1 AND session_id=$2",[studentId,sessionId]);}catch{}
+    }
+    console.error("chat_memory_summary_failed",error.message);
+  }
+}
+
 app.post("/api/chat/stream",chatLimiter,async(req,res)=>{
   const message=typeof req.body?.message==="string"?req.body.message.trim():"";
   const sessionId=String(req.body?.sessionId||"");
@@ -317,8 +365,8 @@ app.post("/api/chat/stream",chatLimiter,async(req,res)=>{
   let started=false;
   const emit=(payload)=>{if(!res.destroyed)res.write("data: "+JSON.stringify(payload)+"\n\n")};
   try{
-    const previous=ownsSession?await db.query("SELECT role,content FROM messages WHERE session_id=$1 AND student_id=$2 ORDER BY created_at DESC LIMIT 8",[sessionId,ownerLearnerId]):{rows:[]};
-    const history=previous.rows.reverse().filter(m=>!looksLikePII(m.content)).map(m=>({role:m.role,content:m.content.slice(0,1200)}));
+    const chatContext=ownsSession?await loadChatContext(ownerLearnerId,sessionId):{summary:"",history:[]};
+    const history=chatContext.history;
     if(ownsSession)await db.query("INSERT INTO messages(session_id,student_id,role,content,mode) VALUES($1,$2,'user',$3,$4)",[sessionId,ownerLearnerId,message,mentorMode]);
     const topicHint={ai:"课程主题：认识人工智能。",ml:"课程主题：机器学习。",sensor:"课程主题：智能感知。",safety:"课程主题：AI安全。",design:"课程主题：AI创意设计。"}[topic]||"课程主题：儿童科学探究。";
     res.writeHead(200,headers);started=true;
@@ -326,12 +374,12 @@ app.post("/api/chat/stream",chatLimiter,async(req,res)=>{
     if(!API_KEY){answer=offlineTutor(message,topic);mode="offline";emit({delta:answer})}
     else{
       try{
-        answer=await callDeepSeekStream([{role:"system",content:SYSTEM_BASE+"\n"+MENTOR_MODES[mentorMode]+"\n"+topicHint+(req.scienceSystemContext||"")},...history,{role:"user",content:message}],delta=>emit({delta}),1000);
+        answer=await callDeepSeekStream(buildChatMessages(SYSTEM_BASE+"\n"+MENTOR_MODES[mentorMode]+"\n"+topicHint+(req.scienceSystemContext||""),chatContext.summary,history,message),delta=>emit({delta}),1000);
       }catch(error){answer=offlineTutor(message,topic);mode="offline";notice=error.message;emit({delta:answer})}
     }
     if(req.scienceHintLevel===4&&!/参考答案/.test(answer))answer="参考答案（仅供参考，请用自己的话复述）\n"+answer+"\n\n请先遮住上面的内容，用自己的话复述你的理解。";
     if(looksLikePII(answer)){answer="回答可能包含个人信息，已隐藏。请用匿名信息继续。";mode="offline";emit({delta:"\n"+answer})}
-    if(ownsSession){const isDirectAnswer=(/答案是|结论是|应该选|正确选项/.test(answer)||(answer.length>400&&!/[？?]/.test(answer)))?1:0;await db.query("INSERT INTO messages(session_id,student_id,role,content,mode,is_direct_answer) VALUES($1,$2,'assistant',$3,$4,$5)",[sessionId,ownerLearnerId,answer,mentorMode,isDirectAnswer]);}
+    if(ownsSession){const isDirectAnswer=(/答案是|结论是|应该选|正确选项/.test(answer)||(answer.length>400&&!/[？?]/.test(answer)))?1:0;await db.query("INSERT INTO messages(session_id,student_id,role,content,mode,is_direct_answer) VALUES($1,$2,'assistant',$3,$4,$5)",[sessionId,ownerLearnerId,answer,mentorMode,isDirectAnswer]);void refreshChatMemory(ownerLearnerId,sessionId);await db.query("DELETE FROM messages WHERE session_id=$1 AND student_id=$2 AND id NOT IN (SELECT id FROM messages WHERE session_id=$1 AND student_id=$2 ORDER BY created_at DESC LIMIT 100)",[sessionId,ownerLearnerId]);}
     emit({done:true,mode,model:MODEL,...(notice?{notice}:{})});
     res.end();
   }catch(error){
@@ -355,10 +403,8 @@ app.post("/api/chat",chatLimiter,async(req,res)=>{
     const student=await resolveStudentSession(token);
     const ownsSession=Boolean(student?.learnerId && student.classId);
     const ownerLearnerId=ownsSession?String(student.learnerId):"";
-    const previous=ownsSession
-      ? await db.query("SELECT role,content FROM messages WHERE session_id=$1 AND student_id=$2 ORDER BY created_at DESC LIMIT 8",[sessionId,ownerLearnerId])
-      : {rows:[]};
-    const safeHistory=previous.rows.reverse().filter(m=>!looksLikePII(m.content)).map(m=>({role:m.role,content:m.content.slice(0,1200)}));
+    const chatContext=ownsSession?await loadChatContext(ownerLearnerId,sessionId):{summary:"",history:[]};
+    const safeHistory=chatContext.history;
     if(ownsSession) await db.query("INSERT INTO messages(session_id,student_id,role,content,mode) VALUES($1,$2,'user',$3,$4)",[sessionId,ownerLearnerId,message,mentorMode]);
     const topicHint={
       ai:"课程主题：认识人工智能。帮助学生区分人工智能、自动化与普通程序。",
@@ -370,13 +416,14 @@ app.post("/api/chat",chatLimiter,async(req,res)=>{
     let answer,mode="online",notice;
     if(!API_KEY){answer=offlineTutor(message,topic);mode="offline";}
     else{
-      try{answer=await callDeepSeek([{role:"system",content:SYSTEM_BASE+"\n"+MENTOR_MODES[mentorMode]+"\n"+topicHint+(req.scienceSystemContext||"")},...safeHistory,{role:"user",content:message}],1000);}
+      try{answer=await callDeepSeek(buildChatMessages(SYSTEM_BASE+"\n"+MENTOR_MODES[mentorMode]+"\n"+topicHint+(req.scienceSystemContext||""),chatContext.summary,safeHistory,message),1000);}
       catch(err){answer=offlineTutor(message,topic);mode="offline";notice=err.message;}
     }
     if(req.scienceHintLevel===4 && !/参考答案/.test(answer))answer="参考答案（仅供参考，请用自己的话复述）\n"+answer+"\n\n请先遮住上面的内容，用自己的话复述你的理解，并说明它和你自己的实验记录有什么联系。";
     if(looksLikePII(answer))answer="这条回答可能包含个人身份信息，为保护隐私已隐藏。请改用匿名信息继续探究。";
     if(ownsSession){
       await db.query("INSERT INTO messages(session_id,student_id,role,content,mode) VALUES($1,$2,'assistant',$3,$4)",[sessionId,ownerLearnerId,answer,mentorMode]);
+      void refreshChatMemory(ownerLearnerId,sessionId);
       await db.query("DELETE FROM messages WHERE session_id=$1 AND student_id=$2 AND id NOT IN (SELECT id FROM messages WHERE session_id=$1 AND student_id=$2 ORDER BY created_at DESC LIMIT 30)",[sessionId,ownerLearnerId]);
     }
     res.json({mode,model:MODEL,answer,hintLevel:req.scienceHintLevel||1,qualityCheck:req.scienceQualityCheck||null,...(notice?{notice}:{})});
