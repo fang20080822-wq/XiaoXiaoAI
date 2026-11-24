@@ -67,4 +67,52 @@ for (const topic of context.CURRICULUM_12.slice(3)) {
 }
 
 assert.equal(context.CURRICULUM_12.length, 12, 'the curriculum regression suite must cover all 12 topics');
+
+const uiSource = readFileSync(new URL('../public/upgrade-v56-ui.js', import.meta.url), 'utf8');
+const uiStart = uiSource.indexOf('async function loadCurriculum(){');
+const uiEnd = uiSource.indexOf('\n  function addTeacherAccountUI(){', uiStart);
+assert.ok(uiStart >= 0 && uiEnd > uiStart, 'curriculum-map renderer must be present');
+const uiFunction = uiSource.slice(uiStart, uiEnd);
+
+class FakeNode {
+  constructor(tag='div') { this.tagName=tag; this.children=[]; this.listeners={}; this.textContent=''; this.className=''; this.style={}; }
+  append(...nodes) { this.children.push(...nodes); }
+  appendChild(node) { this.children.push(node); return node; }
+  addEventListener(name, fn) { this.listeners[name]=fn; }
+  click() { this.listeners.click?.(); }
+  querySelectorAll() { return []; }
+}
+const staticCards = [
+  new FakeNode('article'), new FakeNode('article'), new FakeNode('article')
+];
+staticCards[0].textContent='植物怎样喝水？';
+staticCards[1].textContent='彩虹如何形成？';
+staticCards[2].textContent='磁铁的秘密';
+const learn = new FakeNode('section');
+learn.querySelectorAll = selector => selector === '.course' ? staticCards : [];
+const uiContext = {
+  console,
+  document: { createElement: tag => new FakeNode(tag) },
+  window: { selectTopic: (...args) => context.selectTopic(...args) },
+  $: id => id === 'learn' ? learn : null,
+  api: async () => ({ topics: context.CURRICULUM_12 }),
+  el: (tag, text, cls) => { const node=new FakeNode(tag); if(text!==undefined)node.textContent=text; if(cls)node.className=cls; return node; }
+};
+vm.createContext(uiContext);
+vm.runInContext(uiFunction, uiContext);
+await uiContext.loadCurriculum();
+for (let i=0;i<3;i++) assert.ok(staticCards[i].textContent.includes(context.CURRICULUM_12[i].title), 'curriculum topic must map to its featured course card');
+const curriculumGrid = learn.children.find(node => node.id === 'curriculumMapV56');
+assert.ok(curriculumGrid, '12-topic curriculum map must render');
+assert.equal(curriculumGrid.children.length, 9, 'nine additional course cards must render');
+for (let i=0;i<curriculumGrid.children.length;i++) {
+  const card=curriculumGrid.children[i];
+  const button=card.children.find(node=>node.tagName==='button');
+  assert.ok(button && button.listeners.click, 'every additional course card must have a working start button');
+  button.click();
+  const topic=context.CURRICULUM_12[i+3];
+  assert.equal(activeTab,'lab',topic.title+' card button must open inquiry workspace');
+  assert.equal(storage.get('scienceSelectedCourse'),topic.id);
+}
+
 console.log('Course navigation regression passed: 3 featured courses + 9 curriculum-map courses enter the inquiry workspace and receive topic-specific learning content.');
