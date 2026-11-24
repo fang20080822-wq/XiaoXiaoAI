@@ -27,6 +27,7 @@ request() {
 answers='[1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5]'
 record_json="{\"recordId\":\"$RECORD_ID\"}"
 request event 201 "$STUDENT_TOKEN" POST "$base/api/student/events" "{\"step\":\"observe\",\"action\":\"save\",$record_json}"
+request event_duplicate 200 "$STUDENT_TOKEN" POST "$base/api/student/events" "{\"step\":\"observe\",\"action\":\"save\",$record_json}"
 request hint_event 201 "$STUDENT_TOKEN" POST "$base/api/student/events" "{\"step\":\"question\",\"action\":\"hint\",\"hintLevel\":2,$record_json}"
 request revision_event 201 "$STUDENT_TOKEN" POST "$base/api/student/events" "{\"step\":\"question\",\"action\":\"edit\",\"field\":\"researchQuestion\",$record_json}"
 request survey_submit 200 "$STUDENT_TOKEN" POST "$base/api/survey/submit" "{\"stage\":\"pre\",\"answers\":$answers}"
@@ -42,7 +43,7 @@ request process 200 "$TEACHER_TOKEN" GET "$base/api/teacher/classes/$CLASS_ID/pr
 grep -q '"hint_adherence_rate":' "$tmp/process.out"
 grep -q '"variable_correct_rate":' "$tmp/process.out"
 grep -q '"avg_revisions":' "$tmp/process.out"
-grep -q '"events_total":' "$tmp/process.out"
+grep -q '"events_total":3' "$tmp/process.out"
 grep -q '"hint_adherence_rate":100' "$tmp/process.out"
 grep -q '"avg_revisions":1' "$tmp/process.out"
 request csv 200 "$TEACHER_TOKEN" GET "$base/api/teacher/classes/$CLASS_ID/export.csv"
