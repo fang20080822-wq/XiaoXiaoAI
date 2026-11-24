@@ -38,6 +38,30 @@ assert.equal(report.unmatchedRecordCount,1);
 assert.match(report.note,/不作因果推断/);
 assert.ok(plant.pre.length===3);
 
+// Minimum-sample fixture: recommendations must be traceable to observed weak items/record fields.
+const recommendationAssessments=[];
+for(let i=0;i<5;i++){
+  const preAnswers=plant.pre.map((q,index)=>index===0?(q[2]+1)%4:q[2]);
+  const postAnswers=plant.post.map((q,index)=>index===1?(q[2]+1)%4:q[2]);
+  recommendationAssessments.push(
+    {course_id:"plant-water",stage:"pre",learner_id:"sample-"+i,answers:preAnswers,score:67},
+    {course_id:"plant-water",stage:"post",learner_id:"sample-"+i,answers:postAnswers,score:67}
+  );
+}
+const recommendationRecords=Array.from({length:5},(_,i)=>({
+  learner_id:"sample-"+i,topic:course.question,
+  question:"水从哪里进入植物？",hypothesis:"水从根进入",
+  method:"有色水观察",data_table:"",evidence:"",
+  conclusion:"水沿茎运输",evidence_reasoning:""
+}));
+const recommendationReport=buildLearningEvidenceReport({assessments:recommendationAssessments,records:recommendationRecords});
+const recommendations=recommendationReport.results.find(item=>item.courseId==="plant-water").recommendations;
+assert.ok(recommendations.some(item=>item.type==="pretest"&&item.evidence.includes("第1题")));
+assert.ok(recommendations.some(item=>item.type==="posttest"&&item.evidence.includes("第2题")));
+assert.ok(recommendations.some(item=>item.type==="inquiry"&&item.focus==="数据或观察证据"));
+assert.ok(recommendations.every(item=>item.action&&item.evidence&&item.focus));
+assert.match(ui,/下一轮教学改进建议/);
+
 const routeMap = new Map();
 const fakeApp = { get:(path,...handlers)=>routeMap.set("GET "+path,handlers) };
 const fakeDb = { query: async sql => {
